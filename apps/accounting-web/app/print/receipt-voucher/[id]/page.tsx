@@ -7,7 +7,7 @@ export const metadata = { title: 'แบบพิมพ์ ใบสำคัญ
 
 // TODO(Wei) PrintReceiptVoucher.dc.html: แถว IV2610-0049 ต่อท้าย "· ใบเสร็จรับเงิน/ใบกำกับภาษี RV…" แต่แถว IV2611-0053 (on_payment ตัดบางส่วน) ไม่ต่อท้าย —
 //   ใช้กติกาตามตัวอย่าง: ตัดครบ + on_payment → ต่อท้ายเลขใบกำกับภาษี · ตัดบางส่วน → "(ตัดบางส่วน)"
-// TODO(backend) PrintReceiptVoucher.dc.html: "อ้างอิง" (BN2611-0002) — RV ไม่มีลิงก์ไปใบวางบิล · ใช้ doc.reference
+// "อ้างอิง" (BN2611-0002) = ใบวางบิลที่ใบรับชำระอ้าง (receivePayment billingId → ref_document_id) · ไม่มี → doc.reference
 export default async function PrintReceiptVoucher({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const [d, ctx] = await Promise.all([loadDoc(id, ['RV']), context()]);
@@ -34,7 +34,7 @@ export default async function PrintReceiptVoucher({ params }: { params: Promise<
       <Header ctx={ctx} title="ใบสำคัญรับ" en="RECEIPT VOUCHER" badge="เอกสารภายใน" />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="รับเงินจาก" c={d.contact} address={customerAddress(d)} nameSuffix={d.contact ? ` · ${d.contact.code}` : ''} />
-        <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่รับ', thaiDate(doc.issue_date)], ['อ้างอิง', doc.reference ?? ''], ['วิธีรับ', how]]} />
+        <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่รับ', thaiDate(doc.issue_date)], ['อ้างอิง', d.ref?.doc_type === 'BN' ? d.ref.doc_no ?? '' : doc.reference ?? ''], ['วิธีรับ', how]]} />
       </div>
       <table style={css('width: 100%')}>
         <thead><tr style={css('background: #f4f4f4')}><th style={css('width: 36px')}>ลำดับ</th><th style={css('text-align: left')}>รายการ</th><th className="n">ค้างชำระ</th><th className="n">ถูกหัก ณ ที่จ่าย</th><th className="n">รับชำระ</th></tr></thead>

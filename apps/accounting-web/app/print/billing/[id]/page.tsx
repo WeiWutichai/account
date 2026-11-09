@@ -1,6 +1,6 @@
 // D6 แบบพิมพ์ใบวางบิล — design/project/PrintBilling.dc.html · PDF: ./pdf
 import { css, thaiDate } from '@innovera/ui';
-import { context, creditDays, customerAddress, getDoc, loadDoc, vatPct, weekday } from '../../_lib/data';
+import { bankAccounts, context, creditDays, customerAddress, getDoc, loadDoc, receiveBank, transferText, vatPct, weekday } from '../../_lib/data';
 import { badgeOf, DATE_BLANK, filler, Footer, Header, InfoBox, m, PartyBox, Sheet, Signatures } from '../../_lib/parts';
 
 export const metadata = { title: 'แบบพิมพ์ ใบวางบิล' };
@@ -13,14 +13,15 @@ const WHT_HINT = '3';
 
 export default async function PrintBilling({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [d, ctx] = await Promise.all([loadDoc(id, ['BN']), context()]);
+  const [d, ctx, banks] = await Promise.all([loadDoc(id, ['BN']), context(), bankAccounts()]);
+  const bank = receiveBank(banks);
   const { doc } = d;
   const invs = await Promise.all(d.billing.map((b) => getDoc(b.id)));
   const credit = creditDays(doc, d.contact, invs[0]?.doc ?? null);
   const vp = vatPct(invs.flatMap((x) => x?.lines ?? []));
   return (
     <Sheet>
-      <Header ctx={ctx} title="ใบวางบิล" en="BILLING NOTE" badge={badgeOf(sp)} />
+      <Header ctx={ctx} title="ใบวางบิล" en="BILLING NOTE" badge={badgeOf(sp, doc)} doc={doc} />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="ลูกค้า" c={d.contact} address={customerAddress(d)} />
         <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่', thaiDate(doc.issue_date)], ['นัดรับเงิน', doc.due_date ? thaiDate(doc.due_date) : ''], ['เครดิต', credit === null ? '' : `${credit} วัน`]]} />
@@ -37,8 +38,8 @@ export default async function PrintBilling({ params, searchParams }: { params: P
       </table>
       <div style={css('border: 1px solid #393939; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px')}>
         <div><span className="lbl">จำนวนเงิน (ตัวอักษร)</span><br /><strong>({d.amountText})</strong></div>
-        {/* TODO(backend): บัญชีธนาคารรับโอนของบริษัท (ธนาคาร เลขที่บัญชี) ยังไม่มีใน API */}
-        <div><span className="lbl">การชำระเงิน</span><br />นัดรับเช็ค{doc.due_date ? `วัน${weekday(doc.due_date)}ที่ ${thaiDate(doc.due_date)}` : ''} หรือโอนเข้าบัญชี {BLANK} เลขที่ {BLANK} ชื่อบัญชี {ctx.name}<br />ค่าบริการมีภาษีมูลค่าเพิ่ม {vp}% · ใบกำกับภาษีจะออกให้เมื่อได้รับชำระ · หัก ณ ที่จ่าย {WHT_HINT}% กรุณาแนบหนังสือรับรอง 50 ทวิ</div>
+        {/* บัญชีรับโอนตั้งต้นของบริษัท (GET /v1/bank-accounts) · ไม่มีในทะเบียน → ช่องว่างให้กรอก */}
+        <div><span className="lbl">การชำระเงิน</span><br />นัดรับเช็ค{doc.due_date ? `วัน${weekday(doc.due_date)}ที่ ${thaiDate(doc.due_date)}` : ''} หรือ{bank ? transferText(bank, ctx.name) : `โอนเข้าบัญชี ${BLANK} เลขที่ ${BLANK} ชื่อบัญชี ${ctx.name}`}<br />ค่าบริการมีภาษีมูลค่าเพิ่ม {vp}% · ใบกำกับภาษีจะออกให้เมื่อได้รับชำระ · หัก ณ ที่จ่าย {WHT_HINT}% กรุณาแนบหนังสือรับรอง 50 ทวิ</div>
       </div>
       <div className="lbl">ใบวางบิลไม่ใช่ใบเสร็จรับเงินและไม่ใช่ใบกำกับภาษี</div>
       <Signatures cols={2} items={[['ผู้วางบิล', DATE_BLANK], ['ผู้รับวางบิล', `${DATE_BLANK} · นัดรับเงินวันที่ ____/____/______`]]} />

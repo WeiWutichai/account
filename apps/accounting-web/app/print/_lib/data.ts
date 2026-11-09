@@ -9,11 +9,16 @@ export interface DocRow {
   subtotal: string; discount: string; vat: string; wht: string; grand_total: string; fee: string;
   notes: string | null; address: string | null; reference: string | null; tax_mode: string | null;
   wht_cert_no: string | null; wht_rate: string | null; credit_days: number | null; receive_account: string | null; branch_code: string;
+  salesperson?: string | null; payment_terms?: string | null; print_count?: number; ref_document_id?: string | null;
 }
-export interface LineRow { line_no: number; line_type: string; product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: string; amount: string; vat_rate: string | null; unit: string | null }
+export interface LineRow {
+  line_no: number; line_type: string; product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: string; amount: string; vat_rate: string | null; unit: string | null;
+  product_vat_code?: 'vat7' | 'exempt' | 'zero' | null; vat_exempt_reason?: string | null;
+}
 export interface ContactRow {
   code: string; name: string; tax_id: string | null; branch_code: string | null;
   address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null;
+  bank_account?: string | null;
 }
 export interface ChequeRow { cheque_no: string; bank: string; branch: string | null; cheque_date: string; amount: string; status: string }
 export interface Settlement { id: string; doc_no: string; doc_type: string; issue_date: string; due_date: string | null; grand_total: string; vat: string; applied: string; wht: string; wht_base: string | null; vat_due: string; voided: boolean }
@@ -115,9 +120,18 @@ export function branchLabel(code: string | null | undefined): string {
   if (!code) return '';
   return code === '00000' ? 'สำนักงานใหญ่' : `สาขาที่ ${code}`;
 }
-/** ชื่อธนาคารจากชื่อบัญชีเงินฝาก ("เงินฝากธนาคาร ออมทรัพย์ [ธนาคาร A]" → "[ธนาคาร A]")
- * TODO(backend): ทะเบียนบัญชีธนาคาร (ชื่อธนาคาร เลขที่บัญชี ชื่อบัญชี) ยังไม่มีใน API — ใช้ชื่อบัญชีในผังแทน */
+/** ชื่อธนาคารจากชื่อบัญชีเงินฝาก ("เงินฝากธนาคาร ออมทรัพย์ [ธนาคาร A]" → "[ธนาคาร A]") — ใช้เมื่อบัญชีนั้นไม่มีในทะเบียนบัญชีธนาคาร */
 export const bankName = (accountName: string): string => accountName.replace(/^เงินฝากธนาคาร\s*(ออมทรัพย์|กระแสรายวัน|ประจำ)?\s*/u, '');
+
+/** ทะเบียนบัญชีธนาคารของบริษัท (GET /v1/bank-accounts) */
+export interface BankAccount { gl_account: string; gl_name: string; bank_name: string; branch: string | null; account_no: string; account_name: string | null; is_default_receive: boolean }
+export const bankAccounts = (): Promise<BankAccount[]> => api<BankAccount[]>('/v1/bank-accounts').catch(() => []);
+/** บัญชีรับโอนของบริษัท: ตามบัญชี GL ที่ระบุ (ถ้ามีในทะเบียน) ไม่งั้นบัญชีรับโอนตั้งต้น */
+export function receiveBank(list: BankAccount[], glAccount?: string | null): BankAccount | null {
+  return (glAccount ? list.find((b) => b.gl_account === glAccount) : undefined) ?? list.find((b) => b.is_default_receive) ?? null;
+}
+/** "โอนเข้าบัญชี [ธนาคาร A] เลขที่ xxx-x-xxxxx-x ชื่อบัญชี [ชื่อบริษัท] จำกัด" (PrintInvoice / PrintBilling) · ชื่อบัญชีว่าง = ชื่อบริษัท */
+export const transferText = (b: BankAccount, company: string): string => `โอนเข้าบัญชี ${b.bank_name} เลขที่ ${b.account_no} ชื่อบัญชี ${b.account_name ?? company}`;
 /** ชื่อบัญชีที่รับเงิน (จาก journal ของเอกสาร) */
 export const receiveAccountName = (d: DocDetail): string => d.journal.find((j) => j.account_code === d.doc.receive_account)?.name ?? '';
 export const isBankAccount = (name: string): boolean => name.startsWith('เงินฝาก');

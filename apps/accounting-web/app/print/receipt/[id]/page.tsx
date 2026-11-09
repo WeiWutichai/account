@@ -1,16 +1,17 @@
 // D10 แบบพิมพ์ใบเสร็จรับเงิน (ไม่มีภาษีมูลค่าเพิ่ม) — design/project/PrintReceiptNoVat.dc.html · PDF: ./pdf
 // จำนวนเงินตัวอักษร = ยอดที่รับชำระหนี้ (รวมภาษีที่ถูกหัก) ตามข้อความในแบบร่าง
 import { css, money, thaiDate } from '@innovera/ui';
-import { add, bahtTextOf, bankName, context, customerAddress, gt, howReceived, isBankAccount, isZero, liveCheques, loadDoc, pct, receiveAccountName, settledDocs, sub } from '../../_lib/data';
+import { add, bahtTextOf, bankAccounts, bankName, context, customerAddress, gt, howReceived, isBankAccount, isZero, liveCheques, loadDoc, pct, receiveAccountName, settledDocs, sub } from '../../_lib/data';
 import { badgeOf, DATE_BLANK, filler, Footer, Header, InfoBox, m, PartyBox, Sheet, Signatures, Totals } from '../../_lib/parts';
 
 export const metadata = { title: 'แบบพิมพ์ ใบเสร็จรับเงิน (ไม่มีภาษีมูลค่าเพิ่ม)' };
 const BLANK = '________';
 
-// TODO(backend) PrintReceiptNoVat.dc.html: เหตุยกเว้น VAT ใต้รายการ (เช่น "ให้เช่าอสังหาริมทรัพย์ ได้รับยกเว้นภาษีมูลค่าเพิ่ม ม.81(1)(ฑ)") และประเภทเงินได้ของ 50 ทวิ (เช่น "(ค่าเช่า)") ยังไม่มีใน API
+// เหตุยกเว้น VAT ใต้รายการ = product.vat_exempt_reason ของสินค้าที่รหัสภาษี "ยกเว้น" (PrintReceiptNoVat.dc.html "ให้เช่าอสังหาริมทรัพย์ ได้รับยกเว้นภาษีมูลค่าเพิ่ม ม.81(1)(ฑ)")
+// TODO(backend) PrintReceiptNoVat.dc.html: ประเภทเงินได้ของ 50 ทวิ ที่ได้รับ (เช่น "(ค่าเช่า)") ยังไม่มีในใบรับชำระ (มีแค่อัตราและเลขที่)
 export default async function PrintReceipt({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [d, ctx] = await Promise.all([loadDoc(id, ['RV']), context()]);
+  const [d, ctx, banks] = await Promise.all([loadDoc(id, ['RV']), context(), bankAccounts()]);
   const { doc } = d;
   const items = await settledDocs(d);
   const settled = doc.subtotal; // RV.subtotal = ยอดชำระหนี้ (ตัด + ภาษีถูกหัก)
@@ -19,11 +20,12 @@ export default async function PrintReceipt({ params, searchParams }: { params: P
   const how = howReceived(d);
   const cheque = liveCheques(d)[0];
   const whtOn = gt(doc.wht, '0.00');
-  const detail = `${cheque ? `เช็ค ${cheque.bank} เลขที่ ${cheque.cheque_no} ลงวันที่ ${thaiDate(cheque.cheque_date)} · รับ` : isBankAccount(acct) ? `โอนเข้าบัญชี ${bankName(acct)} ${BLANK}` : how} วันที่ ${thaiDate(doc.issue_date)}`
+  const reg = banks.find((b) => b.gl_account === doc.receive_account) ?? null;
+  const detail = `${cheque ? `เช็ค ${cheque.bank} เลขที่ ${cheque.cheque_no} ลงวันที่ ${thaiDate(cheque.cheque_date)} · รับ` : isBankAccount(acct) ? `โอนเข้าบัญชี ${reg?.bank_name ?? bankName(acct)} ${reg?.account_no ?? BLANK}` : how} วันที่ ${thaiDate(doc.issue_date)}`
     + (whtOn ? ` · ได้รับหนังสือรับรองหัก ณ ที่จ่าย ${pct(doc.wht_rate)}% เลขที่ ${doc.wht_cert_no ?? ''} จำนวน ${m(doc.wht)} บาท` : '');
   return (
     <Sheet>
-      <Header ctx={ctx} title="ใบเสร็จรับเงิน" en="RECEIPT" badge={badgeOf(sp)} />
+      <Header ctx={ctx} title="ใบเสร็จรับเงิน" en="RECEIPT" badge={badgeOf(sp, doc)} doc={doc} />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="ได้รับเงินจาก" c={d.contact} address={customerAddress(d)} />
         <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่', thaiDate(doc.issue_date)], ['อ้างอิง', items.map((x) => x.s.doc_no).join(', ')], ['วิธีรับเงิน', how]]} />
@@ -32,7 +34,8 @@ export default async function PrintReceipt({ params, searchParams }: { params: P
         <thead><tr style={css('background: #f4f4f4')}><th style={css('width: 36px')}>ลำดับ</th><th style={css('text-align: left')}>รายการ</th><th style={css('width: 120px')} className="n">อ้างอิงใบแจ้งหนี้</th><th style={css('width: 120px')} className="n">จำนวนเงิน</th></tr></thead>
         <tbody>
           {items.map(({ s, inv }, i) => (
-            <tr key={s.id}><td className="c">{i + 1}</td><td>{(inv?.lines ?? []).map((l, j) => <span key={l.line_no}>{j ? <br /> : null}{l.description}</span>)}</td><td className="n">{s.doc_no}</td><td className="n">{m(add(s.applied, s.wht))}</td></tr>
+            <tr key={s.id}><td className="c">{i + 1}</td><td>{(inv?.lines ?? []).map((l, j) => <span key={l.line_no}>{j ? <br /> : null}{l.description}</span>)}
+              {[...new Set((inv?.lines ?? []).filter((l) => l.product_vat_code === 'exempt' && l.vat_exempt_reason).map((l) => l.vat_exempt_reason!))].map((r) => <span key={r}><br /><span className="lbl">{r}</span></span>)}</td><td className="n">{s.doc_no}</td><td className="n">{m(add(s.applied, s.wht))}</td></tr>
           ))}
           <tr><td style={{ height: filler(240, 1, items.length) }}></td><td></td><td></td><td></td></tr>
         </tbody>

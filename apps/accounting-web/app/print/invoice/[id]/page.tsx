@@ -1,6 +1,6 @@
 // D1 แบบพิมพ์ใบแจ้งหนี้ — design/project/PrintInvoice.dc.html · PDF: ./pdf
 import { css, thaiDate } from '@innovera/ui';
-import { context, creditDays, customerAddress, itemRows, loadDoc, pct, timesRate, vatBase, vatPct } from '../../_lib/data';
+import { bankAccounts, context, creditDays, customerAddress, itemRows, loadDoc, pct, receiveBank, timesRate, transferText, vatBase, vatPct } from '../../_lib/data';
 import { badgeOf, DATE_BLANK, filler, Footer, Header, InfoBox, ItemTable6, m, mBlank, PartyBox, Sheet, Signatures, Totals } from '../../_lib/parts';
 
 export const metadata = { title: 'แบบพิมพ์ ใบแจ้งหนี้' };
@@ -14,7 +14,8 @@ const BLANK = '________';
 
 export default async function PrintInvoice({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
-  const [d, ctx] = await Promise.all([loadDoc(id, ['IV']), context()]);
+  const [d, ctx, banks] = await Promise.all([loadDoc(id, ['IV']), context(), bankAccounts()]);
+  const bank = receiveBank(banks);
   const { doc } = d;
   const onPayment = doc.tax_mode === 'on_payment';
   const base = vatBase(d);
@@ -24,7 +25,7 @@ export default async function PrintInvoice({ params, searchParams }: { params: P
   const info: [string, string][] = [['เลขที่', doc.doc_no ?? ''], ['วันที่', thaiDate(doc.issue_date)], ['ครบกำหนด', doc.due_date ? thaiDate(doc.due_date) : ''], ['เครดิต', credit === null ? '' : `${credit} วัน`]];
   return (
     <Sheet>
-      <Header ctx={ctx} title="ใบแจ้งหนี้" en="INVOICE" badge={badgeOf(sp)} />
+      <Header ctx={ctx} title="ใบแจ้งหนี้" en="INVOICE" badge={badgeOf(sp, doc)} doc={doc} />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="ลูกค้า" c={d.contact} address={customerAddress(d)} />
         <InfoBox rows={info} />
@@ -33,8 +34,8 @@ export default async function PrintInvoice({ params, searchParams }: { params: P
       <div style={css('display: flex; gap: 12px; align-items: stretch')}>
         <div style={css('flex: 1 1 auto; border: 1px solid #393939; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px')}>
           <div><span className="lbl">จำนวนเงิน (ตัวอักษร)</span><br /><strong>({d.amountText})</strong></div>
-          {/* TODO(backend): บัญชีธนาคารรับโอนของบริษัท (ธนาคาร เลขที่บัญชี) ยังไม่มีใน API */}
-          <div><span className="lbl">ชำระภายใน {doc.due_date ? thaiDate(doc.due_date) : ''}</span><br />โอนเข้าบัญชี {BLANK} เลขที่ {BLANK} ชื่อบัญชี {ctx.name}
+          {/* บัญชีรับโอนตั้งต้นของบริษัท (GET /v1/bank-accounts) · ไม่มีในทะเบียน → ช่องว่างให้กรอก */}
+          <div><span className="lbl">ชำระภายใน {doc.due_date ? thaiDate(doc.due_date) : ''}</span><br />{bank ? transferText(bank, ctx.name) : `โอนเข้าบัญชี ${BLANK} เลขที่ ${BLANK} ชื่อบัญชี ${ctx.name}`}
             {onPayment ? <><br />หากหักภาษี ณ ที่จ่าย {pct(whtRate)}% ({m(timesRate(base, whtRate))} บาท) กรุณาส่งหนังสือรับรอง 50 ทวิ มาพร้อมหลักฐานการโอน</> : null}</div>
         </div>
         <Totals width={280} rows={[
