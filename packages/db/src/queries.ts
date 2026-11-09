@@ -4,14 +4,18 @@ import { sql } from 'kysely';
 import type { Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx } from './ledger-service.ts';
 
-export interface CompanyContext { id: string; name: string; branch: string; period: { fiscal_year: number; period_no: number; status: string } | null }
+export interface CompanyContext {
+  id: string; name: string; branch: string; period: { fiscal_year: number; period_no: number; status: string } | null;
+  profile: { nameEn: string | null; taxId: string | null; branchCode: string; address: string | null; phone: string | null; email: string | null };
+}
 
 export async function companyContext(db: Db, companyId: string, today: string): Promise<CompanyContext> {
-  const c = await db.withPublic((tx) => tx.selectFrom('public.company').select(['name_th', 'branch_code']).where('id', '=', companyId).executeTakeFirst());
+  const c = await db.withPublic((tx) => tx.selectFrom('public.company').select(['name_th', 'name_en', 'branch_code', 'tax_id', 'address', 'phone', 'email']).where('id', '=', companyId).executeTakeFirst());
   if (!c) throw new LedgerError('ไม่พบบริษัท');
   const period = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.period').select(['fiscal_year', 'period_no', 'status'])
     .where('starts_on', '<=', today).where('ends_on', '>=', today).where('period_no', '>=', 1).where('period_no', '<=', 12).executeTakeFirst());
-  return { id: companyId, name: c.name_th, branch: c.branch_code === '00000' ? 'สำนักงานใหญ่' : `สาขา ${c.branch_code}`, period: period ?? null };
+  return { id: companyId, name: c.name_th, branch: c.branch_code === '00000' ? 'สำนักงานใหญ่' : `สาขา ${c.branch_code}`, period: period ?? null,
+    profile: { nameEn: c.name_en, taxId: c.tax_id, branchCode: c.branch_code, address: c.address, phone: c.phone, email: c.email } };
 }
 
 export interface AccountRow {

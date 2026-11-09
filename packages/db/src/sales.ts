@@ -351,7 +351,9 @@ export async function getDocument(db: Db, companyId: string, id: string) {
   return db.withCompany(companyId, async (tx) => {
     const doc = await tx.selectFrom('acct.document').selectAll().where('id', '=', id).executeTakeFirst();
     if (!doc) return null;
-    const lines = await tx.selectFrom('acct.document_line').selectAll().where('document_id', '=', id).orderBy('line_no').execute();
+    const lines = await tx.selectFrom('acct.document_line as l').leftJoin('acct.product as p', (j) => j.onRef('p.code', '=', 'l.product_code').onRef('p.company_id', '=', 'l.company_id'))
+      .selectAll('l').select('p.unit').where('l.document_id', '=', id).orderBy('l.line_no').execute();
+    const cheques = await tx.selectFrom('acct.cheque').selectAll().where('document_id', '=', id).execute();
     const contact = doc.contact_id ? await tx.selectFrom('acct.contact').selectAll().where('id', '=', doc.contact_id).executeTakeFirst() : null;
     const events = await tx.selectFrom('acct.document_event').select(['at', 'actor', 'event', 'detail']).where('document_id', '=', id).orderBy('at').orderBy('id').execute();
     const settlementsIn = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
@@ -365,7 +367,7 @@ export async function getDocument(db: Db, companyId: string, id: string) {
       .select(['j.journal_no', 'l.line_no', 'l.account_code', 'a.name', 'l.debit', 'l.credit']).where('l.journal_id', '=', doc.journal_id).orderBy('l.line_no').execute() : [];
     const ref = doc.ref_document_id ? await tx.selectFrom('acct.document').select(['id', 'doc_no', 'doc_type', 'grand_total', 'issue_date']).where('id', '=', doc.ref_document_id).executeTakeFirst() : null;
     const o = ['IV', 'DN'].includes(doc.doc_type) && doc.status === 'posted' ? (await outstandingTx(tx, id)).outstanding.toString() : null;
-    return { doc, lines, contact, events, settlementsIn, settlementsOut, billing, journal, ref, outstanding: o, amountText: bahtText(doc.grand_total as MoneyString) };
+    return { doc, lines, contact, events, settlementsIn, settlementsOut, billing, journal, ref, cheques, outstanding: o, amountText: bahtText(doc.grand_total as MoneyString) };
   });
 }
 

@@ -20,7 +20,7 @@ export interface PublicDB {
     wht_recognition: Generated<'on_payment' | 'on_invoice'>; fiscal_year_start: Generated<string>; db_dsn: string | null;
     status: Generated<'active' | 'suspended' | 'archived'>; created_at: Ts;
     setup_step: Generated<number>; setup_done: Generated<boolean>; chart_template: Generated<'service' | 'trading' | 'dbd' | 'import'>; modules: Json;
-    go_live_date: DateCol | null; created_by: string | null;
+    go_live_date: DateCol | null; created_by: string | null; address: string | null; phone: string | null; email: string | null;
   };
   'public.org_membership': { org_id: string; user_id: string; org_role: 'owner' | 'admin' | 'billing_admin' | 'member' | 'guest'; created_at: Ts; expires_at: DateCol | null };
   'public.company_membership': {
@@ -57,7 +57,8 @@ export interface AcctDB {
   'acct.period': { company_id: string; fiscal_year: number; period_no: number; starts_on: DateCol; ends_on: DateCol;
     status: Generated<'open' | 'soft_closed' | 'hard_closed'>; closed_at: Date | null; closed_by: string | null };
   'acct.contact': { company_id: string; id: Generated<string>; code: string; name: string; kind: 'customer' | 'vendor' | 'both' | 'contractor' | 'employee';
-    tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts };
+    tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts;
+    address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null };
   'acct.product': { company_id: string; code: string; name: string; kind: Generated<'service' | 'goods' | 'expense' | 'kit'>; unit: string | null;
     price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null };
   'acct.document': { company_id: string; id: Generated<string>; doc_type: string; doc_no: string | null;
