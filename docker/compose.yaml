@@ -19,17 +19,9 @@ services:
       retries: 30
   pgbouncer:
     image: edoburu/pgbouncer:v1.26.1-p0
-    environment:
-      DB_HOST: postgres
-      DB_PORT: "5432"
-      DB_USER: app
-      DB_PASSWORD: app
-      DB_NAME: innovera
-      POOL_MODE: transaction        # กติกา: ห้าม session state (PLAN §2)
-      MAX_CLIENT_CONN: "1000"
-      DEFAULT_POOL_SIZE: "20"
-      AUTH_TYPE: scram-sha-256
-      ADMIN_USERS: app
+    volumes:
+      - ./pgbouncer/pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./pgbouncer/userlist.txt:/etc/pgbouncer/userlist.txt:ro
     ports: ["56432:5432"]          # แอปต่อทางนี้เสมอ
     depends_on:
       postgres: { condition: service_healthy }

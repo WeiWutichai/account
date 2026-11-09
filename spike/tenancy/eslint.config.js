@@ -1,1 +1,3 @@
-export { default } from '@innovera/config/eslint';
+import base, { allowDbAccess } from '@innovera/config/eslint';
+
+export default [...base, allowDbAccess];

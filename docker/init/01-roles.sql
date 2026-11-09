@@ -1,5 +1,16 @@
--- role ของแอป (ไม่ใช่ superuser) + role สำหรับ migration
-CREATE ROLE app LOGIN PASSWORD 'app' NOSUPERUSER NOCREATEDB NOCREATEROLE;
-CREATE ROLE migrator LOGIN PASSWORD 'migrator' NOSUPERUSER CREATEDB NOCREATEROLE;
-GRANT CONNECT ON DATABASE innovera TO app, migrator;
+-- roles (ADR-001 · TP M1 §3)
+--   migrator: เจ้าของทุกตาราง · รัน migration (ต่อตรง ไม่ผ่าน PgBouncer)
+--   app: DML เท่านั้น ไม่ใช่เจ้าของ → RLS มีผลเสมอ
+--   console_reader: อ่านข้ามบริษัทสำหรับ Console (BYPASSRLS) · ใช้เฉพาะ service ที่มี audit
+CREATE ROLE migrator LOGIN PASSWORD 'migrator' NOSUPERUSER NOCREATEDB NOCREATEROLE;
+CREATE ROLE app LOGIN PASSWORD 'app' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+CREATE ROLE console_reader LOGIN PASSWORD 'console_reader' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS;
+GRANT CONNECT ON DATABASE innovera TO app, migrator, console_reader;
 GRANT CREATE ON DATABASE innovera TO migrator;
+GRANT CREATE, USAGE ON SCHEMA public TO migrator;
+-- ฐานข้อมูลสำหรับ test (ล้างได้ทุกรอบ)
+CREATE DATABASE innovera_test OWNER postgres;
+\c innovera_test
+GRANT CONNECT ON DATABASE innovera_test TO app, migrator, console_reader;
+GRANT CREATE ON DATABASE innovera_test TO migrator;
+GRANT CREATE, USAGE ON SCHEMA public TO migrator;

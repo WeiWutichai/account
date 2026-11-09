@@ -1,0 +1,357 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Innovera AccountSystem API",
+    "version": "0.1.0"
+  },
+  "paths": {},
+  "components": {
+    "schemas": {
+      "Money": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+        "description": "Money (THB) เช่น \"1070.00\""
+      },
+      "Qty": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "pattern": "^-?\\d{1,14}(\\.\\d{1,4})?$",
+        "description": "จำนวน/ราคาต่อหน่วย สูงสุด 4 ตำแหน่ง"
+      },
+      "Rate": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "pattern": "^\\d{1,3}(\\.\\d{1,4})?$",
+        "description": "อัตรา % สูงสุด 4 ตำแหน่ง เช่น \"7\" \"3.0000\""
+      },
+      "AccountCode": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "pattern": "^\\d{7}$",
+        "description": "รหัสบัญชี 7 หลัก"
+      },
+      "DocType": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "QO",
+          "SO",
+          "BL",
+          "IV",
+          "CN",
+          "DN",
+          "DP",
+          "RV",
+          "PR",
+          "PO",
+          "AP",
+          "EXP",
+          "CNR",
+          "DNR",
+          "PV",
+          "JV"
+        ]
+      },
+      "DocStatus": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "draft",
+          "pending_approval",
+          "approved",
+          "posted",
+          "voided"
+        ]
+      },
+      "DocumentLineInput": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "line_type": {
+            "default": "item",
+            "type": "string",
+            "enum": [
+              "item",
+              "heading",
+              "note"
+            ]
+          },
+          "product_code": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "qty": {
+            "type": "string",
+            "pattern": "^-?\\d{1,14}(\\.\\d{1,4})?$",
+            "description": "จำนวน/ราคาต่อหน่วย สูงสุด 4 ตำแหน่ง"
+          },
+          "unit_price": {
+            "type": "string",
+            "pattern": "^-?\\d{1,14}(\\.\\d{1,4})?$",
+            "description": "จำนวน/ราคาต่อหน่วย สูงสุด 4 ตำแหน่ง"
+          },
+          "discount": {
+            "type": "string",
+            "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+            "description": "Money (THB) เช่น \"1070.00\""
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+            "description": "Money (THB) เช่น \"1070.00\""
+          },
+          "vat_rate": {
+            "type": "string",
+            "pattern": "^\\d{1,3}(\\.\\d{1,4})?$",
+            "description": "อัตรา % สูงสุด 4 ตำแหน่ง เช่น \"7\" \"3.0000\""
+          },
+          "account_code": {
+            "type": "string",
+            "pattern": "^\\d{7}$",
+            "description": "รหัสบัญชี 7 หลัก"
+          }
+        },
+        "required": [
+          "description"
+        ]
+      },
+      "DocumentDraftCreate": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "doc_type": {
+            "type": "string",
+            "enum": [
+              "QO",
+              "SO",
+              "BL",
+              "IV",
+              "CN",
+              "DN",
+              "DP",
+              "RV",
+              "PR",
+              "PO",
+              "AP",
+              "EXP",
+              "CNR",
+              "DNR",
+              "PV",
+              "JV"
+            ]
+          },
+          "issue_date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "due_date": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+          },
+          "contact_code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "price_incl_vat": {
+            "default": false,
+            "type": "boolean"
+          },
+          "branch_code": {
+            "default": "00000",
+            "type": "string",
+            "pattern": "^\\d{5}$"
+          },
+          "lines": {
+            "minItems": 1,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "line_type": {
+                  "default": "item",
+                  "type": "string",
+                  "enum": [
+                    "item",
+                    "heading",
+                    "note"
+                  ]
+                },
+                "product_code": {
+                  "type": "string"
+                },
+                "description": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "qty": {
+                  "type": "string",
+                  "pattern": "^-?\\d{1,14}(\\.\\d{1,4})?$",
+                  "description": "จำนวน/ราคาต่อหน่วย สูงสุด 4 ตำแหน่ง"
+                },
+                "unit_price": {
+                  "type": "string",
+                  "pattern": "^-?\\d{1,14}(\\.\\d{1,4})?$",
+                  "description": "จำนวน/ราคาต่อหน่วย สูงสุด 4 ตำแหน่ง"
+                },
+                "discount": {
+                  "type": "string",
+                  "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+                  "description": "Money (THB) เช่น \"1070.00\""
+                },
+                "amount": {
+                  "type": "string",
+                  "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+                  "description": "Money (THB) เช่น \"1070.00\""
+                },
+                "vat_rate": {
+                  "type": "string",
+                  "pattern": "^\\d{1,3}(\\.\\d{1,4})?$",
+                  "description": "อัตรา % สูงสุด 4 ตำแหน่ง เช่น \"7\" \"3.0000\""
+                },
+                "account_code": {
+                  "type": "string",
+                  "pattern": "^\\d{7}$",
+                  "description": "รหัสบัญชี 7 หลัก"
+                }
+              },
+              "required": [
+                "description"
+              ]
+            }
+          },
+          "external_source": {
+            "type": "string",
+            "minLength": 1
+          },
+          "external_ref": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "doc_type",
+          "issue_date",
+          "contact_code",
+          "lines"
+        ],
+        "additionalProperties": false
+      },
+      "JournalLineOut": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "Dr",
+              "Cr"
+            ]
+          },
+          "account_code": {
+            "type": "string",
+            "pattern": "^\\d{7}$",
+            "description": "รหัสบัญชี 7 หลัก"
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+            "description": "Money (THB) เช่น \"1070.00\""
+          },
+          "contact_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "side",
+          "account_code",
+          "amount"
+        ]
+      },
+      "WebhookEventType": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "string",
+        "enum": [
+          "document.posted",
+          "document.voided",
+          "payment.received",
+          "payment.paid",
+          "period.closed"
+        ]
+      },
+      "WebhookEvent": {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "document.posted",
+              "document.voided",
+              "payment.received",
+              "payment.paid",
+              "period.closed"
+            ]
+          },
+          "company_id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "occurred_at": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "document_id": {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              "doc_no": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "string",
+                "pattern": "^-?\\d{1,16}\\.\\d{2}$",
+                "description": "Money (THB) เช่น \"1070.00\""
+              },
+              "external_ref": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "company_id",
+          "occurred_at",
+          "data"
+        ]
+      }
+    }
+  }
+}
