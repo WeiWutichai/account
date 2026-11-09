@@ -60,6 +60,7 @@ services:
       PORT: "4000"
       DATABASE_URL: "postgres://app:${APP_DB_PASSWORD}@pgbouncer:5432/innovera"
       ID_API_URL: "http://id-api:4100"
+      CONSOLE_DATABASE_URL: "postgres://console_reader:${CONSOLE_READER_PASSWORD}@postgres:5432/innovera"
     depends_on: [pgbouncer, id-api]
   id-web:
     <<: *app
@@ -68,7 +69,7 @@ services:
       PORT: "3000"
       ID_API_URL: "http://id-api:4100"
       ACCOUNTING_WEB_URL: "https://app.${DOMAIN}"
-      ID_REDIRECT_ORIGINS: "https://app.${DOMAIN},https://id.${DOMAIN}"
+      ID_REDIRECT_ORIGINS: "https://app.${DOMAIN},https://id.${DOMAIN},https://admin.${DOMAIN}"
     depends_on: [id-api]
   accounting-web:
     <<: *app
@@ -79,6 +80,15 @@ services:
       ID_API_URL: "http://id-api:4100"
       ID_WEB_URL: "https://id.${DOMAIN}"
       NEXT_PUBLIC_ID_WEB_URL: "https://id.${DOMAIN}"
+    depends_on: [accounting-api]
+  console-web:
+    <<: *app
+    image: innovera/console-web
+    environment:
+      PORT: "3000"
+      ACCOUNTING_API_URL: "http://accounting-api:4000"
+      ID_WEB_URL: "https://id.${DOMAIN}"
+      CONSOLE_WEB_URL: "https://admin.${DOMAIN}"
     depends_on: [accounting-api]
   caddy:
     image: caddy:2.10.2
