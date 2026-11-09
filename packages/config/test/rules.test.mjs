@@ -25,3 +25,7 @@ test('any และ @ts-ignore → error', async () => {
 test('href="#" ใน JSX → error', async () => {
   assert.ok((await lint('export const A = () => <a href="#">x</a>;', 'a.tsx')).includes('no-restricted-syntax'));
 });
+
+test('import kysely นอก packages/db → error', async () => {
+  assert.ok((await lint("import { Kysely } from 'kysely';\nexport const k = Kysely;")).includes('no-restricted-imports'));
+});

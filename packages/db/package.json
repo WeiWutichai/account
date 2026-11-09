@@ -4,7 +4,14 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "lint": "eslint src", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
-  "devDependencies": { "vitest": "5.1.0", "@types/node": "26.6.6", "@innovera/config": "workspace:*" }
+  "exports": { ".": "./src/index.ts", "./seed": "./src/seed.ts", "./migrate": "./src/migrate.ts" },
+  "scripts": {
+    "lint": "eslint src test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "migrate": "tsx src/migrate-cli.ts up",
+    "migrate:down": "tsx src/migrate-cli.ts down"
+  },
+  "dependencies": { "kysely": "0.29.8", "pg": "8.23.1", "@innovera/ledger": "workspace:*" },
+  "devDependencies": { "vitest": "5.1.0", "tsx": "4.23.15", "@types/node": "26.6.6", "@types/pg": "8.23.1", "@innovera/config": "workspace:*" }
 }

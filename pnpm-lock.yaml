@@ -365,6 +365,10 @@ importers:
         version: 8.72.1(eslint@10.14.0(jiti@2.7.0))(typescript@6.0.3)
 
   packages/contracts:
+    dependencies:
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
     devDependencies:
       '@innovera/config':
         specifier: workspace:*
@@ -372,11 +376,24 @@ importers:
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
 
   packages/db:
+    dependencies:
+      '@innovera/ledger':
+        specifier: workspace:*
+        version: link:../ledger
+      kysely:
+        specifier: 0.29.8
+        version: 0.29.8
+      pg:
+        specifier: 8.23.1
+        version: 8.23.1
     devDependencies:
       '@innovera/config':
         specifier: workspace:*
@@ -384,6 +401,12 @@ importers:
       '@types/node':
         specifier: 26.6.6
         version: 26.6.6
+      '@types/pg':
+        specifier: 8.23.1
+        version: 8.23.1
+      tsx:
+        specifier: 4.23.15
+        version: 4.23.15
       vitest:
         specifier: 5.1.0
         version: 5.1.0(@types/node@26.6.6)(vite@8.3.6(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15))
@@ -2730,6 +2753,9 @@ packages:
   zeptomatch@2.1.0:
     resolution: {integrity: sha512-KiGErG2J0G82LSpniV0CtIzjlJ10E04j02VOudJsPyPwNZgGnRKQy7I1R7GMyg/QswnE4l7ohSGrQbQbjXPPDA==}
 
+  zod@4.6.7:
+    resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
+
 snapshots:
 
   '@borewit/text-codec@0.2.3': {}
@@ -4804,3 +4830,5 @@ snapshots:
     dependencies:
       grammex: 3.1.13
       graphmatch: 1.1.1
+
+  zod@4.6.7: {}

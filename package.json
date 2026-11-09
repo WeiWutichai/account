@@ -16,7 +16,9 @@
     "check:shared": "node scripts/check-shared-files.mjs",
     "verify": "pnpm check:shared && pnpm lint && pnpm typecheck && pnpm test",
     "db:up": "docker compose -f docker/compose.yaml up -d",
-    "db:down": "docker compose -f docker/compose.yaml down"
+    "db:down": "docker compose -f docker/compose.yaml down",
+    "db:migrate": "pnpm --filter @innovera/db migrate",
+    "db:migrate:down": "pnpm --filter @innovera/db migrate:down"
   },
   "devDependencies": {
     "turbo": "2.11.10",

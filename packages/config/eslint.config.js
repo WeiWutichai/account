@@ -33,6 +33,11 @@ export default tseslint.config(
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/ban-ts-comment': ['error', { 'ts-ignore': true, 'ts-nocheck': true, 'ts-expect-error': 'allow-with-description' }],
       ...moneyRules,
+      // ADR-001: ตารางบัญชีเข้าถึงผ่าน @innovera/db (withCompany) เท่านั้น
+      'no-restricted-imports': ['error', { paths: [{ name: 'kysely', message: 'ใช้ @innovera/db (withCompany) แทน — ห้ามเข้าถึง DB ตรง (ADR-001)' }] }],
     },
   },
 );
+
+/** สำหรับ package ที่ได้รับอนุญาตให้ใช้ kysely ตรง (packages/db, spike) */
+export const allowDbAccess = { rules: { 'no-restricted-imports': 'off' } };
