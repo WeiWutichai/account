@@ -32,4 +32,4 @@ const cookies = [...jar].filter(([k]) => k === 'inn_at' || k === 'inn_rt').map((
 cookies.push({ name: 'inn_co', value: COMPANY, domain: 'localhost', path: '/', expires, httpOnly: true, secure: false, sameSite: 'Lax' });
 mkdirSync(OUT, { recursive: true });
 writeFileSync(`${OUT}${APPROVER ? 'dev-session-approver.json' : 'dev-session.json'}`, JSON.stringify({ cookies, origins: [] }, null, 2));
-console.log(`✓ session ของ ${USER.email} → .playwright/dev-session.json (${cookies.length} cookies)`);
+console.log(`✓ session ของ ${USER.email} → .playwright/${APPROVER ? 'dev-session-approver.json' : 'dev-session.json'} (${cookies.length} cookies)`);
