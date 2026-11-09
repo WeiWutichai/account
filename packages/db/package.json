@@ -13,7 +13,9 @@
     "./queries": "./src/queries.ts",
     "./sales": "./src/sales.ts",
     "./transfer": "./src/company-transfer.ts",
-    "./purchase": "./src/purchase.ts"
+    "./purchase": "./src/purchase.ts",
+    "./reports": "./src/reports.ts",
+    "./close-ops": "./src/close-ops.ts"
   },
   "scripts": {
     "lint": "eslint src test",
