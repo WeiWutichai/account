@@ -1,0 +1,63 @@
+:root {
+  --bg-page: #ffffff;
+  --bg-layer-1: #f4f4f4;
+  --bg-layer-2: #ffffff;
+  --bg-hover: #e8e8e8;
+  --bg-selected: #e0e0e0;
+  --bg-inverse: #393939;
+  --border-subtle: #e0e0e0;
+  --border-strong: #8d8d8d;
+  --border-focus: #0f62fe;
+  --text-primary: #161616;
+  --text-secondary: #525252;
+  --text-placeholder: #6f6f6f;
+  --text-on-color: #ffffff;
+  --text-inverse: #ffffff;
+  --interactive: #0f62fe;
+  --interactive-hover: #0353e9;
+  --interactive-active: #002d9c;
+  --link: #0f62fe;
+  --btn-primary: #0f62fe;
+  --btn-secondary: #393939;
+  --btn-danger: #da1e28;
+  --status-success: #24a148;
+  --status-success-bg: #defbe6;
+  --status-success-text: #0e6027;
+  --status-warning: #f1c21b;
+  --status-warning-bg: #fcf4d6;
+  --status-warning-text: #684e00;
+  --status-error: #da1e28;
+  --status-error-bg: #fff1f1;
+  --status-error-text: #a2191f;
+  --status-info: #0043ce;
+  --status-info-bg: #edf5ff;
+  --status-info-text: #0043ce;
+  --tag-neutral-bg: #e0e0e0;
+  --tag-neutral-text: #161616;
+  --amount-negative: #da1e28;
+  --skeleton: #e5e5e5;
+  --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", "Noto Sans Thai", system-ui, sans-serif;
+  --font-print: "Sarabun", "IBM Plex Sans Thai", "TH Sarabun New", sans-serif;
+  --space-01: 2px;
+  --space-02: 4px;
+  --space-03: 8px;
+  --space-04: 12px;
+  --space-05: 16px;
+  --space-06: 24px;
+  --space-07: 32px;
+  --space-08: 48px;
+  --radius-none: 0px;
+  --radius-sm: 4px;
+  --radius-full: 999px;
+  --row-compact: 32px;
+  --row-default: 40px;
+  --control-md: 40px;
+  --control-lg: 48px;
+  --target-min: 24px;
+  --sidebar: 256px;
+  --form-max: 1200px;
+  --shadow-menu: 0 2px 6px rgba(0,0,0,0.30);
+}
+
+/* ปุ่ม: แบบร่างใช้มุม 4px · ปุ่มรองขาวขอบเทา · ปุ่มอันตรายขาวขอบแดง (override token — design-system/README.md) */
+:root { --button-radius: 4px; --btn-secondary-bg: #ffffff; --btn-secondary-border: var(--border-strong); --btn-danger-bg: #ffffff; }
