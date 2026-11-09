@@ -1,6 +1,8 @@
 import 'reflect-metadata';
 import { Controller, Get, Module } from '@nestjs/common';
 import { health, type Health } from './health.js';
+import { dbProvider } from './db.js';
+import { GlController } from './gl.controller.js';
 
 @Controller()
 export class HealthController {
@@ -10,5 +12,5 @@ export class HealthController {
   }
 }
 
-@Module({ controllers: [HealthController] })
+@Module({ controllers: [HealthController, GlController], providers: [dbProvider] })
 export class AppModule {}
