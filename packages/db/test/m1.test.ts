@@ -66,7 +66,7 @@ describe('seed', () => {
     const first = await seedCompany(db, A);
     const again = await seedCompany(db, A);
     expect(again).toEqual(first);
-    expect(first.periods).toBe(13);
+    expect(first.periods).toBe(14);
     expect(first.accounts).toBeGreaterThanOrEqual(50);
   });
 });
@@ -131,8 +131,11 @@ describe('journal: Dr=Cr · ผ่านรายการแล้วแก้�
     const id = await journal('JV-G1', [['1130100', '10700.00', '0'], ['4100200', '0', '10000.00'], ['2150400', '0', '700.00']]);
     expect(id).toMatch(/^[0-9a-f-]{36}$/u);
   });
-  it('ไม่ดุล → ถูกปฏิเสธตอน commit', async () => {
+  it('ไม่ดุล → ผ่านรายการไม่ได้ (ถูกปฏิเสธตอน commit)', async () => {
     await expect(journal('JV-BAD', [['1130100', '100.00', '0'], ['4100200', '0', '99.99']])).rejects.toThrow(/ไม่ดุล/u);
+  });
+  it('ร่างไม่ดุลบันทึกได้ (ผู้ใช้ยังกรอกไม่เสร็จ)', async () => {
+    await expect(journal('JV-DRAFT-UNBAL', [['1130100', '100.00', '0'], ['4100200', '0', '99.99']], 'draft')).resolves.toBeTruthy();
   });
   it('บรรทัดเดียวมีทั้ง Dr และ Cr / ติดลบ → ถูกปฏิเสธ', async () => {
     await expect(journal('JV-BOTH', [['1130100', '1.00', '1.00'], ['4100200', '0', '0']], 'draft')).rejects.toThrow(/check constraint/u);
@@ -160,8 +163,8 @@ describe('journal: Dr=Cr · ผ่านรายการแล้วแก้�
 describe('type ใน src/types.ts ตรงกับ DB', () => {
   it.each([
     ['journal_line', ['company_id', 'id', 'journal_id', 'line_no', 'account_code', 'contact_id', 'debit', 'credit', 'branch_code', 'project_code', 'memo']],
-    ['journal', ['company_id', 'id', 'journal_no', 'journal_date', 'fiscal_year', 'period_no', 'book', 'description', 'source_document_id', 'status', 'reversal_of', 'rule_version_id', 'posted_at', 'created_at']],
-    ['account', ['company_id', 'code', 'name', 'type', 'parent_code', 'is_control', 'control_kind', 'requires_contact', 'active', 'created_at']],
+    ['journal', ['company_id', 'id', 'journal_no', 'journal_date', 'fiscal_year', 'period_no', 'book', 'description', 'source_document_id', 'status', 'reversal_of', 'rule_version_id', 'posted_at', 'created_at', 'auto_reverse', 'recurring', 'created_by']],
+    ['account', ['company_id', 'code', 'name', 'type', 'parent_code', 'is_control', 'control_kind', 'requires_contact', 'active', 'created_at', 'category', 'binding']],
   ])('acct.%s', async (t, cols) => {
     const got = await admin(async (c) => (await c.query<{ c: string }>("select column_name c from information_schema.columns where table_schema = 'acct' and table_name = $1 order by ordinal_position", [t])).rows.map((r) => r.c));
     expect(got).toEqual(cols);

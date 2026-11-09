@@ -5,7 +5,8 @@ import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCompany, createOrganization } from '../src/company.ts';
 import type { Db } from '../src/index.ts';
-import { importWorkbook, TEMPLATE } from '../src/import.ts';
+import { importWorkbook, saveOpeningBalance, TEMPLATE } from '../src/import.ts';
+import { openingBalance } from '../src/queries.ts';
 import { createDraftDocument, LedgerError, postJournal, trialBalance, voidJournal } from '../src/ledger-service.ts';
 import { seedCompany } from '../src/seed.ts';
 import { appDb, freshSchema } from './helpers.ts';
@@ -116,23 +117,23 @@ describe('นำเข้ายอดยกมาจาก Excel (A4) · บร�
   let C = '';
   beforeAll(async () => {
     C = await createCompany(db, { orgId: org, nameTh: 'บริษัท ค จำกัด' });
-    await seedCompany(db, C, 2570); // ปีบัญชี 2570 · ยอดยกมา ณ 31/12/2569 ลงวันแรกของปี
+    await seedCompany(db, C, 2570); // ปีบัญชี 2570 · ยอดยกมา ณ 31/12/2569 ลงงวด 0
   });
 
   it('ไฟล์ไม่ดุล → ไม่บันทึกอะไรเลย พร้อมข้อความ', async () => {
-    const r = await importWorkbook(db, C, await workbook({ breakBalance: true }), { openingDate: '2027-01-01', role: 'owner' });
+    const r = await importWorkbook(db, C, await workbook({ breakBalance: true }), { fiscalYear: 2570, role: 'owner' });
     expect(r.ok).toBe(false);
     expect(JSON.stringify(r)).toMatch(/ไม่ดุล/u);
     const n = await db.withCompany(C, (tx) => tx.selectFrom('acct.journal').select('id').execute());
     expect(n).toEqual([]);
   });
   it('บัญชีที่ไม่มีในผัง → แจ้งเลขแถว', async () => {
-    const r = await importWorkbook(db, C, await workbook({ badAccount: true }), { openingDate: '2027-01-01', role: 'owner' });
+    const r = await importWorkbook(db, C, await workbook({ badAccount: true }), { fiscalYear: 2570, role: 'owner' });
     expect(r.ok).toBe(false);
     if (!r.ok) expect(r.issues[0]).toMatchObject({ sheet: 'ยอดยกมา', row: 2 });
   });
   it('นำเข้าสำเร็จ → งบทดลองตรงไฟล์ต้นทาง · ยอดรวม 6,317,920.55 · รายใบ = บัญชีคุม', async () => {
-    const r = await importWorkbook(db, C, await workbook(), { openingDate: '2027-01-01', role: 'owner' });
+    const r = await importWorkbook(db, C, await workbook(), { fiscalYear: 2570, role: 'owner' });
     expect(r.ok).toBe(true);
     if (r.ok) expect(r.counts).toMatchObject({ openItems: 23, openingLines: 11 });
     const tb = await trialBalance(db, C, { fiscalYear: 2570 });
@@ -143,5 +144,38 @@ describe('นำเข้ายอดยกมาจาก Excel (A4) · บร�
     }
     const ar = await db.withCompany(C, (tx) => tx.selectFrom('acct.document').select('grand_total').where('doc_type', '=', 'OB-AR').execute());
     expect(ar.reduce((s, x) => s + Number(x.grand_total), 0).toFixed(2)).toBe('612400.00');
+    // ตามแบบร่าง: JV0000-0001 · ลงวันที่ 31/12/2569 · งวด 0 ปิดแข็งทันที
+    const j = await db.withCompany(C, (tx) => tx.selectFrom('acct.journal').select(['journal_no', 'journal_date', 'period_no']).execute());
+    expect(j).toEqual([{ journal_no: 'JV0000-0001', journal_date: '2026-12-31', period_no: 0 }]);
+    const p0 = await db.withCompany(C, (tx) => tx.selectFrom('acct.period').select('status').where('period_no', '=', 0).executeTakeFirstOrThrow());
+    expect(p0.status).toBe('hard_closed');
+  });
+  it('ลงซ้ำไม่ได้ (งวดยกมาปิดแข็งแล้ว)', async () => {
+    await expect(importWorkbook(db, C, await workbook(), { fiscalYear: 2570, role: 'owner' })).rejects.toThrow(/ลงยอดยกมาแล้ว/u);
+  });
+});
+
+describe('ยอดยกมากรอกบนหน้าจอ (ScreenOpeningBalance) · ตรวจชุดเดียวกับ Excel', () => {
+  let D = '';
+  beforeAll(async () => {
+    D = await createCompany(db, { orgId: org, nameTh: 'บริษัท ง จำกัด' });
+    await seedCompany(db, D, 2570);
+  });
+  it('ไม่ดุล → ไม่บันทึก', async () => {
+    const r = await saveOpeningBalance(db, D, [{ account: '1000100', debit: '25000.00' }, { account: '3000100', credit: '24000.00' }], { fiscalYear: 2570, role: 'owner' });
+    expect(r.ok).toBe(false);
+    expect(JSON.stringify(r)).toMatch(/ไม่ดุล/u);
+  });
+  it('บัญชีคุมโดยไม่มีรายใบ → ไม่บันทึก', async () => {
+    const r = await saveOpeningBalance(db, D, [{ account: '1130100', debit: '25000.00' }, { account: '3000100', credit: '25000.00' }], { fiscalYear: 2570, role: 'owner' });
+    expect(r.ok).toBe(false);
+  });
+  it('ดุล → JV0000-0001 งวด 0 ปิดแข็ง · อ่านกลับจาก openingBalance ได้ · ลงซ้ำไม่ได้', async () => {
+    const r = await saveOpeningBalance(db, D, [{ account: '1000100', debit: '25000.00' }, { account: '3000100', credit: '25000.00' }], { fiscalYear: 2570, role: 'owner' });
+    expect(r.ok).toBe(true);
+    const o = await openingBalance(db, D, 2570);
+    expect(o).toMatchObject({ date: '2026-12-31', status: 'hard_closed', ar: { count: 0 } });
+    expect(o.lines).toEqual([{ account: '1000100', debit: '25000.00', credit: '0.00' }, { account: '3000100', debit: '0.00', credit: '25000.00' }]);
+    await expect(saveOpeningBalance(db, D, [{ account: '1000100', debit: '1.00' }, { account: '3000100', credit: '1.00' }], { fiscalYear: 2570, role: 'owner' })).rejects.toThrow(/ลงยอดยกมาแล้ว/u);
   });
 });

@@ -9,7 +9,7 @@ const CASH = { from: ['input.cash'] } as const; // บัญชีเงิน�
 
 export const DEFAULT_RULES: readonly RuleDefinition[] = [
   {
-    code: 'Service[IV]', docType: 'IV', name: 'บริการ (VAT เมื่อรับเงิน ม.78/1)', book: 'SJ',
+    code: 'Service[IV]', docType: 'IV', name: 'บริการ (VAT เมื่อรับเงิน)', book: 'SJ', settlement: 'open',
     lines: [
       { side: 'Dr', account: AR, amount: 'grand_total' },
       { side: 'Cr', account: { default: '4100200' }, amount: 'net' },
@@ -17,15 +17,36 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     ],
   },
   {
-    code: 'Credit[IV]', docType: 'IV', name: 'ขายเชื่อ (สินค้า · VAT เมื่อออกใบกำกับ)', book: 'SJ',
+    // ลำดับบรรทัดตาม ScreenFormula · TODO(Wei) T2: แบบร่างใช้ 1154200 เป็นภาษีถูกหัก แต่ fixtures/ผังบัญชีใช้ 1160100
+    // บรรทัด wht ใช้เฉพาะบริษัทที่ตั้ง wht_recognition = on_invoice (ค่าตั้งต้นของระบบคือรับรู้ตอนรับเงิน) — ไม่มียอด = ไม่สร้างบรรทัด
+    code: 'Credit[IV]', docType: 'IV', name: 'ขายเชื่อ', book: 'SJ', settlement: 'open',
     lines: [
       { side: 'Dr', account: AR, amount: 'grand_total' },
+      { side: 'Dr', account: { default: '1160100' }, amount: 'wht' },
       { side: 'Cr', account: { from: ['line', 'product'], default: '4100100' }, amount: 'line.amount', perLine: true },
+      { side: 'Dr', account: { default: '4190100' }, amount: 'discount' },
+      { side: 'Cr', account: { default: '2150100' }, amount: 'vat' },
+    ],
+  },
+  {
+    code: 'Cash[IV]', docType: 'IV', name: 'ขายสด', book: 'SJ', settlement: 'paid',
+    lines: [
+      { side: 'Dr', account: CASH, amount: 'grand_total' },
+      { side: 'Cr', account: { from: ['line', 'product'], default: '4100100' }, amount: 'line.amount', perLine: true },
+      { side: 'Dr', account: { default: '4190100' }, amount: 'discount' },
       { side: 'Cr', account: { default: '2150100' }, amount: 'vat' },
     ],
   },
   {
     code: 'CN[ref IV]', docType: 'CN', name: 'ลดหนี้อ้างใบกำกับ (ม.86/10)', book: 'SJ',
+    lines: [
+      { side: 'Dr', account: { from: ['line', 'product'], default: '4100100' }, amount: 'line.amount', perLine: true },
+      { side: 'Dr', account: { default: '2150100' }, amount: 'vat' },
+      { side: 'Cr', account: AR, amount: 'grand_total' },
+    ],
+  },
+  {
+    code: 'CN[no-ref]', docType: 'CN', name: 'ลดหนี้ไม่อ้างใบกำกับ', book: 'SJ',
     lines: [
       { side: 'Dr', account: { from: ['line', 'product'], default: '4100100' }, amount: 'line.amount', perLine: true },
       { side: 'Dr', account: { default: '2150100' }, amount: 'vat' },
@@ -44,7 +65,7 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     ],
   },
   {
-    code: 'Credit[AP]', docType: 'AP', name: 'ซื้อเชื่อ / ตั้งหนี้ (WHT รับรู้ตอนจ่าย)', book: 'PJ',
+    code: 'Credit[AP]', docType: 'AP', name: 'ซื้อเชื่อ', book: 'PJ', settlement: 'open',
     lines: [
       { side: 'Dr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },
       { side: 'Dr', account: { default: '1170100' }, amount: 'vat' },
@@ -52,7 +73,7 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     ],
   },
   {
-    code: 'Cash[EXP]', docType: 'EXP', name: 'ค่าใช้จ่ายจ่ายทันที + หัก ณ ที่จ่าย', book: 'PV',
+    code: 'Cash[EXP]', docType: 'EXP', name: 'จ่ายทันที', book: 'PV', settlement: 'paid',
     lines: [
       { side: 'Dr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },
       { side: 'Dr', account: { default: '1170100' }, amount: 'vat' },

@@ -3,7 +3,8 @@
 import ExcelJS from 'exceljs';
 import { Money, type JournalLine } from '@innovera/ledger';
 import type { AccountType, Db } from './index.ts';
-import { postJournalTx } from './ledger-service.ts';
+import { LedgerError, postJournalTx } from './ledger-service.ts';
+import { categoryOf } from './seed.ts';
 
 export const TEMPLATE = {
   ผังบัญชี: ['รหัสบัญชี', 'ชื่อบัญชี', 'ประเภท', 'บัญชีคุม'],
@@ -141,18 +142,42 @@ export function validate(sheets: Partial<Record<SheetName, Row[]>>, existing: { 
 }
 
 /** นำเข้าทั้งชุด: ข้อมูลหลักก่อน แล้วลงยอดยกมาเป็น journal เดียว (OB) · ไม่มีอะไรถูกบันทึกถ้าตรวจไม่ผ่าน */
-export async function importWorkbook(db: Db, companyId: string, buf: ArrayBuffer | Buffer, p: { openingDate: string; role: 'owner' | 'accounting_manager' }) {
+export async function importWorkbook(db: Db, companyId: string, buf: ArrayBuffer | Buffer, p: { fiscalYear: number; role: 'owner' | 'accounting_manager' }) {
   const { sheets, issues: readIssues } = await readWorkbook(buf);
   if (readIssues.length) return { ok: false as const, issues: readIssues };
+  return importSheets(db, companyId, sheets, p);
+}
+
+/** ยอดยกมาที่กรอกบนหน้าจอ (ScreenOpeningBalance) — ใช้การตรวจชุดเดียวกับ Excel */
+export async function saveOpeningBalance(db: Db, companyId: string, rows: { account: string; debit?: string; credit?: string }[], p: { fiscalYear: number; role: 'owner' | 'accounting_manager' }) {
+  const sheet: Row[] = rows.filter((r) => r.debit || r.credit).map((r, i) => ({ รหัสบัญชี: r.account, เดบิต: r.debit ?? '', เครดิต: r.credit ?? '', __row: String(i + 2) }));
+  return importSheets(db, companyId, { ยอดยกมา: sheet }, p, true);
+}
+
+export async function importSheets(db: Db, companyId: string, sheets: Partial<Record<SheetName, Row[]>>, p: { fiscalYear: number; role: 'owner' | 'accounting_manager' }, keepOpenItems = false) {
   const existing = await db.withCompany(companyId, async (tx) => ({
     accounts: new Map((await tx.selectFrom('acct.account').select(['code', 'control_kind']).execute()).map((a) => [a.code, { control: a.control_kind }])),
     contacts: new Set((await tx.selectFrom('acct.contact').select('code').execute()).map((c) => c.code)),
   }));
+  if (keepOpenItems) {
+    // กรอกบนหน้าจอ: บัญชีคุมมาจากรายใบที่นำเข้าไว้แล้ว — ใส่รายใบเดิมเข้าไปในการตรวจ
+    const items = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.document as d').innerJoin('acct.contact as c', (jn) => jn.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+      .select(['d.doc_type', 'd.doc_no', 'd.issue_date', 'd.due_date', 'd.grand_total', 'c.code']).where('d.doc_type', 'in', ['OB-AR', 'OB-AP']).execute());
+    sheets = { ...sheets,
+      ลูกหนี้คงค้าง: items.filter((i) => i.doc_type === 'OB-AR').map((i, n) => ({ รหัสคู่ค้า: i.code, เลขที่เอกสาร: `${i.doc_no}`, วันที่: i.issue_date, ครบกำหนด: i.due_date ?? '', ยอดคงค้าง: i.grand_total, __row: String(n + 2) })),
+      เจ้าหนี้คงค้าง: items.filter((i) => i.doc_type === 'OB-AP').map((i, n) => ({ รหัสคู่ค้า: i.code, เลขที่เอกสาร: `${i.doc_no}`, วันที่: i.issue_date, ครบกำหนด: i.due_date ?? '', ยอดคงค้าง: i.grand_total, __row: String(n + 2) })) };
+  }
   const { plan, issues } = validate(sheets, existing);
   if (issues.length) return { ok: false as const, issues };
+  if (keepOpenItems) plan.openItems = []; // มีอยู่แล้ว ไม่สร้างซ้ำ
+  if (plan.opening.length || plan.openItems.length) {
+    const p0 = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.period').select('status').where('period_no', '=', 0).where('fiscal_year', '=', p.fiscalYear).executeTakeFirst());
+    if (!p0) throw new LedgerError(`ไม่มีงวดยอดยกมาของปีบัญชี ${p.fiscalYear}`);
+    if (p0.status === 'hard_closed') throw new LedgerError('ลงยอดยกมาแล้ว — แก้ผ่าน "แก้ยอดยกมา" (เจ้าของ/ผู้จัดการบัญชี)');
+  }
   const opening = await db.withCompany(companyId, async (tx) => {
     for (const a of plan.accounts) await tx.insertInto('acct.account').values({ company_id: companyId, code: a.code, name: a.name, type: a.type, parent_code: null,
-      is_control: a.control !== null, control_kind: a.control, requires_contact: a.control !== null }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: a.name })).execute();
+      is_control: a.control !== null, control_kind: a.control, requires_contact: a.control !== null, category: categoryOf(a.code, a.type), binding: null }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: a.name })).execute();
     for (const c of plan.contacts) await tx.insertInto('acct.contact').values({ company_id: companyId, code: c.code, name: c.name, kind: c.kind, tax_id: c.tax_id, branch_code: c.branch,
       external_source: null, external_ref: null }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: c.name })).execute();
     for (const pr of plan.products) await tx.insertInto('acct.product').values({ company_id: companyId, code: pr.code, name: pr.name, kind: pr.kind, unit: pr.unit, price: pr.price,
@@ -161,9 +186,16 @@ export async function importWorkbook(db: Db, companyId: string, buf: ArrayBuffer
     for (const it of plan.openItems) await tx.insertInto('acct.document').values({ company_id: companyId, doc_type: it.side === 'ar' ? 'OB-AR' : 'OB-AP', doc_no: it.doc_no, status: 'posted',
       issue_date: it.date, due_date: it.due, contact_id: ids.get(it.contact)!, grand_total: it.amount, external_source: null, external_ref: null }).execute();
     // ยอดยกมาอยู่ใน transaction เดียวกับข้อมูลหลัก — ล้มเหลวที่จุดไหนก็ไม่มีอะไรถูกบันทึก
-    return plan.opening.length
-      ? postJournalTx(tx, companyId, { date: p.openingDate, lines: plan.opening, role: p.role, prefix: 'OB', description: 'ยอดยกมา (นำเข้าจาก Excel)' })
-      : null;
+    if (!plan.opening.length) return null;
+    // งวด 0 (ยอดยกมา) ของปีบัญชี · เลขที่ JV0000-#### · ปิดแข็งทันทีหลังลง (ScreenOpeningBalance)
+    const p0 = await tx.selectFrom('acct.period').select(['fiscal_year', 'starts_on', 'status']).where('period_no', '=', 0).where('fiscal_year', '=', p.fiscalYear).executeTakeFirst();
+    if (!p0) throw new LedgerError(`ไม่มีงวดยอดยกมาของปีบัญชี ${p.fiscalYear}`);
+    if (p0.status === 'hard_closed') throw new LedgerError('ลงยอดยกมาแล้ว — แก้ผ่าน "แก้ยอดยกมา" (เจ้าของ/ผู้จัดการบัญชี)');
+    const n = await tx.selectFrom('acct.journal').select('id').where('period_no', '=', 0).where('fiscal_year', '=', p.fiscalYear).execute();
+    const posted = await postJournalTx(tx, companyId, { date: p0.starts_on, periodNo: 0, lines: plan.opening, role: p.role, journalNo: `JV0000-${String(n.length + 1).padStart(4, '0')}`,
+      description: 'ยอดยกมา' });
+    await tx.updateTable('acct.period').set({ status: 'hard_closed', closed_at: new Date() }).where('period_no', '=', 0).where('fiscal_year', '=', p.fiscalYear).execute();
+    return posted;
   });
   return { ok: true as const, counts: { accounts: plan.accounts.length, contacts: plan.contacts.length, products: plan.products.length, openItems: plan.openItems.length, openingLines: plan.opening.length }, opening };
 }

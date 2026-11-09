@@ -9,14 +9,16 @@
     "./seed": "./src/seed.ts",
     "./migrate": "./src/migrate.ts",
     "./import": "./src/import.ts",
-    "./ledger": "./src/ledger-service.ts"
+    "./ledger": "./src/ledger-service.ts",
+    "./queries": "./src/queries.ts"
   },
   "scripts": {
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "migrate": "tsx src/migrate-cli.ts up",
-    "migrate:down": "tsx src/migrate-cli.ts down"
+    "migrate:down": "tsx src/migrate-cli.ts down",
+    "seed:dev": "tsx src/dev-seed.ts"
   },
   "dependencies": {
     "kysely": "0.29.8",

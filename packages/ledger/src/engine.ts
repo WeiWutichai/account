@@ -25,6 +25,8 @@ export interface RuleDefinition {
   readonly docType: string;
   readonly name: string;
   readonly book: 'SJ' | 'PJ' | 'RJ' | 'PV' | 'GJ';
+  /** สถานะชำระเมื่อลง (ScreenFormula): open = ลูกหนี้/เจ้าหนี้ค้าง · paid = ชำระแล้ว */
+  readonly settlement?: 'open' | 'paid';
   readonly lines: readonly RuleLine[];
 }
 

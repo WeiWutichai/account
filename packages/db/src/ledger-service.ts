@@ -8,7 +8,7 @@ export class LedgerError extends Error {}
 /** งวดของวันที่ (งวดปกติ 1–12) · งวด 13 ต้องระบุเอง */
 async function periodOf(tx: CompanyTx, date: string, periodNo?: number) {
   let q = tx.selectFrom('acct.period').selectAll().where('starts_on', '<=', date).where('ends_on', '>=', date);
-  q = periodNo ? q.where('period_no', '=', periodNo) : q.where('period_no', '<=', 12);
+  q = periodNo !== undefined ? q.where('period_no', '=', periodNo) : q.where('period_no', '>=', 1).where('period_no', '<=', 12);
   const p = await q.executeTakeFirst();
   if (!p) throw new LedgerError(`ไม่มีงวดบัญชีสำหรับวันที่ ${date}`);
   return p;
