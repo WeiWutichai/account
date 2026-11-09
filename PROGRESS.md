@@ -2,16 +2,16 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-09 23:20** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-09 23:55** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
-- **ขั้น:** ร่าง **Technical Plan M0** แล้ว (`docs/technical-plan-M0.md`) → **รอ Wei อนุมัติ + ตอบ 4 คำถามใน §11 ของไฟล์นั้น** · ยังไม่มีโค้ด ยังไม่เป็น git repo
-- **แบบร่าง UI:** เวอร์ชัน **26** (`1794239284-7b59`) · 76 หน้า + เมนู 2 ตัว · สำเนาในเครื่อง `design/` ตรง MANIFEST ทุกไฟล์
-- **ตัวเลขตัวอย่าง:** `fixtures/sample-company.json` ตรงกับแบบร่างทุกยอด · ผ่าน schema · journal 24 ชุด Dr=Cr · ไม่มีรายการขัดกันค้าง
-- **ไม่มีงานค้าง** ทั้งฝั่ง Claude Code และ Cowork
+- **ขั้น:** กำลังทำ **M0** (Wei อนุมัติ TP แล้ว · build โดย Claude Code ในเครื่องนี้ · repo = โฟลเดอร์นี้ git local branch `m0`)
+- **M0 เสร็จงาน 1–8 แล้ว** — monorepo + CI (`pnpm verify` เขียว) + docker stack + spike tenancy + ADR-001/002 · **รอ Wei ตัดสินทางเลือก tenancy** (แนะนำ ค: ตารางรวม + company_id + RLS) → ถึงปิด M0 และเริ่ม M1 ได้
+- **แบบร่าง UI:** เวอร์ชัน **26** · `design/` ตรง MANIFEST · fixtures ตรงแบบร่างทุกยอด
+- รัน dev: `nvm use` (Node 26.13) → `pnpm install` → `pnpm db:up` → `pnpm verify` · spike: `cd spike/tenancy && pnpm setup && pnpm leak && pnpm bench && pnpm ops`
 
 ## 2. ไฟล์และแหล่งข้อมูล
 
@@ -20,7 +20,9 @@
 | กติกา repo | `CLAUDE.md` | source of truth ลำดับ 1 ร่วมกับ PLAN |
 | แผน Phase 1 | `PLAN.md` | milestone M0–M8, golden tests §3, เรื่องรอผู้สอบบัญชี §10 |
 | ความคืบหน้า | `PROGRESS.md` (ไฟล์นี้) | |
-| Technical Plan M0 | `docs/technical-plan-M0.md` | ร่าง รออนุมัติ |
+| Technical Plan M0 | `docs/technical-plan-M0.md` | Wei อนุมัติ 2026-11-09 |
+| ผล spike tenancy | `docs/spike-tenancy-report.md` · `spike/tenancy/results/` | แนะนำทาง ค |
+| ADR | `docs/ADR-001-tenancy.md` (รอตัดสิน) · `docs/ADR-002-posting-engine.md` | |
 | แบบร่าง (สำเนา) | `design/project/*.dc.html` + `design/MANIFEST.json` + `design/README.md` | อ่านอย่างเดียว · เปิดดู `cd design/project && python3 -m http.server 8080` |
 | แบบร่าง (ต้นฉบับ) | https://claude.ai/artifact/LQTTxmYPCna8EntkntYCCQ | แก้ที่นี่แล้วส่งออกทับ `design/` |
 | รหัสหน้าจอ ↔ ไฟล์ ↔ milestone | `docs/page-map.md` | Wei อนุมัติครบ |
@@ -58,8 +60,8 @@
 2. ขยายกำหนดยื่นออนไลน์ (ภ.ง.ด. 15 / ภ.พ.30 23) ยังใช้หรือไม่ · ค่าตั้งต้นชั่วคราว: ใช้
 
 **รอ Wei**
-3. อนุมัติ Technical Plan M0 (`docs/technical-plan-M0.md`) + ตอบ: ที่เก็บ repo/CI
-4. ผล spike ORM/tenancy → เลือก ก/ข/ค
+3. ~~อนุมัติ TP M0~~ (อนุมัติแล้ว · repo local · build ในเครื่องนี้)
+4. **เลือกทางเลือก tenancy จาก `docs/spike-tenancy-report.md`** (แนะนำ ค · ถ้าคง schema-per-company ให้เลือก ก + spike role ต่อบริษัทเพิ่ม 1 วัน)
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
 5. `ScreenReconReport` ยอด IV 61 ใบ (1,736,580) และ RV 42 ใบ (2,104,318.60) เป็นค่ากำหนดใหม่ ไม่ได้รวมจากรายใบ เพราะ fixtures มีเอกสารไม่ครบ — ถ้าจะทำ e2e ที่ต้องรวมจากรายใบ ต้องเพิ่มเอกสารใน fixtures
@@ -69,9 +71,9 @@
 
 ## 5. ขั้นถัดไป
 
-1. Wei อนุมัติ `docs/technical-plan-M0.md` (ประมาณ 7.5–8.5 วันทำงาน)
-2. `git init` + ย้ายเอกสารเข้า `innovera-platform/docs/` ตาม PLAN (ตอนเริ่ม M0)
-3. ทำ M0 → ส่ง spike result → Wei เลือก tenancy → M1
+1. Wei ตัดสิน ADR-001 → แก้ PLAN §2 + CLAUDE.md ตามทางที่เลือก → ปิด M0 (merge `m0` → `main`)
+2. เขียน Technical Plan M1 (contracts + DB schema ตามทางที่อนุมัติ)
+3. Wei อนุมัติ TP M1 → build M1
 
 ## 6. วิธีทำงานร่วมกับ Cowork
 
@@ -82,6 +84,9 @@
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
 
+- **2026-11-09 23:55** · Claude Code · M0: spike tenancy ครบ (300 บริษัท · leak 17/17 · bench · ops) · รายงาน + ADR-001/002 · แนะนำทาง ค
+- **2026-11-09 23:15** · Claude Code · M0: monorepo scaffold (`e0b9d23`) · Node 26.13 · pnpm 12.18 · TS 6.0.3 · Nest 12 · Next 16 · PG 18.6/PgBouncer 1.26.1/Redis 8.10.3 · `pnpm verify` เขียว
+- **2026-11-09 23:00** · Claude Code · `git init` ในโฟลเดอร์นี้ (แทนการคัดลอกไป innovera-platform เพื่อไม่ให้มี 2 ชุดกับ Cowork) · commit `29a7c07`
 - **2026-11-09 23:35** · Wei · ผู้ build M0 = Claude Code ในเครื่องนี้
 - **2026-11-09 23:30** · Claude Code · อัป Node เครื่อง dev 20.20.2 → 26.13.0 (LTS) ผ่าน nvm ตั้งเป็น default (Wei อนุญาต)
 - **2026-11-09 23:20** · Claude Code · ร่าง `docs/technical-plan-M0.md`

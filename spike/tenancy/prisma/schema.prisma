@@ -1,0 +1,74 @@
+// Prisma ใช้ทั้งใน (ก) public เท่านั้น และ (ข) client ต่อบริษัท · ตาราง tenant ไม่ใส่ @@schema
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Company {
+  id         String @id @db.Uuid
+  schemaName String @map("schema_name")
+  name       String
+  sizeClass  String @map("size_class")
+  @@map("company")
+}
+
+model Account {
+  code String @id
+  name String
+  type String
+  @@map("account")
+}
+
+model Document {
+  id         BigInt         @id @default(autoincrement())
+  docNo      String         @map("doc_no")
+  docType    String         @map("doc_type")
+  docDate    DateTime       @map("doc_date") @db.Date
+  contactId  String?        @map("contact_id") @db.Uuid
+  status     String
+  subtotal   Decimal        @db.Decimal(18, 2)
+  vat        Decimal        @db.Decimal(18, 2)
+  grandTotal Decimal        @map("grand_total") @db.Decimal(18, 2)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  lines      DocumentLine[]
+  journals   Journal[]
+  @@map("document")
+}
+
+model DocumentLine {
+  id          BigInt   @id @default(autoincrement())
+  documentId  BigInt   @map("document_id")
+  lineNo      Int      @map("line_no")
+  description String
+  qty         Decimal  @db.Decimal(18, 4)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(18, 4)
+  amount      Decimal  @db.Decimal(18, 2)
+  document    Document @relation(fields: [documentId], references: [id])
+  @@map("document_line")
+}
+
+model Journal {
+  id          BigInt        @id @default(autoincrement())
+  journalNo   String        @map("journal_no")
+  journalDate DateTime      @map("journal_date") @db.Date
+  documentId  BigInt?       @map("document_id")
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  document    Document?     @relation(fields: [documentId], references: [id])
+  lines       JournalLine[]
+  @@map("journal")
+}
+
+model JournalLine {
+  id          BigInt  @id @default(autoincrement())
+  journalId   BigInt  @map("journal_id")
+  lineNo      Int     @map("line_no")
+  accountCode String  @map("account_code")
+  debit       Decimal @db.Decimal(18, 2)
+  credit      Decimal @db.Decimal(18, 2)
+  journal     Journal @relation(fields: [journalId], references: [id])
+  @@map("journal_line")
+}

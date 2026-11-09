@@ -8,3 +8,5 @@ minimumReleaseAgeExclude:
   - "@nestjs/platform-express@12.4.2"
 allowBuilds:
   esbuild: true
+  prisma: true
+  "@prisma/engines": true

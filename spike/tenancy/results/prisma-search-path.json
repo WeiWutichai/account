@@ -1,0 +1,12 @@
+{
+  "withSearchPath": {
+    "queriesLogged": [
+      "select set_config('search_path', 'co_01m70hmnkp0e8mrs2jhy1caj9h', true)",
+      "ROLLBACK"
+    ],
+    "error": "→ 144     await tx.document.count( The table `public.document` does not exist in the current database."
+  },
+  "optionB": {
+    "sql": "SELECT COUNT(*) AS \"_count$_all\" FROM (SELECT \"co_01m70hmnkp0e8mrs2jhy1caj9h\".\"document\".\"id\" FROM \"co_01m70hmnkp0e8mrs2jhy1caj9h\".\"document\" WHERE 1=1 OFFSET $1) AS \"sub\""
+  }
+}
