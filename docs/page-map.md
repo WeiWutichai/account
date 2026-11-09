@@ -91,3 +91,6 @@
 3. Console: X3 (Subscription & billing) เป็น Phase 2 · X5/X6/X8 อยู่ใน M8
 
 ตรวจแล้วว่าทุกไฟล์ใน `design/project/compat.json` (ยกเว้น `Blank.dc.html`) อยู่ในตารางนี้ครั้งเดียว
+
+## วันที่ "วันนี้" ใน dev
+`pnpm dev` ตั้ง `APP_TODAY=2026-11-30` (30 พ.ย. 2569 ตามข้อตัดสินของ Wei) ให้ accounting-api และ accounting-web · production ใช้วันที่จริง

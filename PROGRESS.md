@@ -2,14 +2,15 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-10 01:40** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 03:10** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
 - **โหมด:** Wei สั่งทำต่อเนื่องข้ามคืน (2026-11-09) = **อนุมัติ Technical Plan ล่วงหน้า** · เรื่องที่ต้องให้ Wei/ผู้สอบบัญชีตัดสิน → TODO ใน §4 ไม่ตัดสินเอง
-- **M0 ✅ · M1 ✅** (merge เข้า main) · **M2 backend ✅** (branch `m2`: engine + golden 1–10 + property 10k + นำเข้า Excel/ยอดยกมา) · กำลังทำ **M2b UI** (`packages/ui` + B1–B4 + A4)
+- **M0 ✅ · M1 ✅ · M2 ✅** (merge เข้า main: engine + golden 1–10 + property 10k + นำเข้า Excel/ยอดยกมา + UI B1–B4/A4) · ถัดไป **M3 Innovera ID**
+- รันเว็บ: `pnpm db:seed` → `pnpm dev` (api :4000 · web :3010 · วันนี้ = 30/11/2569) · ภาพเทียบแบบร่าง `node scripts/screens.mjs`
 - repo = โฟลเดอร์นี้ (git local) · build โดย Claude Code · `pnpm verify` เขียว
 - รัน dev: `nvm use` (Node 26.13) → `pnpm install` → `pnpm db:up` → `pnpm db:migrate` → `pnpm verify` (test ใช้ DB `innovera_test` ผ่าน PgBouncer)
 
@@ -70,6 +71,7 @@
 - T1. ผังบัญชี "บริการ 186 บัญชี" ใน CLAUDE.md ไม่มีรายการในไฟล์ใด · ScreenCOA บอก 84 · fixtures มี 53 → seed ตาม fixtures ไปก่อน (ต้องการรายการจริง)
 - T2. ScreenFormula ใช้ 1154200 เป็นภาษีถูกหัก ณ ที่จ่าย แต่ fixtures/ScreenCOA ใช้ 1160100 → ใช้ 1160100 ตาม fixtures
 - T4. ลูกค้า A (C0012): `credit_limit_remaining` 452,920 = 500,000 − 47,080 (ยอดค้างเดิม) แต่ยอดค้างปัจจุบัน 42,800 → ควรเป็น 457,200 หรือ 446,500 (ถ้านับใบรออนุมัติ) · แสดงใน ScreenInvoice
+- T5. fixtures `gl_balances_2569_11_30` มีเฉพาะยอดแถวตัวอย่าง ไม่มีงบทดลอง 30/11 ครบชุดที่ดุล → บริษัท dev แสดงยอดจากรายการตัวอย่างที่ลงจริง ไม่ตรงเลขในแบบร่าง ScreenCOA (ห้ามสร้างยอดเอง) · ต้องการงบทดลองครบชุดใน fixtures
 - T3. golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัด IV2611-0052 ในแบบร่าง/fixtures ระบุ 4100100 → สูตร Service[IV] ใช้บัญชีรายได้ของสูตรไปก่อน
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
@@ -80,9 +82,9 @@
 
 ## 5. ขั้นถัดไป
 
-1. เขียน Technical Plan M1: `packages/contracts` (OpenAPI + zod) · schema `public` + ตารางบัญชีรวม + RLS · `withCompany()` · Dr=Cr constraint trigger · seed ผังบัญชี 186 + 24 สูตร · leak tests ถาวร
+1. M3 Innovera ID: TP (อนุมัติล่วงหน้า) → id-api/id-web (login, ผู้ใช้, องค์กร, สิทธิ์, เชิญ) · accounting-api ใช้ session แทน header dev
 2. เตรียมเครื่องมือ export/import รายบริษัท ให้ทันก่อน M3.5 (เงื่อนไขของ ADR-001)
-3. Wei อนุมัติ TP M1 → build M1
+3. M3.5 → M8 ตาม `docs/page-map.md`
 
 ## 6. วิธีทำงานร่วมกับ Cowork
 
@@ -92,6 +94,8 @@
 - แก้แบบร่าง → เผยแพร่เวอร์ชันใหม่ → ดาวน์โหลดกลับมาเทียบ → ส่งออกทับ `design/` + อัปเดต `MANIFEST.json` + เลขเวอร์ชันใน `CLAUDE.md`, `design/README.md`, `docs/page-map.md`, ไฟล์นี้
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
+
+- **2026-11-10 03:10** · Claude Code · **M2 เสร็จ (merge เข้า main)**: `packages/ui` + accounting-api GL endpoints + หน้า ScreenCOA/ScreenJournal/ScreenFormula/ScreenLedger/ScreenOpeningBalance · ยอดยกมา JV0000-0001 งวด 0 ปิดแข็ง · migrations 0003–0005 · Playwright 1.65.0 + ภาพเทียบ 1440px `docs/screens/M2/` · `pnpm verify` เขียว (db 46 · ledger 23 · golden 17 · contracts 11 · tax-th 9 · ui 7) · เพิ่ม T5
 
 - **2026-11-10 02:00** · Claude Code · เจอช่องโหว่การตรวจ: ยอดในช่องกรอก (`<input value>`) ของแบบร่างไม่เคยถูกตรวจกับ fixtures (ทั้งของ Claude Code และ Cowork) → ขาด 6 ค่า · เติม fixtures (ไฟล์ร่วม): `opening_balance_2569_12_31_company_c.lines_full` (งบทดลองยกมาครบ 11 บัญชีจาก ScreenOpeningBalance) + `C0012.credit_limit` · เพิ่มการตรวจถาวรใน `pnpm verify` (532 ค่า ครบ)
 - **2026-11-10 01:40** · Claude Code · **M2 backend เสร็จ**: engine + 8 สูตร · tax-th · postJournal/void/TB/draft idempotent · นำเข้า Excel · golden 1–10 ✅ · property 10k ✅ · แก้ fixtures (ไฟล์ร่วม): `opening_balance_2569_12_31_company_c.lines_shown` 1500100/1500190 → 1530100/1530190 ให้ตรงแบบร่าง v26 (v26 แก้ไม่ครบ)

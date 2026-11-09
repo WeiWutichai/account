@@ -22,13 +22,14 @@
     "db:seed": "pnpm --filter @innovera/db seed:dev"
   },
   "devDependencies": {
+    "@innovera/config": "workspace:*",
+    "@playwright/test": "1.65.0",
+    "@types/node": "26.6.6",
+    "ajv": "8.20.0",
+    "eslint": "10.14.0",
+    "prettier": "3.9.10",
     "turbo": "2.11.10",
     "typescript": "6.0.3",
-    "@types/node": "26.6.6",
-    "eslint": "10.14.0",
-    "typescript-eslint": "8.72.1",
-    "prettier": "3.9.10",
-    "@innovera/config": "workspace:*",
-    "ajv": "8.20.0"
+    "typescript-eslint": "8.72.1"
   }
 }

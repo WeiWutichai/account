@@ -18,7 +18,7 @@ function sum(xs: (string | null)[]): string {
 export function CoaView({ rows, periodLabel, year, period }: { rows: AccountRow[]; periodLabel: string; year: number; period: number }) {
   const [q, setQ] = useState('');
   const [onlyActive, setOnlyActive] = useState(false);
-  const [collapseUnused, setCollapseUnused] = useState(true);
+  const [collapseUnused, setCollapseUnused] = useState(false); // แบบร่าง: ไม่ติ๊ก
   const [msg, setMsg] = useState<string | null>(null);
   const file = useRef<HTMLInputElement>(null);
 

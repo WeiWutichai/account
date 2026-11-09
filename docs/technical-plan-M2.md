@@ -14,4 +14,13 @@ golden tests ผ่านครบ ✅ · Dr=Cr constraint test ✅ (M1) · prop
 
 ## TODO (Wei)
 - T3: golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัดเอกสารในแบบร่าง/fixtures ระบุ 4100100 → Service[IV] ใช้บัญชีรายได้ของสูตร ไม่อ่านจากบรรทัด
-- ยอดยกมาบริษัท C ใน fixtures แสดงแค่ 4 บรรทัด → test เติมเงินฝาก 905,520.55 และกำไรสะสม 4,009,270.55 ให้ดุลเท่ายอดรวม (ค่าสมมติ ไม่ได้มาจากแบบร่าง)
+- ~~ยอดยกมาบริษัท C ใน fixtures แสดงแค่ 4 บรรทัด~~ → แก้แล้ว: fixtures `lines_full` 11 บัญชีจากแบบร่าง (test ใช้ชุดนี้)
+- T5: fixtures `gl_balances_2569_11_30` มีเฉพาะยอดของแถวตัวอย่าง (ยอดกลุ่ม = ผลรวมแถวที่แสดง) ไม่มีงบทดลองครบที่ดุล → บริษัท dev แสดงยอดจริงจากรายการตัวอย่างที่ลงบัญชี ไม่ตรงตัวเลขในแบบร่าง ScreenCOA/ScreenLedger · ถ้าต้องการให้ตรง ต้องมีงบทดลอง 30/11/2569 ครบชุดใน fixtures
+
+## M2b — UI (เสร็จ 2026-11-10)
+- `packages/ui`: tokens.css จาก design-system · `css()` อ่าน style string ที่คัดลอกจาก .dc.html ตรงตัว · Button 5 แบบ (ตามแบบร่าง ไม่ใช่ token) · Tag · Sidebar ตาม `Sidebar.dc.html` (9 กลุ่ม พับได้) · AppShell/TopBar · `routes.ts` (id ↔ path ↔ ไฟล์แบบร่าง ↔ milestone)
+- accounting-api (Nest, ESM): `/v1/context, accounts(+export), import(+template), opening (GET/POST), ledger(+export), rules (+preview), contacts, journals (+templates, by-no, post)` · ส่งบริษัท/บทบาทผ่าน header ชั่วคราว (TODO M3: session Innovera ID)
+- accounting-web (port 3010): B1 `/gl/accounts` ScreenCOA · B2 `/gl/journal` ScreenJournal · B3 `/gl/rules` ScreenFormula · B4 `/gl/ledger` ScreenLedger · A4 `/setup/opening-balance` ScreenOpeningBalance · หน้าอื่น = "ยังไม่เปิดใช้" + milestone
+- ยอดยกมา = JV0000-0001 ในงวด 0 (31 ธ.ค. ปีก่อน) ปิดแข็งทันทีตามแบบร่าง · กรอกบนจอและนำเข้า Excel ใช้ชุดตรวจเดียวกัน · ลงซ้ำไม่ได้
+- ภาพเทียบ 1440px: `docs/screens/M2/*.design.png` ↔ `*.app.png` (`node scripts/screens.mjs`)
+- TODO ในโค้ด (อ้างไฟล์แบบร่าง): ฟอร์มเพิ่มบัญชี (ScreenCOA ไม่มีแบบ) · ตัวเลือกบัญชีของ "+ เพิ่มบัญชี" (ScreenOpeningBalance) · แท็บรายใบ/เช็ค/สินทรัพย์ และข้อความรายละเอียดจากทะเบียนสินทรัพย์/statement (M6) · ป้ายตัวเลขใน Sidebar (มาจากโมดูล M4–M6)
