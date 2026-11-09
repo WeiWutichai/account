@@ -10,7 +10,8 @@
     "./migrate": "./src/migrate.ts",
     "./import": "./src/import.ts",
     "./ledger": "./src/ledger-service.ts",
-    "./queries": "./src/queries.ts"
+    "./queries": "./src/queries.ts",
+    "./sales": "./src/sales.ts"
   },
   "scripts": {
     "lint": "eslint src test",
@@ -21,16 +22,17 @@
     "seed:dev": "tsx src/dev-seed.ts"
   },
   "dependencies": {
-    "kysely": "0.29.8",
-    "pg": "8.23.1",
     "@innovera/ledger": "workspace:*",
-    "exceljs": "4.4.0"
+    "@innovera/tax-th": "workspace:*",
+    "exceljs": "4.4.0",
+    "kysely": "0.29.8",
+    "pg": "8.23.1"
   },
   "devDependencies": {
-    "vitest": "5.1.0",
-    "tsx": "4.23.15",
+    "@innovera/config": "workspace:*",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
-    "@innovera/config": "workspace:*"
+    "tsx": "4.23.15",
+    "vitest": "5.1.0"
   }
 }
