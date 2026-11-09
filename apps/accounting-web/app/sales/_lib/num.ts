@@ -46,6 +46,20 @@ export function percentOf(amount: string, pct: string): string {
 }
 
 /**
+ * กำไรขั้นต้น % (ทศนิยม 1 ตำแหน่ง) ของยอดขายเทียบต้นทุนประมาณ — ScreenQuote.dc.html: (153,900 − 96,000) ÷ 153,900 = 37.6%
+ * 'below' = ขายต่ำกว่าทุน · null = ไม่มีต้นทุน/ยอดขาย
+ */
+export function marginPct(amount: string | null | undefined, cost: string | null | undefined): string | null {
+  if (cost === null || cost === undefined || amount === null || amount === undefined || amount === '') return null;
+  const a = toCents(amount);
+  const c = toCents(cost);
+  if (a < c) return 'below';
+  if (a <= 0n) return null;
+  const t = divRound((a - c) * 1000n, a); // หน่วย 0.1%
+  return `${t / 10n}.${t % 10n}`;
+}
+
+/**
  * ส่วนลดบรรทัด: "10% + 5%" (ลดซ้อน) หรือ "500" / "1,000.00" (จำนวนเงิน) → จำนวนเงินส่วนลด (2 ตำแหน่ง)
  * ScreenQuote.dc.html: 120 × 1,500.00 ลด "10% + 5%" = 180,000 × 0.90 × 0.95 = 153,900.00 → ส่วนลด 26,100.00
  * คืน null ถ้าอ่านไม่ได้ · ว่าง = "0.00"

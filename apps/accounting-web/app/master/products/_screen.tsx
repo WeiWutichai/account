@@ -1,12 +1,13 @@
 'use client';
 // ข้อมูลหลัก / สินค้าและบริการ — design/project/ScreenProducts.dc.html
 // จำนวนในแท็บ (ทั้งหมด N · บริการ N · สินค้า N · ค่าใช้จ่าย N) และ "ใช้ใน N เอกสาร" มาจาก API · แท็บ "สินค้าชุด" ไม่มีจำนวนตามแบบร่าง
-// TODO(backend) ScreenProducts.dc.html: "นำเข้า Excel" ยังไม่มี API → ปุ่มสถานะ "ใช้ไม่ได้" · "เพิ่มรายการ" ในแท็บสินค้าชุดใช้ไม่ได้ (API ปฏิเสธ kind 'kit' เพราะโมดูลสต๊อกปิด)
+// "นำเข้า Excel" → เลือกไฟล์ → ตรวจ → ยืนยัน (../_import.tsx · POST /v1/master/products/import) · "เพิ่มรายการ" ในแท็บสินค้าชุดใช้ไม่ได้ (API ปฏิเสธ kind 'kit' เพราะโมดูลสต๊อกปิด)
 // TODO(Wei) ScreenProducts.dc.html: แบบร่างแสดงราคาขาย 2 ของ P-1001 = 360.00 แต่ fixtures ไม่มี price_2 ของ P-1001 (360 คือต้นทุน) → แสดงตามข้อมูล (ว่าง)
 // TODO(Wei) ScreenProducts.dc.html: แบบร่างไม่มีปุ่มบันทึกในแผงรายละเอียด — แสดง "ยกเลิก" + "บันทึก" เฉพาะเมื่อมีการแก้ไขช่อง
 import { Button, css, href, money, TopBar } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { useExcelImport } from '../_import';
 
 type Kind = 'service' | 'goods' | 'expense' | 'kit';
 type VatCode = 'vat7' | 'exempt' | 'zero';
@@ -64,6 +65,7 @@ const formOf = (d: ProductDetail | null, kind: Kind): Form => {
 export function ProductsScreen({ overview, detail, kind, accounts, whtTypes }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const excel = useExcelImport('products');
   const { counts, rows } = overview;
   const selected = creating ? null : detail?.product.code;
   const rateOf = (k: string | null) => {
@@ -93,11 +95,11 @@ export function ProductsScreen({ overview, detail, kind, accounts, whtTypes }: P
         <div style={css('display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px')}>
           <h1 style={css('margin: 0; font-size: 22px; line-height: 30px; font-weight: 600')}>สินค้าและบริการ</h1>
           <div style={css('display: flex; gap: 8px; flex-wrap: wrap')}>
-            {/* TODO(backend): นำเข้า Excel ยังไม่มี API */}
-            <Button size={36} disabled title="ยังไม่มี API นำเข้า Excel">นำเข้า Excel</Button>
+            {excel.button}
             <Button size={36} kind="primary" disabled={kind === 'kit'} title={kind === 'kit' ? 'สินค้าชุดใช้ได้เมื่อเปิดโมดูลสต๊อก' : undefined} onClick={() => setCreating(true)}>เพิ่มรายการ</Button>
           </div>
         </div>
+        {excel.panel}
         <div role="tablist" style={css('display: flex; border-bottom: 1px solid #e0e0e0; font-size: 14px')}>
           {tabs.map(([k, label]) => (
             <button key={k || 'all'} type="button" role="tab" aria-selected={kind === k} onClick={() => { setCreating(false); router.push(link({ kind: k, code: '' })); }} style={css(kind === k ? TAB_ON : TAB)}>{label}</button>

@@ -1,9 +1,9 @@
 // API ของงานขาย + รับเงิน (M4 · docs/technical-plan-M4.md) — logic อยู่ใน @innovera/db/sales
-import { Body, Controller, Get, Inject, NotFoundException, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Inject, NotFoundException, Param, Post, Put, Query, Req, UnprocessableEntityException } from '@nestjs/common';
 import type { Db } from '@innovera/db';
 import {
-  approveDocument, convertDocument, createBilling, docSettings, editReference, getDocument, listDocuments, openItems, receivePayment, rejectDocument, saveDocSetting,
-  saveSalesDraft, shareDocument, sharedDocument, submitDocument, voidDocument, type ReceiptInput, type SalesDraftInput,
+  approveDocument, convertDocument, createBilling, docSettings, documentFieldValues, editReference, getDocument, listDocuments, markPrinted, openItems, receivePayment, rejectDocument,
+  saveDocSetting, saveSalesDraft, shareDocument, sharedDocument, submitDocument, vendorRefs, voidDocument, type ReceiptInput, type SalesDraftInput,
 } from '@innovera/db/sales';
 import { docTotals, receiptTotals } from '@innovera/ledger';
 import { bahtText } from '@innovera/tax-th';
@@ -22,6 +22,15 @@ export class SalesController {
   list(@Req() req: Request, @Query() q: { type?: string; status?: string; from?: string; to?: string; contact?: string; q?: string }) {
     return listDocuments(this.db, companyOf(req), { ...(q.type ? { docType: q.type.split(',') } : {}), ...(q.status ? { status: q.status } : {}), ...(q.from ? { from: q.from } : {}),
       ...(q.to ? { to: q.to } : {}), ...(q.contact ? { contactId: q.contact } : {}), ...(q.q ? { q: q.q } : {}) });
+  }
+  /** ค่าที่เคยใช้ในเอกสาร (ตัวเลือกพนักงานขาย / โครงการ · ScreenQuote) */
+  @Need('sales', 'read') @Get('document-fields')
+  fields(@Req() req: Request) { return documentFieldValues(this.db, companyOf(req)); }
+  /** เลขใบกำกับของผู้ขายที่บันทึกแล้ว · ref = ตรวจเลขเดียว (ซ้ำ = มีแถว) · exclude = เอกสารที่กำลังแก้ */
+  @Need('purchase', 'read') @Get('vendor-refs')
+  vendorRefs(@Req() req: Request, @Query() q: { contact?: string; ref?: string; exclude?: string; type?: string }) {
+    if (!q.contact) throw new UnprocessableEntityException('ต้องระบุผู้ขาย (contact)');
+    return vendorRefs(this.db, companyOf(req), { contactId: q.contact, ...(q.ref ? { ref: q.ref } : {}), ...(q.exclude ? { excludeId: q.exclude } : {}), ...(q.type ? { types: q.type.split(',') } : {}) });
   }
   @Need('sales', 'read') @Get('documents/:id')
   async get(@Req() req: Request, @Param('id') id: string) {
@@ -53,6 +62,9 @@ export class SalesController {
   async convert(@Req() req: Request, @Param('id') id: string, @Body() b: { to: 'SO' | 'IV' | 'DP'; issueDate?: string }) {
     return { id: await convertDocument(this.db, companyOf(req), actor(req), id, b.to, { issueDate: b.issueDate ?? today() }) };
   }
+  /** พิมพ์ต้นฉบับแล้ว 1 ครั้ง (ครั้งถัดไปแบบพิมพ์เป็นสำเนา) */
+  @Need('sales', 'read') @Post('documents/:id/printed')
+  printed(@Req() req: Request, @Param('id') id: string) { return markPrinted(this.db, companyOf(req), actor(req), id); }
   @Need('sales', 'write') @Post('documents/:id/share')
   async share(@Req() req: Request, @Param('id') id: string) { return { token: await shareDocument(this.db, companyOf(req), actor(req), id) }; }
 

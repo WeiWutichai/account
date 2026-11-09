@@ -3,6 +3,7 @@ import { assertBalanced, DEFAULT_RULES, fromTuples, Money, type CompanyRole, typ
 import { sql } from 'kysely';
 import type { Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx } from './ledger-service.ts';
+import { balancesByContact } from './master.ts';
 
 export interface CompanyContext {
   id: string; name: string; branch: string; period: { fiscal_year: number; period_no: number; status: string } | null;
@@ -153,8 +154,21 @@ export async function getJournal(db: Db, companyId: string, by: { id?: string; n
   });
 }
 
+/**
+ * คู่ค้าสำหรับฟอร์มเอกสาร (GET /v1/contacts) — ข้อมูลที่ฟอร์มขาย/ซื้อใช้ทันทีที่เลือกคู่ค้า
+ * ar_outstanding = ยอดลูกหนี้คงค้างตามบัญชีคุม (เฉพาะรายการที่ลงบัญชีแล้ว) · credit_remaining = credit_limit − ar_outstanding
+ * TODO(Wei) T4: fixtures C0012.credit_limit_remaining = 452,920 ไม่ตรงกับ 500,000 − ยอดค้างปัจจุบัน 42,800 = 457,200 → คำนวณตามสูตรนี้ (ไม่นับใบรออนุมัติ)
+ */
 export async function listContacts(db: Db, companyId: string) {
-  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code', 'name', 'kind', 'tax_id', 'branch_code', 'address', 'contact_person', 'phone', 'email', 'credit_days', 'credit_limit', 'external_source', 'external_ref']).orderBy('code').execute());
+  return db.withCompany(companyId, async (tx) => {
+    const rows = await tx.selectFrom('acct.contact').select(['id', 'code', 'name', 'kind', 'roles', 'entity_type', 'tax_id', 'branch_code', 'address', 'contact_person', 'phone', 'email',
+      'credit_days', 'credit_limit', 'price_level', 'bank_account', 'default_wht', 'pnd_form', 'external_source', 'external_ref']).orderBy('code').execute();
+    const bal = await balancesByContact(tx);
+    return rows.map((c) => {
+      const ar = bal.get(c.id)?.ar ?? Money.zero();
+      return { ...c, ar_outstanding: ar.toString(), credit_remaining: c.credit_limit === null ? null : Money.parse(c.credit_limit).minus(ar).toString() };
+    });
+  });
 }
 
 // ---------- สูตรลงบัญชี (ScreenFormula) · สูตรของบริษัท = version ล่าสุด ทับสูตรตั้งต้น ----------

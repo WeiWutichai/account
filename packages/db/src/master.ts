@@ -1,7 +1,7 @@
 // ข้อมูลหลัก + ทะเบียนเช็ค + ตั้งค่าบริษัท
 // ScreenContacts.dc.html · ScreenProducts.dc.html · ScreenCheque.dc.html · ScreenSettings.dc.html
 import { Money, type JournalLine, type MoneyString } from '@innovera/ledger';
-import { validateTaxId } from '@innovera/tax-th';
+import { validateTaxId, WHT_TYPES } from '@innovera/tax-th';
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx } from './ledger-service.ts';
@@ -13,7 +13,7 @@ export const CONTACT_ROLES = ['customer', 'vendor', 'contractor', 'employee'] as
 export type ContactRole = (typeof CONTACT_ROLES)[number];
 
 /** ยอดคงค้างตามบัญชีคุม (ลูกหนี้ = Dr − Cr ของบัญชี ar · เจ้าหนี้ = Cr − Dr ของบัญชี ap) แยกตามคู่ค้า */
-async function balancesByContact(tx: CompanyTx) {
+export async function balancesByContact(tx: CompanyTx) {
   const rows = await tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
     .innerJoin('acct.account as a', (jn) => jn.onRef('a.code', '=', 'l.account_code').onRef('a.company_id', '=', 'l.company_id'))
     .select(['l.contact_id', 'a.control_kind', sql<string>`sum(l.debit - l.credit)`.as('net')])
@@ -74,40 +74,64 @@ export interface ContactInput {
   taxId?: string | null; branchCode?: string | null; address?: string | null; shipAddress?: string | null; contactPerson?: string | null; phone?: string | null; email?: string | null;
   creditDays?: number | null; creditLimit?: string | null; arAccount?: string | null; apAccount?: string | null; whtReceived?: string | null; pndForm?: '3' | '53' | null;
   priceLevel?: number; bankAccount?: string | null;
+  /** ประเภทเงินได้ตั้งต้นของผู้ขาย (คีย์ WHT_TYPES) · ไม่ส่ง = คงค่าเดิม (หน้า ScreenContacts ไม่มีช่องนี้) */
+  defaultWht?: string | null;
 }
 
 const kindOf = (roles: ContactRole[]): 'customer' | 'vendor' | 'both' | 'contractor' | 'employee' =>
   roles.includes('customer') && (roles.includes('vendor') || roles.includes('contractor')) ? 'both' : roles[0]!;
 
-export async function saveContact(db: Db, companyId: string, actorId: string | null, c: ContactInput, id?: string) {
-  if (!c.code.trim() || !c.name.trim()) throw new LedgerError('ต้องระบุรหัสและชื่อคู่ค้า');
-  if (!c.roles.length || c.roles.some((r) => !CONTACT_ROLES.includes(r))) throw new LedgerError('ต้องเลือกบทบาทอย่างน้อย 1 บทบาท');
+/** ตรวจ + แปลงเป็นคอลัมน์ (ใช้ร่วมกับนำเข้า Excel) · โยน LedgerError ถ้าไม่ถูกต้อง */
+export function contactValues(c: ContactInput) {
+  if (!c.code?.trim() || !c.name?.trim()) throw new LedgerError('ต้องระบุรหัสและชื่อคู่ค้า');
+  if (!c.roles?.length || c.roles.some((r) => !CONTACT_ROLES.includes(r))) throw new LedgerError('ต้องเลือกบทบาทอย่างน้อย 1 บทบาท');
+  if (c.entityType && !['juristic', 'individual', 'foreign'].includes(c.entityType)) throw new LedgerError('ประเภทบุคคลไม่ถูกต้อง');
   if (c.taxId && !/x/u.test(c.taxId) && !validateTaxId(c.taxId)) throw new LedgerError('เลขประจำตัวผู้เสียภาษีไม่ถูกต้อง');
   if (c.branchCode && !/^\d{5}$/u.test(c.branchCode)) throw new LedgerError('รหัสสาขาต้องเป็นตัวเลข 5 หลัก');
+  if (c.creditDays !== undefined && c.creditDays !== null && (!Number.isInteger(c.creditDays) || c.creditDays < 0)) throw new LedgerError('เครดิต (วัน) ต้องเป็นจำนวนเต็มไม่ติดลบ');
   if (c.creditLimit && !/^\d+(\.\d{1,2})?$/u.test(c.creditLimit)) throw new LedgerError('วงเงินเครดิตไม่ถูกต้อง');
   if (c.priceLevel !== undefined && (c.priceLevel < 1 || c.priceLevel > 5)) throw new LedgerError('ระดับราคาต้องเป็น 1–5');
-  const values = {
+  // หลายประเภทคั่นด้วย "+" (เช่น ขนส่ง + ค่าบริการ · ScreenPurchaseBill "WHT ตั้งต้น 1% ค่าขนส่ง / 3% ค่าติดตั้ง") เหมือน wht_received
+  if (c.defaultWht && c.defaultWht.split('+').some((k) => !WHT_TYPES[k.trim()])) throw new LedgerError(`ไม่รู้จักประเภทเงินได้ ${c.defaultWht}`);
+  return {
     code: c.code.trim(), name: c.name.trim(), kind: kindOf(c.roles), roles: c.roles, entity_type: c.entityType ?? 'juristic',
     tax_id: c.taxId || null, branch_code: c.branchCode || null, address: c.address || null, ship_address: c.shipAddress || null, contact_person: c.contactPerson || null,
     phone: c.phone || null, email: c.email || null, credit_days: c.creditDays ?? null, credit_limit: c.creditLimit || null, ar_account: c.arAccount || null, ap_account: c.apAccount || null,
     wht_received: c.whtReceived || null, pnd_form: c.pndForm ?? null, price_level: c.priceLevel ?? 1, bank_account: c.bankAccount || null,
+    ...(c.defaultWht !== undefined ? { default_wht: c.defaultWht || null } : {}),
   };
-  return db.withCompany(companyId, async (tx) => {
-    const dup = await tx.selectFrom('acct.contact').select('id').where('code', '=', values.code).executeTakeFirst();
-    if (dup && dup.id !== id) throw new LedgerError(`รหัส ${values.code} มีอยู่แล้ว`);
-    let before: unknown = null;
-    let rowId = id;
-    if (id) {
-      before = await tx.selectFrom('acct.contact').selectAll().where('id', '=', id).executeTakeFirst();
-      if (!before) throw new LedgerError('ไม่พบคู่ค้า');
-      await tx.updateTable('acct.contact').set(values).where('id', '=', id).execute();
-    } else {
-      rowId = (await tx.insertInto('acct.contact').values({ company_id: companyId, ...values, external_source: null, external_ref: null }).returning('id').executeTakeFirstOrThrow()).id;
-    }
-    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: id ? 'contact.update' : 'contact.create', entity: 'contact', entity_id: rowId!,
-      before: before ? JSON.stringify(before) : null, after: JSON.stringify(values), prev_hash: null, hash: null }).execute();
-    return { id: rowId! };
-  });
+}
+
+const contactById = (tx: CompanyTx, id: string) => tx.selectFrom('acct.contact').selectAll().where('id', '=', id).executeTakeFirst();
+/** แถวในฐานข้อมูล → ContactInput (นำเข้า Excel: แก้เฉพาะช่องที่กรอก) */
+export function contactInputOf(c: NonNullable<Awaited<ReturnType<typeof contactById>>>): ContactInput {
+  return {
+    code: c.code, name: c.name, roles: c.roles as ContactRole[], entityType: c.entity_type, taxId: c.tax_id, branchCode: c.branch_code, address: c.address, shipAddress: c.ship_address,
+    contactPerson: c.contact_person, phone: c.phone, email: c.email, creditDays: c.credit_days, creditLimit: c.credit_limit, arAccount: c.ar_account, apAccount: c.ap_account,
+    whtReceived: c.wht_received, pndForm: c.pnd_form, priceLevel: c.price_level, bankAccount: c.bank_account, defaultWht: c.default_wht,
+  };
+}
+
+export async function saveContactTx(tx: CompanyTx, companyId: string, actorId: string | null, values: ReturnType<typeof contactValues>, id?: string, action?: string) {
+  const dup = await tx.selectFrom('acct.contact').select('id').where('code', '=', values.code).executeTakeFirst();
+  if (dup && dup.id !== id) throw new LedgerError(`รหัส ${values.code} มีอยู่แล้ว`);
+  let before: unknown = null;
+  let rowId = id;
+  if (id) {
+    before = await contactById(tx, id);
+    if (!before) throw new LedgerError('ไม่พบคู่ค้า');
+    await tx.updateTable('acct.contact').set(values).where('id', '=', id).execute();
+  } else {
+    rowId = (await tx.insertInto('acct.contact').values({ company_id: companyId, ...values, external_source: null, external_ref: null }).returning('id').executeTakeFirstOrThrow()).id;
+  }
+  await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: action ?? (id ? 'contact.update' : 'contact.create'), entity: 'contact', entity_id: rowId!,
+    before: before ? JSON.stringify(before) : null, after: JSON.stringify(values), prev_hash: null, hash: null }).execute();
+  return { id: rowId! };
+}
+
+export async function saveContact(db: Db, companyId: string, actorId: string | null, c: ContactInput, id?: string) {
+  const values = contactValues(c);
+  return db.withCompany(companyId, (tx) => saveContactTx(tx, companyId, actorId, values, id));
 }
 
 // ---------- สินค้าและบริการ (ScreenProducts) ----------
@@ -136,36 +160,82 @@ export interface ProductInput {
   code: string; name: string; kind: 'service' | 'goods' | 'expense' | 'kit'; unit?: string | null;
   prices?: (string | null)[]; vatCode?: 'vat7' | 'exempt' | 'zero'; defaultWht?: string | null; sku?: string | null;
   revenueAccount?: string | null; expenseAccount?: string | null;
+  /** ต้นทุนประมาณต่อหน่วย · ไม่ส่ง = คงค่าเดิม (ScreenProducts ไม่มีช่องนี้) */
+  estCost?: string | null;
+  /** เหตุยกเว้น VAT ใต้รายการ (PrintReceiptNoVat) · ไม่ส่ง = คงค่าเดิม */
+  vatExemptReason?: string | null;
 }
 
-export async function saveProduct(db: Db, companyId: string, actorId: string | null, p: ProductInput, existingCode?: string) {
-  if (!p.code.trim() || !p.name.trim()) throw new LedgerError('ต้องระบุรหัสและชื่อรายการ');
+/** ตรวจ + แปลงเป็นคอลัมน์ (ใช้ร่วมกับนำเข้า Excel) · บัญชีในผังตรวจใน saveProductTx (ต้องอ่าน DB) */
+export function productValues(p: ProductInput) {
+  if (!p.code?.trim() || !p.name?.trim()) throw new LedgerError('ต้องระบุรหัสและชื่อรายการ');
+  if (!['service', 'goods', 'expense', 'kit'].includes(p.kind)) throw new LedgerError('ประเภทรายการไม่ถูกต้อง');
   if (p.kind === 'kit') throw new LedgerError('สินค้าชุดใช้ได้เมื่อเปิดโมดูลสต๊อก'); // ScreenProducts: "สินค้าชุด จะปรากฏเมื่อเปิดโมดูลสต๊อก" · v1 ไม่มีสต็อก
   const prices = [...(p.prices ?? []), null, null, null, null, null].slice(0, 5).map((x) => (x && x.trim() ? x.trim() : null));
   for (const x of prices) if (x && !/^\d+(\.\d{1,4})?$/u.test(x)) throw new LedgerError(`ราคา ${x} ไม่ถูกต้อง`);
+  if (p.estCost && !/^\d+(\.\d{1,4})?$/u.test(p.estCost.trim())) throw new LedgerError(`ต้นทุนประมาณ ${p.estCost} ไม่ถูกต้อง`);
   const vatCode = p.vatCode ?? 'vat7';
-  const values = {
+  if (!['vat7', 'exempt', 'zero'].includes(vatCode)) throw new LedgerError('รหัสภาษีไม่ถูกต้อง');
+  if (p.defaultWht && !WHT_TYPES[p.defaultWht]) throw new LedgerError(`ไม่รู้จักประเภทเงินได้ ${p.defaultWht}`);
+  return {
+    code: p.code.trim(),
     name: p.name.trim(), kind: p.kind, unit: p.unit || null, price: prices[0]!, price_2: prices[1]!, price_3: prices[2]!, price_4: prices[3]!, price_5: prices[4]!,
     vat_code: vatCode, vat: vatCode !== 'exempt', default_wht: p.defaultWht || null, sku: p.sku || null, revenue_account: p.revenueAccount || null, expense_account: p.expenseAccount || null,
+    ...(p.estCost !== undefined ? { est_cost: p.estCost?.trim() || null } : {}),
+    ...(p.vatExemptReason !== undefined ? { vat_exempt_reason: p.vatExemptReason?.trim() || null } : {}),
   };
+}
+
+export async function saveProductTx(tx: CompanyTx, companyId: string, actorId: string | null, all: ReturnType<typeof productValues>, existingCode?: string, action?: string) {
+  const { code, ...values } = all;
+  for (const a of [values.revenue_account, values.expense_account]) {
+    if (a && !(await tx.selectFrom('acct.account').select('code').where('code', '=', a).executeTakeFirst())) throw new LedgerError(`ไม่มีบัญชี ${a} ในผังบัญชี`);
+  }
+  let before: unknown = null;
+  if (existingCode) {
+    if (existingCode !== code) throw new LedgerError('เปลี่ยนรหัสรายการไม่ได้ (เอกสารเดิมอ้างรหัสนี้)');
+    before = await tx.selectFrom('acct.product').selectAll().where('code', '=', code).executeTakeFirst();
+    if (!before) throw new LedgerError('ไม่พบรายการ');
+    await tx.updateTable('acct.product').set(values).where('code', '=', code).execute();
+  } else {
+    if (await tx.selectFrom('acct.product').select('code').where('code', '=', code).executeTakeFirst()) throw new LedgerError(`รหัส ${code} มีอยู่แล้ว`);
+    await tx.insertInto('acct.product').values({ company_id: companyId, code, ...values }).execute();
+  }
+  await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: action ?? (existingCode ? 'product.update' : 'product.create'), entity: 'product', entity_id: code,
+    before: before ? JSON.stringify(before) : null, after: JSON.stringify({ code, ...values }), prev_hash: null, hash: null }).execute();
+  return { code };
+}
+
+export async function saveProduct(db: Db, companyId: string, actorId: string | null, p: ProductInput, existingCode?: string) {
+  const values = productValues(p);
+  return db.withCompany(companyId, (tx) => saveProductTx(tx, companyId, actorId, values, existingCode));
+}
+
+// ---------- ทะเบียนบัญชีธนาคารของบริษัท (แบบพิมพ์ "โอนเข้าบัญชี [ธนาคาร A] เลขที่ … ชื่อบัญชี …") ----------
+// TODO(Wei): ไม่มีแบบร่างหน้าจอแก้ทะเบียนบัญชีธนาคารของบริษัท → มีแค่ API (GET/PUT /v1/bank-accounts)
+
+export interface BankAccountInput { glAccount: string; bankName: string; branch?: string | null; accountNo: string; accountName?: string | null; isDefaultReceive?: boolean }
+
+export async function listBankAccounts(db: Db, companyId: string) {
+  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.bank_account as b')
+    .innerJoin('acct.account as a', (j) => j.onRef('a.code', '=', 'b.gl_account').onRef('a.company_id', '=', 'b.company_id'))
+    .select(['b.id', 'b.gl_account', 'a.name as gl_name', 'b.bank_name', 'b.branch', 'b.account_no', 'b.account_name', 'b.is_default_receive'])
+    .orderBy('b.is_default_receive', 'desc').orderBy('b.gl_account').execute());
+}
+
+/** เพิ่ม/แก้ตามรหัสบัญชี GL (1 บัญชี GL = 1 บัญชีธนาคาร) · บัญชีรับโอนตั้งต้นมีได้บัญชีเดียว */
+export async function saveBankAccount(db: Db, companyId: string, actorId: string | null, b: BankAccountInput) {
+  if (!b.glAccount || !b.bankName?.trim() || !b.accountNo?.trim()) throw new LedgerError('ต้องระบุบัญชีในผัง ชื่อธนาคาร และเลขที่บัญชี');
   return db.withCompany(companyId, async (tx) => {
-    for (const a of [values.revenue_account, values.expense_account]) {
-      if (a && !(await tx.selectFrom('acct.account').select('code').where('code', '=', a).executeTakeFirst())) throw new LedgerError(`ไม่มีบัญชี ${a} ในผังบัญชี`);
-    }
-    const code = p.code.trim();
-    let before: unknown = null;
-    if (existingCode) {
-      if (existingCode !== code) throw new LedgerError('เปลี่ยนรหัสรายการไม่ได้ (เอกสารเดิมอ้างรหัสนี้)');
-      before = await tx.selectFrom('acct.product').selectAll().where('code', '=', code).executeTakeFirst();
-      if (!before) throw new LedgerError('ไม่พบรายการ');
-      await tx.updateTable('acct.product').set(values).where('code', '=', code).execute();
-    } else {
-      if (await tx.selectFrom('acct.product').select('code').where('code', '=', code).executeTakeFirst()) throw new LedgerError(`รหัส ${code} มีอยู่แล้ว`);
-      await tx.insertInto('acct.product').values({ company_id: companyId, code, ...values }).execute();
-    }
-    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: existingCode ? 'product.update' : 'product.create', entity: 'product', entity_id: code,
-      before: before ? JSON.stringify(before) : null, after: JSON.stringify({ code, ...values }), prev_hash: null, hash: null }).execute();
-    return { code };
+    const acc = await tx.selectFrom('acct.account').select(['code', 'type']).where('code', '=', b.glAccount).executeTakeFirst();
+    if (!acc || acc.type !== 'asset') throw new LedgerError(`บัญชี ${b.glAccount} ไม่ใช่บัญชีสินทรัพย์ในผังบัญชี`);
+    if (b.isDefaultReceive) await tx.updateTable('acct.bank_account').set({ is_default_receive: false }).where('gl_account', '!=', b.glAccount).execute();
+    const values = { bank_name: b.bankName.trim(), branch: b.branch?.trim() || null, account_no: b.accountNo.trim(), account_name: b.accountName?.trim() || null, is_default_receive: b.isDefaultReceive ?? false };
+    const r = await tx.insertInto('acct.bank_account').values({ company_id: companyId, gl_account: b.glAccount, ...values })
+      .onConflict((oc) => oc.columns(['company_id', 'gl_account']).doUpdateSet(values)).returning('id').executeTakeFirstOrThrow();
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: 'bank_account.save', entity: 'bank_account', entity_id: r.id,
+      before: null, after: JSON.stringify({ gl_account: b.glAccount, ...values }), prev_hash: null, hash: null }).execute();
+    return { id: r.id };
   });
 }
 

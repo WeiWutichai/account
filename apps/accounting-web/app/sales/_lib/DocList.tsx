@@ -46,8 +46,7 @@ export function DocList({ rows, today, periodLabel, title, crumb, createLabel, c
     return (!from || r.issue_date >= from) && (!to || r.issue_date <= to);
   };
   const needle = q.trim().toLowerCase();
-  // TODO(backend): ค้นหาด้วยเลขผู้เสียภาษี — GET /v1/documents ยังไม่ส่ง tax_id ของลูกค้า
-  const matches = (r: DocRow) => !needle || [r.doc_no, r.contact_name, r.contact_code].some((x) => x?.toLowerCase().includes(needle));
+  const matches = (r: DocRow) => !needle || [r.doc_no, r.contact_name, r.contact_code, r.contact_tax_id].some((x) => x?.toLowerCase().includes(needle));
   const base = rows.filter((r) => inRange(r) && matches(r));
   const tabRows: Record<TabId, DocRow[]> = {
     all: base,
@@ -147,14 +146,14 @@ export function DocList({ rows, today, periodLabel, title, crumb, createLabel, c
             <tbody>
               {pageRows.map((r) => {
                 const t = statusTag(r, today, lastReceipt[r.id]);
-                // TODO(backend): ป้าย TMS (ScreenDocList.dc.html แถว IV2611-0053) — GET /v1/documents ยังไม่ส่ง external_source
                 return (
                   <tr key={r.id} style={css(sel.has(r.id) ? 'border-top: 1px solid #e0e0e0; background: #e0e0e0' : 'border-top: 1px solid #e0e0e0')}>
                     <td style={css('height: 40px; padding: 0 12px')}><input type="checkbox" aria-label="เลือก" checked={sel.has(r.id)} onChange={() => toggle(r.id)} style={css('width: 16px; height: 16px; margin: 0')} /></td>
                     <td style={css(TD)}><a href={docHref(r)} style={css('font-weight: 500; text-decoration: none')}>{docNo(r)}</a></td>
                     <td style={css(TD)}>{thaiDate(r.issue_date)}</td>
                     <td style={css(TD)}>{r.due_date ? thaiDate(r.due_date) : '—'}</td>
-                    <td style={css(TD)}>{r.contact_name ?? '—'}</td>
+                    {/* ป้าย TMS = เอกสารที่สร้างจาก TMS (ScreenDocList.dc.html แถว IV2611-0053) */}
+                    <td style={css(TD)}>{r.contact_name ?? '—'}{r.external_source === 'tms' && <> <span style={css('font-size: 11px; padding: 1px 6px; background: #393939; color: #ffffff; border-radius: 4px')}>TMS</span></>}</td>
                     <td style={css(NUM)}>{money(r.subtotal)}</td>
                     <td style={css(NUM)}>{money(r.vat)}</td>
                     <td style={css(NUM)}>{money(r.grand_total)}</td>

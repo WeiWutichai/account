@@ -8,7 +8,7 @@ import { daysBetween } from '../../sales/_lib/doc.ts';
 import { fromCents, toCents } from '../../sales/_lib/num.ts';
 import { monthBE, pDocNo, pHref, type PRow, pStatusTag } from './types.ts';
 
-export interface ListRow extends PRow { vendor_ref: string | null; external_source: string | null; pay_now: boolean; outstanding: string | null; po: { received: number; lines: number } | null }
+export interface ListRow extends PRow { po: { received: number; lines: number } | null }
 type TabId = 'all' | 'review' | 'open' | 'due7' | 'po' | 'paid';
 type Source = 'all' | 'manual' | 'tms' | 'ocr';
 export interface ListVariant { title: string; crumb: string; create: { label: string; href: string }; bills: boolean }

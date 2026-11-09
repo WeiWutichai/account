@@ -18,7 +18,8 @@
     "./close-ops": "./src/close-ops.ts",
     "./hub": "./src/hub.ts",
     "./console": "./src/console.ts",
-    "./master": "./src/master.ts"
+    "./master": "./src/master.ts",
+    "./master-import": "./src/master-import.ts"
   },
   "scripts": {
     "lint": "eslint src test",

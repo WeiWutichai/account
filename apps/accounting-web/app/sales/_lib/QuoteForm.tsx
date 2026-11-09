@@ -6,13 +6,19 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { call } from './client.ts';
 import { addDays, type Contact, daysBetween, docNo, type DocDetail, printHref, statusTag } from './doc.ts';
-import { blankLine, linePayload, type LineRow, rowFromLine, useTotals, validRow } from './lines.ts';
-import { percentOf, subMoney } from './num.ts';
+import { blankLine, linePayload, type LineRow, parseItem, rowFromLine, useTotals, validRow } from './lines.ts';
+import { divRound, fromCents, marginPct, parseDec, percentOf, subMoney, toCents } from './num.ts';
+import type { QuoteExtras } from './server.ts';
 import { DocHeader, F, Msg } from './ui';
 
 const TERMS = ['มัดจำ 30% · ส่วนที่เหลือ 30 วัน', 'เครดิต 30 วัน'] as const;
+// ระดับราคาตามข้อความในแบบร่าง (ScreenQuote "ราคา 1 (ปกติ)" · ScreenContacts "ราคา 2 (ตัวแทน)") — TODO(Wei): ไม่มีชื่อระดับราคา 3–5 ในแบบร่าง
+const LEVELS: [number, string][] = [[1, 'ราคา 1 (ปกติ)'], [2, 'ราคา 2 (ตัวแทน)']];
+const SEL = 'height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616';
 
-export function QuoteForm({ detail, contacts, today, docType, presetContact }: { detail: DocDetail | null; contacts: Contact[]; today: string; docType: 'QO' | 'SO'; presetContact?: string }) {
+export function QuoteForm({ detail, contacts, extras, today, docType, presetContact }: {
+  detail: DocDetail | null; contacts: Contact[]; extras: QuoteExtras; today: string; docType: 'QO' | 'SO'; presetContact?: string;
+}) {
   const router = useRouter();
   const d = detail?.doc ?? null;
   const editable = !d || d.status === 'draft' || d.status === 'pending_approval';
@@ -24,9 +30,16 @@ export function QuoteForm({ detail, contacts, today, docType, presetContact }: {
   const [contactText, setContactText] = useState(init ? label(init) : '');
   const [date, setDate] = useState(thaiDate(d?.issue_date ?? today));
   const [days, setDays] = useState(d?.due_date ? String(daysBetween(d.issue_date, d.due_date)) : '');
-  // TODO(backend): พนักงานขาย · โครงการ (มิติ) · เงื่อนไขชำระ · ระดับราคา ยังไม่มีฟิลด์ใน acct.document (fixtures QO2611-0014 มี salesperson/dimension/payment_terms/price_level)
-  const [term, setTerm] = useState<string>(TERMS[0]);
-  const [rows, setRows] = useState<LineRow[]>(detail?.lines.filter((l) => l.line_type === 'item').map(rowFromLine) ?? [blankLine()]);
+  // พนักงานขาย / โครงการ: ยังไม่มีทะเบียน → ตัวเลือก = ค่าที่เคยใช้ในเอกสาร (GET /v1/document-fields) · TODO(Wei): ทะเบียนพนักงานขาย/โครงการ (มิติ) ไม่มีแบบร่าง
+  const [salesperson, setSalesperson] = useState(d?.salesperson ?? '');
+  const [project, setProject] = useState(d?.project_code ?? '');
+  // TODO(Wei): fixtures QO2611-0014.payment_terms "มัดจำ 30% · ส่วนที่เหลือเครดิต 30 วัน" ≠ ตัวเลือกในแบบร่าง "มัดจำ 30% · ส่วนที่เหลือ 30 วัน" → แสดงค่าที่บันทึกไว้เป็นตัวเลือกเพิ่ม
+  const [term, setTerm] = useState<string>(d?.payment_terms ?? TERMS[0]);
+  const [level, setLevel] = useState<number>(d?.price_level ?? init?.price_level ?? 1);
+  const itemLines = detail?.lines.filter((l) => l.line_type === 'item') ?? [];
+  const [rows, setRows] = useState<LineRow[]>(itemLines.length ? itemLines.map(rowFromLine) : [blankLine()]);
+  // ต้นทุนประมาณที่บันทึกในบรรทัด (บรรทัดที่ไม่มีรหัสสินค้า เช่น ของแถม) — ตามลำดับบรรทัด
+  const savedEst = itemLines.map((l) => l.est_cost ?? null);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const { totals, idx, err } = useTotals(rows, d?.price_incl_vat ?? false, d?.bill_discount ?? '');
 
@@ -34,11 +47,21 @@ export function QuoteForm({ detail, contacts, today, docType, presetContact }: {
   const set = (i: number, k: keyof LineRow, v: string | boolean) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const iso = parseThaiDate(date);
   const validUntil = iso && /^\d+$/u.test(days.trim()) ? addDays(iso, Number(days)) : null;
+  /** ต้นทุนประมาณของบรรทัด = ต้นทุนต่อหน่วยของสินค้า × จำนวน · ไม่มีรหัสสินค้า → ต้นทุนที่บันทึกไว้ในบรรทัด */
+  const estOf = (r: LineRow, i: number): string | null => {
+    const code = parseItem(r.item).productCode;
+    const unit = code ? extras.estCosts[code] ?? null : null;
+    const q = parseDec(r.qty, 4);
+    const u = unit === null ? null : parseDec(unit, 4);
+    if (u !== null && q !== null) return fromCents(divRound(u * q, 1_000_000n));
+    return savedEst[i] ?? null;
+  };
 
   const payload = () => ({
     docType: d?.doc_type ?? docType, contactId: contact?.id ?? '', issueDate: iso ?? '', dueDate: validUntil, priceInclVat: d?.price_incl_vat ?? false, billDiscount: d?.bill_discount ?? '0.00',
     address: d?.address ?? null, notes: d?.notes ?? null, reference: d?.reference ?? null, refDocumentId: d?.ref_document_id ?? null, creditDays: d?.credit_days ?? null,
-    lines: rows.filter(validRow).map(linePayload),
+    salesperson: salesperson || null, projectCode: project || null, paymentTerms: term || null, priceLevel: level,
+    lines: rows.map((r, i) => ({ r, i })).filter(({ r }) => validRow(r)).map(({ r, i }) => ({ ...linePayload(r), estCost: estOf(r, i) })),
   });
   // บันทึกล่าสุด — อนุมัติโดยไม่บันทึกซ้ำถ้าไม่มีการแก้
   const [saved, setSaved] = useState<string | null>(d ? JSON.stringify(payload()) : null);
@@ -94,7 +117,13 @@ export function QuoteForm({ detail, contacts, today, docType, presetContact }: {
   const no = d ? docNo(d) : 'ใหม่';
   // TODO(Wei)/backend: สถานะ "ลูกค้ายอมรับแล้ว" + เวลาที่กดยอมรับผ่านลิงก์ (ScreenQuote.dc.html) — backend ยังไม่มีการยอมรับใบเสนอราคา · ใช้สถานะอนุมัติแทน
   const tag = d ? statusTag({ ...d, outstanding: null }, today) : { kind: 'info' as const, text: 'ร่าง' };
-  const deposit = term === TERMS[0] && totals ? percentOf(totals.grandTotal, '30') : null;
+  const deposit = term.startsWith('มัดจำ 30%') && totals ? percentOf(totals.grandTotal, '30') : null;
+  // กำไรขั้นต้นรวม: เฉพาะเมื่อทุกบรรทัดมีต้นทุนประมาณ
+  const ests = rows.map((r, i) => ((idx[i] ?? -1) >= 0 ? estOf(r, i) : null));
+  const counted = rows.map((_, i) => i).filter((i) => (idx[i] ?? -1) >= 0);
+  const estTotal = counted.length && counted.every((i) => ests[i] !== null) ? fromCents(counted.reduce((s, i) => s + toCents(ests[i]), 0n)) : null;
+  const totalMargin = estTotal && totals ? marginPct(totals.subtotal, estTotal) : null;
+  const marginText = (m: string | null) => (m === null ? '—' : m === 'below' ? 'ต่ำกว่าทุน' : `${m}%`);
   const step = (s: string) => (s === type ? <strong style={css('color: #161616')}>{s}</strong> : s);
 
   return (
@@ -110,10 +139,11 @@ export function QuoteForm({ detail, contacts, today, docType, presetContact }: {
           <label style={css(F.label2)}>ลูกค้า<input list="qo-contacts" readOnly={!editable} value={contactText} onChange={(e) => setContactText(e.target.value)} style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px')} /></label>
           <label style={css(F.label)}>วันที่<input readOnly={!editable} value={date} onChange={(e) => setDate(e.target.value)} style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616; font-variant-numeric: tabular-nums')} /></label>
           <label style={css(F.label)}>ยืนราคา (วัน)<input readOnly={!editable} value={days} onChange={(e) => setDays(e.target.value)} style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616; font-variant-numeric: tabular-nums')} /></label>
-          <label style={css(F.label)}>พนักงานขาย<select style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616')}><option>—</option></select></label>
-          <label style={css(F.label)}>โครงการ (มิติ)<select style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616')}><option>—</option></select></label>
-          <label style={css(F.label)}>เงื่อนไขชำระ<select value={term} onChange={(e) => setTerm(e.target.value)} style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616')}>{TERMS.map((t) => <option key={t}>{t}</option>)}</select></label>
-          <label style={css(F.label)}>ระดับราคา<select style={css('height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616')}><option>ราคา 1 (ปกติ)</option></select></label>
+          <label style={css(F.label)}>พนักงานขาย<select value={salesperson} onChange={(e) => { if (editable) setSalesperson(e.target.value); }} style={css(SEL)}><option value="">—</option>{[...new Set([...extras.salespersons, salesperson].filter(Boolean))].map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+          <label style={css(F.label)}>โครงการ (มิติ)<select value={project} onChange={(e) => { if (editable) setProject(e.target.value); }} style={css(SEL)}><option value="">—</option>{[...new Set([...extras.projects, project].filter(Boolean))].map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+          <label style={css(F.label)}>เงื่อนไขชำระ<select value={term} onChange={(e) => { if (editable) setTerm(e.target.value); }} style={css(SEL)}>{[...new Set([...TERMS, term].filter(Boolean))].map((t) => <option key={t}>{t}</option>)}</select></label>
+          {/* TODO(Wei): ไม่มีตัวเลือกสินค้าในแบบร่าง (รายการพิมพ์รหัสเอง) → ระดับราคาบันทึกในเอกสาร ยังไม่เติมราคาตามระดับให้อัตโนมัติ */}
+          <label style={css(F.label)}>ระดับราคา<select value={level} onChange={(e) => { if (editable) setLevel(Number(e.target.value)); }} style={css(SEL)}>{LEVELS.map(([n, t]) => <option key={n} value={n}>{t}</option>)}</select></label>
         </section>
         <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
           <table style={css('width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; line-height: 20px')}>
@@ -132,9 +162,9 @@ export function QuoteForm({ detail, contacts, today, docType, presetContact }: {
                     <td style={css(F.num)}>{editable ? <input aria-label={`จำนวน บรรทัด ${i + 1}`} value={r.qty} onChange={(e) => set(i, 'qty', e.target.value)} style={css(`${F.cellNum}; width: 72px`)} /> : r.qty}</td>
                     <td style={css(F.num)}>{editable ? <input aria-label={`ราคา/หน่วย บรรทัด ${i + 1}`} value={r.price} onChange={(e) => set(i, 'price', e.target.value)} style={css(`${F.cellNum}; width: 110px`)} /> : r.price}</td>
                     <td style={css(F.num)}>{editable ? <input aria-label={`ส่วนลด บรรทัด ${i + 1}`} placeholder="10% + 5%" value={r.disc} onChange={(e) => set(i, 'disc', e.target.value)} style={css(`${F.cellNum}; width: 110px`)} /> : (r.disc.includes('%') ? r.disc : money(r.disc, { blankZero: true }))}</td>
-                    {/* TODO(backend): ต้นทุนประมาณ/กำไรขั้นต้น/"ต่ำกว่าทุน" ต้องมี est_cost ของสินค้า (fixtures products S-0001 est_cost) — ยังไม่มี API สินค้า */}
-                    <td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252')}>—</td>
-                    <td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252')}>—</td>
+                    {/* ต้นทุนประมาณ = est_cost ของสินค้า × จำนวน (หรือที่บันทึกในบรรทัด) · กำไรขั้นต้น = (จำนวนเงิน − ต้นทุน) ÷ จำนวนเงิน */}
+                    <td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252')}>{ests[i] ? money(ests[i]) : '—'}</td>
+                    {(() => { const m = ests[i] && amount ? marginPct(amount, ests[i]) : null; return <td style={css(`padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: ${m === 'below' ? '#a2191f' : '#525252'}`)}>{marginText(m)}</td>; })()}
                     <td style={css(F.num)}>{money(amount)}</td>
                   </tr>
                 );
@@ -144,7 +174,7 @@ export function QuoteForm({ detail, contacts, today, docType, presetContact }: {
                   <td style={css(F.td)} colSpan={7}><Button kind="ghost" size={32} onClick={() => setRows([...rows, blankLine()])}>+ เพิ่มบรรทัด (Enter)</Button></td></tr>
               )}
             </tbody>
-            <tfoot><tr style={css('border-top: 1px solid #8d8d8d; font-weight: 600')}><td colSpan={5} style={css('height: 40px; padding: 0 12px')}>รวมก่อนภาษี · กำไรขั้นต้นรวม —</td><td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 400; color: #525252')}>—</td><td></td><td style={css(F.num)}>{money(totals?.subtotal)}</td></tr></tfoot>
+            <tfoot><tr style={css('border-top: 1px solid #8d8d8d; font-weight: 600')}><td colSpan={5} style={css('height: 40px; padding: 0 12px')}>รวมก่อนภาษี · กำไรขั้นต้นรวม {marginText(totalMargin)}</td><td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 400; color: #525252')}>{estTotal ? money(estTotal) : '—'}</td><td></td><td style={css(F.num)}>{money(totals?.subtotal)}</td></tr></tfoot>
           </table>
         </section>
         <div style={css('display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start')}>

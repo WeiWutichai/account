@@ -21,7 +21,7 @@ export async function AdjustNote({ kind, id, sp }: { kind: 'CN' | 'DN'; id: stri
   const rows = itemRows(d.lines);
   return (
     <Sheet>
-      <Header ctx={ctx} title={t.title} en={t.en} badge={badgeOf(sp)} />
+      <Header ctx={ctx} title={t.title} en={t.en} badge={badgeOf(sp, doc)} doc={doc} />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="ผู้ซื้อ" c={d.contact} address={customerAddress(d)} />
         <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่', thaiDate(doc.issue_date)], ['อ้างอิง', orig?.no ?? '']]} />

@@ -17,6 +17,17 @@ export async function formBase(): Promise<FormBase> {
   return { ctx, contacts: contacts.filter((c) => c.kind !== 'vendor'), accounts, rules: rules.map((r) => ({ code: r.code, docType: r.docType, name: r.name })), today: appToday() };
 }
 
+/** ใบเสนอราคา (ScreenQuote): ต้นทุนประมาณต่อหน่วยของสินค้า + ตัวเลือกพนักงานขาย/โครงการที่เคยใช้ */
+export interface QuoteExtras { estCosts: Record<string, string>; salespersons: string[]; projects: string[] }
+export async function quoteExtras(): Promise<QuoteExtras> {
+  const [products, fields] = await Promise.all([
+    // ผู้ใช้ที่ไม่มีสิทธิ์อ่านข้อมูลหลัก → ไม่แสดงต้นทุนของบรรทัดใหม่ (บรรทัดที่บันทึกแล้วมีต้นทุนในเอกสาร)
+    api<{ rows: { code: string; est_cost: string | null }[] }>('/v1/master/products').catch(() => ({ rows: [] })),
+    api<{ salespersons: string[]; projects: string[] }>('/v1/document-fields'),
+  ]);
+  return { estCosts: Object.fromEntries(products.rows.filter((p) => p.est_cost !== null).map((p) => [p.code, p.est_cost!])), ...fields };
+}
+
 export const getDoc = (id: string): Promise<DocDetail> => api<DocDetail>(`/v1/documents/${encodeURIComponent(id)}`);
 export const listDocs = (qs: string): Promise<DocRow[]> => api<DocRow[]>(`/v1/documents?${qs}`);
 

@@ -1,7 +1,7 @@
 'use client';
 // ข้อมูลหลัก / คู่ค้า — design/project/ScreenContacts.dc.html
 // ตัวเลขทุกตัว (จำนวนราย · ค้างรับ/ค้างจ่าย · ที่อยู่ N · เอกสาร N · ค้างรับ N ใบ · เกินกำหนด · เอกสารล่าสุด) มาจาก API — ข้อความตามแบบร่าง
-// TODO(backend) ScreenContacts.dc.html: "นำเข้า Excel" ยังไม่มี API → ปุ่มสถานะ "ใช้ไม่ได้"
+// "นำเข้า Excel" → เลือกไฟล์ → ตรวจ → ยืนยัน (../_import.tsx · POST /v1/master/contacts/import)
 // TODO(Wei) ScreenContacts.dc.html: แบบร่างไม่มีปุ่ม บันทึก/ยกเลิก — "แก้ไข" สลับโหมดแก้ไข แล้วแสดง "ยกเลิก" + "บันทึก" แทนปุ่ม "แก้ไข" ระหว่างแก้
 // TODO(Wei) ScreenContacts.dc.html: แบบร่างแสดง "1130100 ลูกหนี้การค้า" ในช่องบัญชีลูกหนี้ แต่ข้อมูลตัวอย่างไม่ได้กำหนดบัญชีเฉพาะคู่ค้า (ar_account ว่าง = ตามสูตร) → แสดงค่าว่างตามข้อมูล
 import { Button, css, href, money, shortDate, TopBar } from '@innovera/ui';
@@ -9,6 +9,7 @@ import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
 import { docNav } from '../../finance/_shared/types';
 import { norm } from '../../finance/_shared/num';
+import { useExcelImport } from '../_import';
 
 type Role = 'customer' | 'vendor' | 'contractor' | 'employee';
 type Entity = 'juristic' | 'individual' | 'foreign';
@@ -69,6 +70,7 @@ const formOf = (c: ContactFull | null): Form => ({
 export function ContactsScreen({ overview, detail, q, role, accounts }: Props) {
   const router = useRouter();
   const [creating, setCreating] = useState(false);
+  const excel = useExcelImport('contacts');
   const { counts, rows } = overview;
   const selected = creating ? null : detail?.contact.id;
   const qs = (p: Record<string, string>) => {
@@ -90,11 +92,11 @@ export function ContactsScreen({ overview, detail, q, role, accounts }: Props) {
         <div style={css('display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px')}>
           <h1 style={css('margin: 0; font-size: 22px; line-height: 30px; font-weight: 600')}>คู่ค้า</h1>
           <div style={css('display: flex; gap: 8px; flex-wrap: wrap')}>
-            {/* TODO(backend): นำเข้า Excel ยังไม่มี API */}
-            <Button size={36} disabled title="ยังไม่มี API นำเข้า Excel">นำเข้า Excel</Button>
+            {excel.button}
             <Button size={36} kind="primary" onClick={() => setCreating(true)}>เพิ่มคู่ค้า</Button>
           </div>
         </div>
+        {excel.panel}
         <div style={css('display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start')}>
           <section style={css('flex: 1 1 440px; min-width: 0; border: 1px solid #e0e0e0')}>
             <form onSubmit={search} role="search" style={css('display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap')}>

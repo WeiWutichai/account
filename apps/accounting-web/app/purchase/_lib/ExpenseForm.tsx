@@ -104,7 +104,6 @@ export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today 
 
         <section style={css('display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px')}>
           <datalist id="exp-payees">{vendors.map((c) => <option key={c.id} value={c.name}>{c.code}</option>)}</datalist>
-          {/* TODO(backend): เลขประจำตัวผู้เสียภาษีของผู้รับเงินที่เพิ่งเลือก — GET /v1/contacts ไม่ส่ง tax_id */}
           <label style={css(LABEL2)}>จ่ายให้<input list="exp-payees" readOnly={!editable} value={payeeText} onChange={(e) => setPayeeText(e.target.value)} style={IN} />
             <span style={css('font-size: 13px; color: #525252')}>ภ.ง.ด.{pnd ?? '—'} · เลขประจำตัว {pInfo?.tax_id ?? '—'}</span></label>
           <label style={css(LABEL)}>วันที่จ่าย<input readOnly={!editable} value={date} onChange={(e) => setDate(e.target.value)} style={css(P.inputNum)} /></label>

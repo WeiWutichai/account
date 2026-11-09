@@ -44,6 +44,8 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
 
   const { totals, idx, err } = useTotals(rows, incl, billDisc);
   const contact = contacts.find((c) => contactText.startsWith(`${c.code} `) || contactText === c.code) ?? null;
+  // เครดิตของเอกสาร: ตามเอกสาร ถ้าไม่มีใช้ของลูกค้าในทะเบียน
+  const creditDays = d?.credit_days ?? contact?.credit_days ?? null;
   const deposits = (detail?.settlementsIn ?? []).filter((s) => s.doc_type === 'DP').map((s) => ({ documentId: s.id, amount: s.applied }));
   const depositTotal = deposits.reduce((s, x) => s + toCents(x.amount), 0n);
   const revenue = accounts.filter((a) => a.type === 'revenue' && a.active);
@@ -53,7 +55,7 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
   const payload = () => ({
     docType: mode, contactId: contact?.id ?? '', issueDate: parseThaiDate(date) ?? '', dueDate: due ? parseThaiDate(due) : null, priceInclVat: incl,
     billDiscount: billDisc ? (lineDiscount(billDisc, '1', '0') ?? '0.00') : '0.00', ...(mode === 'IV' ? { taxMode } : {}), ruleCode: rule,
-    address: address || null, notes: notes || null, reference: d?.reference ?? null, refDocumentId: d?.ref_document_id ?? null, creditDays: d?.credit_days ?? null,
+    address: address || null, notes: notes || null, reference: d?.reference ?? null, refDocumentId: d?.ref_document_id ?? null, creditDays,
     receiveAccount: mode === 'DP' ? receive : (d?.receive_account ?? null), deposits, lines: rows.filter(validRow).map(linePayload),
   });
 
@@ -157,10 +159,10 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
           <section style={css(F.grid)}>
             <datalist id="iv-contacts">{contacts.map((c) => <option key={c.id} value={contactLabel(c)} />)}</datalist>
             <label style={css(F.label2)}>ลูกค้า<input list="iv-contacts" readOnly={!editable} value={contactText} onChange={(e) => touch(setContactText)(e.target.value)} style={IN()} />
-              {/* TODO(backend): เครดิต (วัน) และวงเงินคงเหลือของลูกค้า — /v1/contacts ยังไม่มี (fixtures C0012.credit_days / credit_limit · ดู PROGRESS T4) */}
-              <span style={css(F.hint)}>เลขผู้เสียภาษี {(detail?.contact?.id === contact?.id ? detail?.contact?.tax_id : contact?.tax_id) ?? '—'} · เครดิต {d?.credit_days ?? '—'} วัน · วงเงินคงเหลือ —</span></label>
+              {/* วงเงินคงเหลือ = วงเงิน − ลูกหนี้คงค้าง (GET /v1/contacts) · TODO(Wei) T4: fixtures C0012 credit_limit_remaining 452,920 ไม่ตรงกับสูตรนี้ (PROGRESS T4) */}
+              <span style={css(F.hint)}>เลขผู้เสียภาษี {(detail?.contact?.id === contact?.id ? detail?.contact?.tax_id : contact?.tax_id) ?? '—'} · เครดิต {creditDays ?? '—'} วัน · วงเงินคงเหลือ {contact?.credit_remaining ? money(contact.credit_remaining, { paren: true }) : '—'}</span></label>
             <label style={css(F.label)}>วันที่เอกสาร<input readOnly={!editable} value={date} onChange={(e) => touch(setDate)(e.target.value)} style={css(F.inputNum)} /></label>
-            <label style={css(F.label)}>ครบกำหนด<input readOnly={!editable} value={due} placeholder={d?.credit_days && parseThaiDate(date) ? thaiDate(addDays(parseThaiDate(date)!, d.credit_days)) : undefined} onChange={(e) => touch(setDue)(e.target.value)} style={css(F.inputNum)} /></label>
+            <label style={css(F.label)}>ครบกำหนด<input readOnly={!editable} value={due} placeholder={creditDays && parseThaiDate(date) ? thaiDate(addDays(parseThaiDate(date)!, creditDays)) : undefined} onChange={(e) => touch(setDue)(e.target.value)} style={css(F.inputNum)} /></label>
             <label style={css(F.label2)}>ที่อยู่บนเอกสาร<input readOnly={!editable} value={address} placeholder={editable ? '[ที่อยู่ลูกค้า] — บันทึกลงเอกสาร แก้ทะเบียนภายหลังไม่กระทบ' : undefined} onChange={(e) => touch(setAddress)(e.target.value)} style={IN()} /></label>
             <label style={css(F.label)}>ราคา<select disabled={!editable} value={incl ? '1' : '0'} onChange={(e) => touch(setIncl)(e.target.value === '1')} style={IN()}><option value="0">ไม่รวม VAT</option><option value="1">รวม VAT</option></select></label>
             {mode === 'IV'
