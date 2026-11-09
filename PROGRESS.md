@@ -2,14 +2,15 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-10 (เช้า)** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 (สาย)** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
 - **โหมด:** Wei สั่งทำต่อเนื่องข้ามคืน (2026-11-09) = **อนุมัติ Technical Plan ล่วงหน้า** · เรื่องที่ต้องให้ Wei/ผู้สอบบัญชีตัดสิน → TODO ใน §4 ไม่ตัดสินเอง
-- **M0 ✅ · M1 ✅ · M2 ✅ · M3 ✅** (merge เข้า main) · กำลังทำ **M4 ขาย + รับเงิน** (branch `m4`) · Wei สั่ง 2026-11-10 "ทำต่อจนจบทุก milestone"
+- **M0 ✅ · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅** (merge เข้า main) · **M3.5** เตรียมในเครื่องครบ รอ VPS/secrets ของ Wei · **M5** backend ✅ (UI ค้าง) · **M6** backend กำลังทำ · Wei สั่ง 2026-11-10 "ทำต่อจนจบทุก milestone"
+- รีเซ็ตข้อมูล dev: `pnpm db:reset && pnpm dev:session` (เอกสารขาย/ซื้อจาก fixtures สร้างผ่าน service จริง เลขที่ตรง fixtures)
 - M3.5 (deploy VPS จริง) ต้องใช้เซิร์ฟเวอร์/secrets ของ Wei — เตรียมได้แค่ไฟล์ deploy + ทดสอบ backup/restore ในเครื่อง
 - รันเว็บ: `pnpm db:seed` → `pnpm dev` (id-api :4100 · id-web :3100 · accounting-api :4000 · accounting-web :3010 · วันนี้ = 30/11/2569)
 - ผู้ใช้ dev: wei@innovera.co.th (รหัสผ่าน/คีย์ 2FA ใน `apps/id-api/src/dev-seed.ts`) · `pnpm dev:session` → `.playwright/dev-session.json` · ภาพเทียบ `STATE=.playwright/dev-session.json node scripts/screens.mjs M? Screen=/path`
@@ -79,6 +80,10 @@
 - T7. ไม่มีแบบร่างหน้า "ยืนยันอีเมล" (Signup ขั้น 2) และหน้ากรอกชื่อองค์กร (ขั้น 3) → ใช้การ์ดของ ScreenTwoFactor · องค์กรแรกใช้ชื่อบริษัทแรก
 - T8. ScreenCompanyCreate ไม่มีแบบร่างขั้น 1 ข้อมูลบริษัท (ใช้ป้ายจาก ScreenSettings) · ข้อความ "ฐานข้อมูลแยก schema ต่อบริษัท" ขัดกับ ADR-001 (ตารางรวม + RLS) — ควรแก้ข้อความในแบบร่าง
 - T9. ScreenUsers ไม่มีแบบฟอร์มเชิญ · แท็บหลายแท็บใน ScreenUsers/ScreenOrgMembers ไม่มีเนื้อหา · ScreenProfile มีช่องชื่อ-นามสกุลแยก แต่ระบบมี display_name ช่องเดียว — รายการเต็มใน `docs/technical-plan-M3.md` + TODO(Wei) ในโค้ด
+- T10. แบบร่าง (DocList/Invoice/CreditNote/Deposit) แสดงเลขที่บนเอกสารร่าง แต่ TP M4 ให้ออกเลขตอนอนุมัติ (กันเลขใบกำกับขาดช่วง ม.86/4) → แสดง "(ร่าง)" รอยืนยัน · ScreenDeposit บอกว่าใบมัดจำไม่ลงบัญชี แต่ fixtures DP2610-0006 มี receive_journal → ลงบัญชีตาม fixtures
+- T11. ไม่มี spec ไฟล์นำเข้า RD Prep (ภ.ง.ด.3/53) ในเครื่อง → ทำรูปแบบไว้ชั่วคราว (`rdPrepTxt` ใน packages/db/src/reports.ts) ต้องตรวจกับ spec + validator ก่อนยื่นจริง (Gate M6)
+- T12. M3.5 ต้องให้ Wei: VPS ในไทย · DNS · `deploy/.env` · ที่เก็บ backup นอกเครื่อง · ผู้ให้บริการอีเมล — ขั้นตอนใน `docs/technical-plan-M3.5.md`
+- T13. ข้อขัดแย้งย่อยในแบบร่าง M4 (วันในสัปดาห์ 27/11/2569 = ศุกร์ ไม่ใช่พฤหัส · ยอดตัวอย่างไม่สอดคล้องกันบางจุด · {YY} พ.ศ./ค.ศ. · ไม่มีแบบร่างรายการ RV/BN, SO, DN) — รายการเต็มเป็น TODO(Wei) ในโค้ดของแต่ละหน้า
 - T3. golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัด IV2611-0052 ในแบบร่าง/fixtures ระบุ 4100100 → สูตร Service[IV] ใช้บัญชีรายได้ของสูตรไปก่อน
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
@@ -101,6 +106,8 @@
 - แก้แบบร่าง → เผยแพร่เวอร์ชันใหม่ → ดาวน์โหลดกลับมาเทียบ → ส่งออกทับ `design/` + อัปเดต `MANIFEST.json` + เลขเวอร์ชันใน `CLAUDE.md`, `design/README.md`, `docs/page-map.md`, ไฟล์นี้
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
+
+- **2026-11-10 สาย** · Claude Code · **M4 เสร็จ (merge เข้า main)**: migration 0007/0008/0011 · sales service (ร่าง/อนุมัติ/ลงบัญชีผ่าน engine · RV หลายใบ + 50 ทวิ + ค่าธรรมเนียม + โอนภาษีขาย ม.78/1 · CN/DN/DP · BN · void · แก้ข้อมูลอ้างอิง · แปลงเอกสาร · ลิงก์ลูกค้า) · เลขที่ระบุเองเลื่อนตัวนับ (ม.86/4) · 20 หน้าจอ + แบบพิมพ์ 8 แบบ (PDF A4) โดย subagent 3 ตัว ตรวจซ้ำแล้ว · e2e QO→IV→BN→RV→PDF ผ่าน · golden RV2611-0021 ตรง fixtures · **M3.5**: export/import รายบริษัท + restore test ผ่าน · image/compose/backup พร้อม (deploy จริงรอ Wei) · **M5 backend**: PO/AP/CNR/EXP/PV + WHT ตอนจ่าย + สายอนุมัติ + 50 ทวิ (PAYRUN ตรง fixtures) · **M6 backend** (เริ่ม): รายงานภาษี/อายุหนี้/งบ/ตรวจความถูกต้อง/ปิดงวด/ค่าเสื่อม/ธนาคาร
 
 - **2026-11-10 เช้า** · Claude Code · **M3 เสร็จ (merge เข้า main)**: `packages/auth` (Argon2id, TOTP RFC 6238, backup codes, AES-GCM, EdDSA JWT, เมทริกซ์สิทธิ์ · coverage 100% lines) · migration 0006 · id-api (signup/verify/login/2FA/lockout/refresh rotation+reuse detection/reset/companies/invites/org/profile · 25 test บน DB+Redis จริง) · accounting-api AuthGuard (JWT + membership + สิทธิ์ต่อ route + บังคับ 2FA) · id-web 9 หน้า + accounting-web 4 หน้า (ทำโดย subagent 2 ตัว ตรวจซ้ำแล้ว) · e2e Playwright signup→2FA→invite→accept ผ่าน · ASVS L2 `docs/asvs-l2-M3.md` · `pnpm verify` เขียว (id-api 25 · db 46 · auth 18 · golden 30 · ledger 23) · DB test ของ id-api แยกเป็น `innovera_test_id`
 
