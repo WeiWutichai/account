@@ -84,6 +84,8 @@ export function CreditNoteForm({ detail, refDetail, bills, vendors, whtTypes, na
     ? fromCents(toCents(ref.doc.grand_total) - refSettle.filter((s) => s.issue_date <= d.issue_date).reduce((s, x) => s + toCents(x.applied) + toCents(x.wht), 0n))
     : outstandingOf(ref);
   const after = before ? sign(before, diffTotal) : null;
+  // สูตร: ลดหนี้เกินยอดค้าง (บิลเดิมจ่ายแล้ว) → CNR[Credit] ส่วนเกินเป็นเครดิตคงเหลือกับผู้ขาย — API เลือกเองตอนผ่านรายการ (approvePurchase)
+  const rule = kind === 'DNR' ? 'DNR' : d?.status === 'posted' ? (d.rule_code ?? 'CNR') : before !== null && toCents(diffTotal) > toCents(before) ? 'CNR[Credit]' : 'CNR';
   // หัก ณ ที่จ่ายเมื่อจ่าย: ฐาน = บรรทัดที่มีประเภทเงินได้ − ใบลดหนี้ซื้อของบิลนี้ (ตรงกับ whtForBill)
   const otherCnr = (ref?.settlementsIn ?? []).filter((s) => s.doc_type === 'CNR' && !s.voided && s.id !== d?.id);
   const refWhtLines = items(ref).map((l) => ({ amount: l.amount, account: l.account_code, whtType: l.wht_type }));
@@ -136,7 +138,6 @@ export function CreditNoteForm({ detail, refDetail, bills, vendors, whtTypes, na
           <label style={css(LABEL2)}>ผู้ขาย<input list="cnr-vendors" readOnly={!editable} value={vendorText} onChange={(e) => setVendorText(e.target.value)} style={IN} /></label>
           <label style={css(LABEL)}>{kind === 'DNR' ? 'เลขที่ใบเพิ่มหนี้ของผู้ขาย' : 'เลขที่ใบลดหนี้ของผู้ขาย'}<input readOnly={!editable} value={vendorRef} onChange={(e) => setVendorRef(e.target.value)} style={IN} /></label>
           <label style={css(LABEL)}>{kind === 'DNR' ? 'วันที่ในใบเพิ่มหนี้' : 'วันที่ในใบลดหนี้'}<input readOnly={!editable} value={date} onChange={(e) => setDate(e.target.value)} style={css(P.inputNum)} /></label>
-          {/* TODO(backend): "ถ้าบิลเดิมจ่ายแล้ว ระบบตั้งเป็นเครดิตคงเหลือกับผู้ขาย" — approvePurchase ยังปฏิเสธ CNR ที่เกินยอดค้าง (ไม่มีเครดิตผู้ขาย / สูตร CNR[Credit]) */}
           <label style={css(LABEL2)}>อ้างอิงบิลซื้อเดิม<select disabled={!editable} value={ref?.doc.id ?? ''} onChange={(e) => void pickRef(e.target.value)} style={IN}>
             {!ref && <option value="">—</option>}
             {ref && !options.some((b) => b.id === ref.doc.id) && <option value={ref.doc.id}>{billText({ ...ref.doc, outstanding: outstandingOf(ref) ?? '0.00' })}</option>}
@@ -144,9 +145,9 @@ export function CreditNoteForm({ detail, refDetail, bills, vendors, whtTypes, na
             <span style={css('font-size: 13px; color: #525252')}>ยอดลดหนี้ต้องไม่เกินมูลค่าบิลเดิม · ถ้าบิลเดิมจ่ายแล้ว ระบบตั้งเป็นเครดิตคงเหลือกับผู้ขาย</span></label>
           {/* TODO(backend): เหตุผลตาม ม.82/10 ไม่มีฟิลด์ใน PurchaseDraftInput — เก็บใน reference */}
           <label style={css(LABEL)}>เหตุผล (ตาม ม.82/10)<select disabled={!editable} value={reason} onChange={(e) => setReason(e.target.value)} style={IN}>{[...new Set([...REASONS, reason])].map((r) => <option key={r} value={r}>{r}</option>)}</select></label>
-          {/* TODO(Wei): ชื่อสูตรในแบบร่าง (CNR[AP] / CNR[Credit]) ≠ รหัสสูตรในระบบ (CNR / DNR) · CNR[Credit] ยังไม่มี → ปิดไว้ */}
-          <label style={css(LABEL)}>สูตรลงบัญชี<select disabled={!editable} value={kind} onChange={() => undefined} style={IN}>
-            {kind === 'CNR' ? <><option value="CNR">CNR[AP] ลดเจ้าหนี้ + กลับภาษีซื้อ</option><option value="CNR[Credit]" disabled>CNR[Credit] ตั้งเครดิตผู้ขาย</option></> : <option value="DNR">DNR ใบเพิ่มหนี้ซื้อ (ภาษีซื้อเพิ่ม)</option>}</select></label>
+          {/* TODO(Wei): ชื่อสูตรในแบบร่าง CNR[AP] = รหัสสูตร CNR ในระบบ · สูตรเลือกตามยอดค้างของบิลเดิม (ไม่ให้เลือกเอง) */}
+          <label style={css(LABEL)}>สูตรลงบัญชี<select disabled={!editable} value={rule} onChange={() => undefined} style={IN}>
+            {kind === 'CNR' ? <><option value="CNR" disabled={rule !== 'CNR'}>CNR[AP] ลดเจ้าหนี้ + กลับภาษีซื้อ</option><option value="CNR[Credit]" disabled={rule !== 'CNR[Credit]'}>CNR[Credit] ตั้งเครดิตผู้ขาย</option></> : <option value="DNR">DNR ใบเพิ่มหนี้ซื้อ (ภาษีซื้อเพิ่ม)</option>}</select></label>
         </section>
 
         <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
@@ -180,8 +181,8 @@ export function CreditNoteForm({ detail, refDetail, bills, vendors, whtTypes, na
         {err && <Msg msg={{ kind: 'err', text: err }} />}
 
         <div style={css('display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start')}>
-          <PJournal extra="flex: 1 1 400px" note={kind === 'DNR' ? 'สูตร DNR' : 'สูตร CNR[AP]'} names={names} posted={detail?.journal.length ? detail.journal : null} suffixCr={kind === 'CNR' ? '(กลับรายการ)' : undefined}
-            source={{ rule: kind, docType: kind, amounts: totals ? { grand_total: totals.grandTotal, vat: totals.vat } : null, lines: net.map((l) => ({ amount: l.amount, account: l.account })) }}
+          <PJournal extra="flex: 1 1 400px" note={kind === 'DNR' ? 'สูตร DNR' : rule === 'CNR[Credit]' ? 'สูตร CNR[Credit]' : 'สูตร CNR[AP]'} names={names} posted={detail?.journal.length ? detail.journal : null} suffixCr={kind === 'CNR' ? '(กลับรายการ)' : undefined}
+            source={{ rule, docType: kind, amounts: totals ? { grand_total: totals.grandTotal, vat: totals.vat } : null, lines: net.map((l) => ({ amount: l.amount, account: l.account })) }}
             footer={kind === 'CNR' ? <div style={css('padding: 8px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252')}>ถ้าบิลเดิมเป็นค่าใช้จ่ายงวดที่ปิดแล้ว ระบบยังกลับที่บัญชีเดิมในงวดปัจจุบัน (ไม่เปิดงวด) · หัก ณ ที่จ่ายไม่กระทบ เพราะยังไม่ได้จ่ายเงิน</div> : null} />
           <section style={css('flex: 1 1 320px; border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px')}>
             <strong>ผลต่อเอกสารและภาษี</strong>
