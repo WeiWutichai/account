@@ -133,7 +133,7 @@ export function CompanySettingsScreen({ settings }: { settings: CompanySettings 
             <div style={css(ROW)}><span>สำรองข้อมูลอัตโนมัติ</span><span style={css('color: #525252')}>ทุกวัน 02:00 · เก็บ 14 วัน</span></div>
             {/* TODO(Wei) ScreenSettings.dc.html: ไม่มีข้อความกรณีเปิดฐานข้อมูลแยกแล้ว (db_dsn มีค่า) */}
             <div style={css(ROW)}><span>ฐานข้อมูลแยกเฉพาะบริษัท (Enterprise)</span><span style={css('color: #525252')}>{company.db_dsn ? 'เปิด' : <>ไม่ได้เปิด · <a href={href('plan')} style={css('text-decoration: none')}>อัปเกรด</a></>}</span></div>
-            {/* TODO(backend): id-api ยังไม่บังคับ 2FA ตามค่านี้ (เก็บใน defaults.enforce2fa เท่านั้น) */}
+            {/* เปิด → ทุกสมาชิก require_2fa = true (accounting-api ตรวจ) + id-api บังคับตั้ง 2FA ตอนเข้าสู่ระบบ · ปิด → ไม่คืนค่ารายคน */}
             <div style={css(ROW)}><span>บังคับ 2FA ทุกผู้ใช้</span><label style={css(CHECK)}><input type="checkbox" checked={f.enforce2fa} onChange={(e) => set('enforce2fa', e.target.checked)} /> เปิด</label></div>
           </section>
         </div>

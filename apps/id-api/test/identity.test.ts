@@ -322,6 +322,17 @@ describe('บัญชีของฉัน (ScreenProfile) · องค์ก�
     const inv = await orgs.invite(o.userId, { orgId: mine[0]!.id, companyId: c.id, email: 'invitee@x.co', role: 'accountant' });
     expect(await orgs.inviteInfo(inv.token, null)).toMatchObject({ planName: 'Business', companyName: 'บริษัท ทดสอบ จำกัด' });
   });
+  it('บริษัทตั้ง "บังคับ 2FA ทุกผู้ใช้" (company.defaults.enforce2fa) → ต้องตั้ง 2FA แม้องค์กรไม่บังคับ', async () => {
+    const o = await onboard('enforce.owner@x.co');
+    const c = await orgs.createCompany(o.userId, { nameTh: 'บริษัท บังคับ จำกัด', goLive: '2027-01-01', template: 'service', modules: {} });
+    const [org] = await orgs.myOrgs(o.userId);
+    await sql(`update public.organization set security_policy = '{"require_2fa": false, "session_hours": 12}' where id = $1`, [org!.id]);
+    expect(await id.requires2fa(o.userId)).toBe(false);
+    expect(await id.requiringCompany(o.userId)).toBeNull();
+    await db.withCompany(c.id, (tx) => tx.insertInto('acct.company_setting').values({ company_id: c.id, key: 'company.defaults', value: JSON.stringify({ enforce2fa: true }), updated_at: new Date() }).execute());
+    expect(await id.requires2fa(o.userId)).toBe(true);
+    expect(await id.requiringCompany(o.userId)).toBe('บริษัท บังคับ จำกัด');
+  });
 });
 
 it('ตั้ง 2FA ได้ด้วยคีย์ที่สร้างเอง (ตรวจ helper)', () => { expect(generateSecret()).toHaveLength(32); });

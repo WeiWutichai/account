@@ -147,7 +147,19 @@ export class Identity {
   async requires2fa(userId: string): Promise<boolean> {
     const orgs = await this.db.withPublic((tx) => tx.selectFrom('public.org_membership as m').innerJoin('public.organization as o', 'o.id', 'm.org_id')
       .select('o.security_policy').where('m.user_id', '=', userId).execute());
-    return orgs.length === 0 || orgs.some((o) => o.security_policy.require_2fa);
+    if (orgs.length === 0 || orgs.some((o) => o.security_policy.require_2fa)) return true;
+    return (await this.enforcing2faCompanies(userId)).length > 0;
+  }
+  /** บริษัท (ที่ผู้ใช้เป็นสมาชิก) ที่ตั้ง "บังคับ 2FA ทุกผู้ใช้" ในหน้าตั้งค่าบริษัท (acct.company_setting company.defaults.enforce2fa) — อ่านผ่าน withCompany (RLS) */
+  async enforcing2faCompanies(userId: string): Promise<{ id: string; name_th: string }[]> {
+    const cs = await this.db.withPublic((tx) => tx.selectFrom('public.company_membership as cm').innerJoin('public.company as c', 'c.id', 'cm.company_id')
+      .select(['c.id', 'c.name_th']).where('cm.user_id', '=', userId).where('c.status', '=', 'active').orderBy('c.created_at').execute());
+    const out = [];
+    for (const c of cs) {
+      const s = await this.db.withCompany(c.id, (tx) => tx.selectFrom('acct.company_setting').select('value').where('key', '=', 'company.defaults').executeTakeFirst());
+      if ((s?.value as { enforce2fa?: unknown } | undefined)?.enforce2fa === true) out.push(c);
+    }
+    return out;
   }
 
   // ---------- 2FA ----------
@@ -354,7 +366,7 @@ export class Identity {
   async requiringCompany(userId: string): Promise<string | null> {
     const r = await this.db.withPublic((tx) => tx.selectFrom('public.company_membership as cm').innerJoin('public.company as c', 'c.id', 'cm.company_id').innerJoin('public.organization as o', 'o.id', 'c.org_id')
       .select(['c.name_th', 'o.security_policy']).where('cm.user_id', '=', userId).where('c.status', '=', 'active').orderBy('c.created_at').execute());
-    return r.find((x) => x.security_policy.require_2fa)?.name_th ?? null;
+    return r.find((x) => x.security_policy.require_2fa)?.name_th ?? (await this.enforcing2faCompanies(userId))[0]?.name_th ?? null;
   }
 
   // ---------- บัญชีของฉัน (ScreenProfile) ----------
