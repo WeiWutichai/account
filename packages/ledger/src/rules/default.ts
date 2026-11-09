@@ -101,6 +101,15 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     ],
   },
   {
+    // ค่าใช้จ่ายที่ยังไม่จ่าย (ตั้งเจ้าหนี้) — หัก ณ ที่จ่ายตอนจ่ายจริงใน PV
+    code: 'Credit[EXP]', docType: 'EXP', name: 'ค่าใช้จ่ายตั้งหนี้', book: 'PJ', settlement: 'open',
+    lines: [
+      { side: 'Dr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },
+      { side: 'Dr', account: { default: '1170100' }, amount: 'vat' },
+      { side: 'Cr', account: AP, amount: 'grand_total' },
+    ],
+  },
+  {
     code: 'Pay[PV]', docType: 'PV', name: 'จ่ายชำระ + หัก ณ ที่จ่าย', book: 'PV',
     lines: [
       { side: 'Dr', account: AP, amount: 'settled' },
@@ -114,6 +123,14 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
       { side: 'Dr', account: AP, amount: 'grand_total' },
       { side: 'Cr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },
       { side: 'Cr', account: { default: '1170100' }, amount: 'vat' },
+    ],
+  },
+  {
+    code: 'DNR', docType: 'DNR', name: 'ใบเพิ่มหนี้ซื้อ (ภาษีซื้อเพิ่ม)', book: 'PJ',
+    lines: [
+      { side: 'Dr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },
+      { side: 'Dr', account: { default: '1170100' }, amount: 'vat' },
+      { side: 'Cr', account: AP, amount: 'grand_total' },
     ],
   },
 ];

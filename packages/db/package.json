@@ -12,7 +12,8 @@
     "./ledger": "./src/ledger-service.ts",
     "./queries": "./src/queries.ts",
     "./sales": "./src/sales.ts",
-    "./transfer": "./src/company-transfer.ts"
+    "./transfer": "./src/company-transfer.ts",
+    "./purchase": "./src/purchase.ts"
   },
   "scripts": {
     "lint": "eslint src test",

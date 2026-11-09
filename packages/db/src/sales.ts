@@ -48,7 +48,7 @@ export interface Actor { userId: string | null; role: CompanyRole }
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const today = () => new Date().toISOString().slice(0, 10);
 
-function totalsOf(input: Pick<SalesDraftInput, 'lines' | 'priceInclVat' | 'billDiscount' | 'deposits'>) {
+export function totalsOf(input: Pick<SalesDraftInput, 'lines' | 'priceInclVat' | 'billDiscount' | 'deposits'>) {
   const items = input.lines.filter((l) => (l.lineType ?? 'item') === 'item');
   for (const l of items) if (!l.qty || !l.unitPrice) throw new LedgerError(`บรรทัด "${l.description}" ต้องมีจำนวนและราคา`);
   const t = docTotals(items.map((l) => ({ qty: l.qty!, unitPrice: l.unitPrice!, discount: l.discount ?? '0.00', vat: l.vat ?? true })), { priceInclVat: input.priceInclVat ?? false, billDiscount: input.billDiscount ?? '0.00' });
@@ -63,16 +63,16 @@ function totalsOf(input: Pick<SalesDraftInput, 'lines' | 'priceInclVat' | 'billD
   return { ...t, vat: vat.toString(), grandTotal: Money.of(t.net).plus(vat).toString(), deposit: deposit.toString(), receivable: receivable.toString() };
 }
 
-async function event(tx: CompanyTx, companyId: string, documentId: string, actor: string | null, ev: string, detail: unknown = {}) {
+export async function event(tx: CompanyTx, companyId: string, documentId: string, actor: string | null, ev: string, detail: unknown = {}) {
   await tx.insertInto('acct.document_event').values({ company_id: companyId, document_id: documentId, actor, event: ev, detail: JSON.stringify(detail) }).execute();
 }
-async function docOrThrow(tx: CompanyTx, id: string) {
+export async function docOrThrow(tx: CompanyTx, id: string) {
   const d = await tx.selectFrom('acct.document').selectAll().where('id', '=', id).executeTakeFirst();
   if (!d) throw new LedgerError('ไม่พบเอกสาร');
   return d;
 }
 /** สูตรล่าสุดของบริษัท (version ที่บันทึกไว้) หรือสูตรตั้งต้น */
-async function ruleFor(tx: CompanyTx, code: string): Promise<{ def: RuleDefinition; versionId: string | null }> {
+export async function ruleFor(tx: CompanyTx, code: string): Promise<{ def: RuleDefinition; versionId: string | null }> {
   const v = await tx.selectFrom('acct.posting_rule as r').innerJoin('acct.posting_rule_version as v', (j) => j.onRef('v.rule_id', '=', 'r.id').onRef('v.company_id', '=', 'r.company_id'))
     .select(['v.id', 'v.definition']).where('r.code', '=', code).orderBy('v.version', 'desc').executeTakeFirst();
   if (v) return { def: v.definition as RuleDefinition, versionId: v.id };
@@ -80,7 +80,7 @@ async function ruleFor(tx: CompanyTx, code: string): Promise<{ def: RuleDefiniti
   if (!d) throw new LedgerError(`ไม่พบสูตร ${code}`);
   return { def: d, versionId: null };
 }
-async function prefixOf(tx: CompanyTx, docType: string): Promise<string> {
+export async function prefixOf(tx: CompanyTx, docType: string): Promise<string> {
   const s = await tx.selectFrom('acct.doc_setting').select('prefix').where('doc_type', '=', docType).executeTakeFirst();
   return s?.prefix ?? docType;
 }
@@ -152,12 +152,12 @@ export async function rejectDocument(db: Db, companyId: string, actor: Actor, id
 // ---------- อนุมัติ / ลงบัญชี ----------
 
 /** ยอดค้างของใบแจ้งหนี้/เพิ่มหนี้ (หลังรับชำระ ลดหนี้ มัดจำ) */
-async function outstandingTx(tx: CompanyTx, docId: string) {
+export async function outstandingTx(tx: CompanyTx, docId: string) {
   const d = await docOrThrow(tx, docId);
   const s = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
     .select(['s.applied', 's.wht', 's.vat_due', 'p.doc_type']).where('s.document_id', '=', docId).where('s.voided', '=', false).execute();
-  const paid = s.filter((x) => x.doc_type === 'RV');
-  const credits = s.filter((x) => x.doc_type === 'CN');
+  const paid = s.filter((x) => x.doc_type === 'RV' || x.doc_type === 'PV');
+  const credits = s.filter((x) => x.doc_type === 'CN' || x.doc_type === 'CNR');
   const settled = Money.sum(paid.map((x) => Money.parse(x.applied).plus(Money.parse(x.wht))));
   const credited = Money.sum(credits.map((x) => Money.parse(x.applied)));
   const vatDue = Money.sum(paid.map((x) => Money.parse(x.vat_due)));
