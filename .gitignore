@@ -15,3 +15,6 @@ spike/tenancy/src/generated/
 
 # Playwright session ของผู้ใช้ dev (scripts/dev-session.ts)
 .playwright/
+
+# ไฟล์ cache ของ tsc
+*.tsbuildinfo
