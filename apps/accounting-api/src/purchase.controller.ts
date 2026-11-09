@@ -1,7 +1,7 @@
 // API ฝั่งซื้อ + จ่ายเงิน (M5 · docs/technical-plan-M5.md) — logic อยู่ใน @innovera/db/purchase
 import { Body, Controller, Get, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Db } from '@innovera/db';
-import { approvePayment, approvePurchase, createPayment, createPaymentRun, payables, savePurchaseDraft, setCompanySetting, whtCertificates, type PaymentInput, type PurchaseDraftInput } from '@innovera/db/purchase';
+import { approvePayment, approvePurchase, createPayment, createPaymentRun, payables, pettyCashSummary, reimbursePettyCash, savePettyCash, savePurchaseDraft, setCompanySetting, whtCertificates, type PaymentInput, type PettyCashInput, type PurchaseDraftInput } from '@innovera/db/purchase';
 import { WHT_TYPES } from '@innovera/tax-th';
 import type { Request } from 'express';
 import { companyOf, Need, roleOf, userOf } from './context.js';
@@ -28,6 +28,13 @@ export class PurchaseController {
   run(@Req() req: Request, @Body() b: { date: string; payFrom: string; billIds: string[]; batchRef: string; method?: PaymentInput['method'] }) { return createPaymentRun(this.db, companyOf(req), actor(req), b); }
   @Need('approve_pay', 'post') @Post('payments/:id/approve')
   approvePay(@Req() req: Request, @Param('id') id: string) { return approvePayment(this.db, companyOf(req), { ...actor(req), approvalLimit: userOf(req).approvalLimit }, id); }
+
+  @Need('finance', 'read') @Get('petty-cash')
+  petty(@Req() req: Request) { return pettyCashSummary(this.db, companyOf(req)); }
+  @Need('finance', 'write') @Post('petty-cash')
+  pettyAdd(@Req() req: Request, @Body() b: PettyCashInput) { return savePettyCash(this.db, companyOf(req), actor(req), b); }
+  @Need('approve_pay', 'post') @Post('petty-cash/reimburse')
+  reimburse(@Req() req: Request, @Body() b: { date: string; payFrom: string }) { return reimbursePettyCash(this.db, companyOf(req), actor(req), b); }
 
   @Need('reports', 'read') @Get('wht-certificates')
   certs(@Req() req: Request, @Query() q: { from?: string; to?: string; pnd?: '3' | '53' }) { return whtCertificates(this.db, companyOf(req), q); }

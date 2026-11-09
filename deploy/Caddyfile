@@ -16,3 +16,8 @@ id.{$DOMAIN} {
 	import common
 	reverse_proxy id-web:3000
 }
+admin.{$DOMAIN} {
+	import common
+	# TODO(Wei): จำกัด IP ของทีม Innovera / VPN ก่อนเปิด Console บน production
+	reverse_proxy console-web:3000
+}

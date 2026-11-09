@@ -2,9 +2,11 @@
 // กติกา (CLAUDE.md): หัก ณ ที่จ่ายรับรู้ตอนจ่ายเงินจริง · ออก 50 ทวิ และเข้า ภ.ง.ด.3/53 เดือนที่จ่าย · ฟรีแลนซ์ = ค่าตั้งของบริษัท "รอยืนยัน"
 import { Money, post, type MoneyString } from '@innovera/ledger';
 import { bahtText, FREELANCE_DEFAULT, pndOf, whtOnPayment, whtTypeFor, type FreelanceWhtConfig } from '@innovera/tax-th';
+import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Actor } from './sales.ts';
+import { emitTx } from './hub.ts';
 
 export const PURCHASE_TYPES = ['PR', 'PO', 'AP', 'CNR', 'DNR', 'EXP'] as const;
 export type PurchaseType = (typeof PURCHASE_TYPES)[number];
@@ -118,7 +120,7 @@ export async function whtForBill(tx: CompanyTx, billId: string, settle: Money) {
 
 // ---------- อนุมัติ / ลงบัญชีเอกสารซื้อ ----------
 
-export async function approvePurchase(db: Db, companyId: string, actor: Actor, id: string, opts: { docNo?: string } = {}) {
+export async function approvePurchase(db: Db, companyId: string, actor: Actor, id: string, opts: { docNo?: string; certNos?: string[] } = {}) {
   return db.withCompany(companyId, async (tx) => {
     const d = await docOrThrow(tx, id);
     if (d.status !== 'draft' && d.status !== 'pending_approval') throw new LedgerError(`เอกสารสถานะ ${d.status} อนุมัติไม่ได้`);
@@ -158,8 +160,9 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: def.book, prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, wht: wht.toString(), approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
     if (d.doc_type === 'CNR') await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: d.grand_total, wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
-    const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, certs);
+    const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, certs, opts.certNos);
     await event(tx, companyId, id, actor.userId, 'posted', { docNo, journalNo: j.journalNo, certificates: issued });
+    await emitTx(tx, companyId, 'document.posted', { id, doc_type: d.doc_type, doc_no: docNo, external_source: d.external_source, external_ref: d.external_ref, grand_total: d.grand_total, journal_no: j.journalNo });
     return { docNo, journalNo: j.journalNo, certificates: issued };
   });
 }
@@ -204,6 +207,7 @@ export async function createPayment(db: Db, companyId: string, actor: Actor, inp
     for (const b of input.bills) {
       const o = await outstandingTx(tx, b.documentId);
       if (o.doc.status !== 'posted' || !['AP', 'EXP', 'DNR'].includes(o.doc.doc_type)) throw new LedgerError('จ่ายได้เฉพาะบิลซื้อ/ค่าใช้จ่ายที่ลงบัญชีแล้ว');
+      if (o.doc.pay_now) throw new LedgerError(`${o.doc.doc_no} จ่ายไปแล้วตอนบันทึก (จ่ายทันที) — จ่ายซ้ำไม่ได้`);
       if (o.doc.contact_id !== input.contactId) throw new LedgerError(`${o.doc.doc_no} ไม่ใช่ของผู้ขายรายนี้`);
       const settle = b.settle ? Money.of(b.settle) : o.outstanding;
       if (settle.gt(o.outstanding) || !settle.gt(Money.zero())) throw new LedgerError(`${o.doc.doc_no}: ยอดจ่ายต้องไม่เกินยอดค้าง ${o.outstanding.toString()}`);
@@ -262,6 +266,8 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), approval_level: 1, updated_at: new Date() }).where('id', '=', id).execute();
     const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, [...certs.values()], opts.certNos);
     await event(tx, companyId, id, actor.userId, 'approved', { docNo, journalNo: j.journalNo, certificates: issued.map((c) => c.certNo) });
+    await emitTx(tx, companyId, 'payment.paid', { id, doc_no: docNo, contact_id: d.contact_id, paid: d.grand_total, wht: d.wht, certificates: issued.map((c) => c.certNo),
+      bills: settlements.map((x) => ({ document_id: x.document_id, applied: x.applied, wht: x.wht })) });
     return { docNo, journalNo: j.journalNo, certificates: issued, needsDirector: Money.parse(d.grand_total).gt(Money.of(PAY_APPROVAL.l2Limit)) };
   });
 }
@@ -288,7 +294,7 @@ export async function payables(db: Db, companyId: string, contactId?: string) {
   return db.withCompany(companyId, async (tx) => {
     let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
       .select(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.vendor_ref', 'c.id as contact_id', 'c.code as contact_code', 'c.name as contact_name'])
-      .where('d.doc_type', 'in', ['AP', 'EXP', 'DNR']).where('d.status', '=', 'posted');
+      .where('d.doc_type', 'in', ['AP', 'EXP', 'DNR']).where('d.status', '=', 'posted').where('d.pay_now', '=', false); // จ่ายทันทีไม่มียอดค้าง
     if (contactId) q = q.where('d.contact_id', '=', contactId);
     const out = [];
     for (const r of await q.execute()) {
@@ -317,4 +323,82 @@ export async function whtCertificates(db: Db, companyId: string, f: { from?: str
 export async function setCompanySetting(db: Db, companyId: string, key: string, value: unknown) {
   await db.withCompany(companyId, (tx) => tx.insertInto('acct.company_setting').values({ company_id: companyId, key, value: JSON.stringify(value), updated_at: new Date() })
     .onConflict((oc) => oc.columns(['company_id', 'key']).doUpdateSet({ value: JSON.stringify(value), updated_at: new Date() })).execute());
+}
+
+// ---------- เงินสดย่อยแบบ imprest (ScreenPettyCash) ----------
+// รายการย่อย (PC) ไม่ลง GL จนกว่าจะเบิกชดเชย → 1 journal: Dr ค่าใช้จ่ายตามบัญชี · Dr ภาษีซื้อ (เฉพาะใบกำกับเต็มรูป) · Cr ธนาคาร · Cr 2150300 (ถ้ามีหัก ณ ที่จ่าย)
+// TODO(Wei): fixtures petty_cash.reimburse_journal ไม่มีบรรทัดภาษีหักของ PC2611-005 (45.00 · ภ.ง.ด.3) — ระบบลงตามกติกา "หักตอนจ่ายจริง"
+export const PETTY_CASH_ACCOUNT = '1000200';
+export interface PettyCashInput {
+  date: string; description: string; accountCode: string; amount: MoneyString;   // amount = ยอดตามหลักฐาน (รวม VAT)
+  vatMode: 'none' | 'abbreviated_no_claim' | 'full_invoice'; inputVat?: MoneyString | null;
+  whtType?: string | null; contactId?: string | null;                          // ผู้รับเงินที่ถูกหัก ณ ที่จ่าย (ต้องมีเพื่อออก 50 ทวิ)
+  evidence: string; paidBy: string; docNo?: string;
+}
+export async function savePettyCash(db: Db, companyId: string, actor: Actor, input: PettyCashInput) {
+  if (input.whtType && !input.contactId) throw new LedgerError('รายการที่หัก ณ ที่จ่ายต้องระบุผู้รับเงิน (เพื่อออก 50 ทวิ)');
+  const vat = input.vatMode === 'full_invoice' ? Money.of(input.inputVat ?? '0.00') : Money.zero();
+  return db.withCompany(companyId, async (tx) => {
+    const docNo = input.docNo ?? (await nextNumber(tx, companyId, 'PC', input.date, 3));
+    if (input.docNo) await reserveNumber(tx, companyId, input.docNo);
+    const d = await tx.insertInto('acct.document').values({
+      company_id: companyId, doc_type: 'PC', doc_no: docNo, status: 'approved', issue_date: input.date, due_date: null, contact_id: input.contactId ?? null, price_incl_vat: true,
+      subtotal: Money.of(input.amount).minus(vat).toString(), discount: '0.00', vat: vat.toString(), wht: '0.00', grand_total: input.amount, reference: input.evidence, notes: input.paidBy,
+      tax_mode: null, rule_code: null, created_by: actor.userId, approved_by: actor.userId, approved_at: new Date(), external_source: null, external_ref: null, branch_code: '00000', fee: '0.00', bill_discount: '0.00',
+      receive_account: PETTY_CASH_ACCOUNT, vendor_ref: input.vatMode,
+    } as never).returning('id').executeTakeFirstOrThrow();
+    await tx.insertInto('acct.document_line').values({ company_id: companyId, document_id: d.id, line_no: 1, line_type: 'item', product_code: null, description: input.description, qty: '1',
+      unit_price: Money.of(input.amount).minus(vat).toString(), discount: '0.00', amount: Money.of(input.amount).minus(vat).toString(), vat_rate: vat.isZero() ? null : '0.0700', account_code: input.accountCode, wht_type: input.whtType ?? null }).execute();
+    return { id: d.id, docNo };
+  });
+}
+export async function pettyCashSummary(db: Db, companyId: string) {
+  return db.withCompany(companyId, async (tx) => {
+    const gl = await tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
+      .select(sql<string>`coalesce(sum(l.debit) - sum(l.credit), 0)`.as('b')).where('l.account_code', '=', PETTY_CASH_ACCOUNT).where('j.status', '<>', 'draft').executeTakeFirstOrThrow();
+    const items = await tx.selectFrom('acct.document as d').innerJoin('acct.document_line as l', (j) => j.onRef('l.document_id', '=', 'd.id').onRef('l.company_id', '=', 'd.company_id'))
+      .leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+      .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.grand_total', 'd.vat', 'd.reference as evidence', 'd.notes as paid_by', 'd.vendor_ref as vat_mode', 'd.batch_ref', 'l.description', 'l.account_code', 'l.wht_type', 'c.name as payee'])
+      .where('d.doc_type', '=', 'PC').where('d.status', '=', 'approved').orderBy('d.issue_date').orderBy('d.doc_no').execute();
+    const pending = items.filter((i) => !i.batch_ref);
+    const spent = Money.sum(pending.map((i) => Money.parse(i.grand_total)));
+    const imprest = Money.parse(gl.b);
+    return { account: PETTY_CASH_ACCOUNT, imprest: imprest.toString(), spentPending: spent.toString(), onHand: imprest.minus(spent).toString(), inputVatPending: Money.sum(pending.map((i) => Money.parse(i.vat))).toString(), items };
+  });
+}
+/** เบิกชดเชย: รายการที่ยังไม่เบิกทั้งหมด → 1 journal + 50 ทวิ ของรายการที่หัก ณ ที่จ่าย · กองเงินสดย่อย (1000200) คงที่ */
+export async function reimbursePettyCash(db: Db, companyId: string, actor: Actor, p: { date: string; payFrom: string; batchRef?: string }) {
+  return db.withCompany(companyId, async (tx) => {
+    const items = await tx.selectFrom('acct.document as d').innerJoin('acct.document_line as l', (j) => j.onRef('l.document_id', '=', 'd.id').onRef('l.company_id', '=', 'd.company_id'))
+      .select(['d.id', 'd.doc_no', 'd.contact_id', 'd.grand_total', 'd.vat', 'l.amount', 'l.account_code', 'l.wht_type']).where('d.doc_type', '=', 'PC').where('d.status', '=', 'approved').where('d.batch_ref', 'is', null).execute();
+    if (!items.length) throw new LedgerError('ไม่มีรายการรอเบิกชดเชย');
+    const fl = await freelanceConfig(tx);
+    const byAcc = new Map<string, Money>();
+    let vat = Money.zero();
+    let wht = Money.zero();
+    const certs: { item: (typeof items)[number]; w: Awaited<ReturnType<typeof whtForBill>>[number] }[] = [];
+    for (const i of items) {
+      byAcc.set(i.account_code!, (byAcc.get(i.account_code!) ?? Money.zero()).plus(Money.parse(i.amount)));
+      vat = vat.plus(Money.parse(i.vat));
+      if (i.wht_type) {
+        const t = whtTypeFor(i.wht_type, fl);
+        const w = whtOnPayment(i.amount, t);
+        wht = wht.plus(Money.of(w.amount));
+        certs.push({ item: i, w: { type: i.wht_type, label: t.label, section: t.section ?? null, base: i.amount, rate: t.rate, amount: w.amount, pendingAuditor: w.pendingAuditor } });
+      }
+    }
+    const total = Money.sum(items.map((i) => Money.parse(i.grand_total)));
+    const lines = [
+      ...[...byAcc].map(([account, amount]) => ({ side: 'Dr' as const, account, amount })),
+      ...(vat.isZero() ? [] : [{ side: 'Dr' as const, account: '1170100', amount: vat }]),
+      { side: 'Cr' as const, account: p.payFrom, amount: total.minus(wht) },
+      ...(wht.isZero() ? [] : [{ side: 'Cr' as const, account: '2150300', amount: wht }]),
+    ];
+    const batch = p.batchRef ?? `PCR-${p.date}`;
+    const j = await postJournalTx(tx, companyId, { date: p.date, lines, role: actor.role, book: 'PV', description: `เบิกชดเชยเงินสดย่อย ${batch}` });
+    await tx.updateTable('acct.document').set({ batch_ref: batch, journal_id: j.id }).where('id', 'in', items.map((i) => i.id)).execute();
+    const issued = [];
+    for (const c of certs) issued.push(...(await issueCertificates(tx, companyId, c.item.id, c.item.contact_id!, p.date, [c.w])));
+    return { journalNo: j.journalNo, total: total.toString(), vat: vat.toString(), wht: wht.toString(), paid: total.minus(wht).toString(), items: items.length, certificates: issued };
+  });
 }

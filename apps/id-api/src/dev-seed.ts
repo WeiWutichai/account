@@ -21,8 +21,21 @@ await db.withPublic(async (tx) => {
   await tx.insertInto('public.org_membership').values({ org_id: ORG_ID, user_id: u.id, org_role: 'owner', expires_at: null }).onConflict((oc) => oc.columns(['org_id', 'user_id']).doNothing()).execute();
   await tx.insertInto('public.company_membership').values({ company_id: COMPANY_ID, user_id: u.id, company_role: 'owner', approval_limit: null, permissions: null, expires_at: null, last_used_at: null })
     .onConflict((oc) => oc.columns(['company_id', 'user_id']).doNothing()).execute();
+  // ทีม Innovera (Console M8) — DEV ONLY: ผู้ใช้ dev เป็น admin ของ Console ด้วย
+  await tx.insertInto('public.innovera_staff').values({ user_id: u.id, role: 'admin' }).onConflict((oc) => oc.column('user_id').doNothing()).execute();
   await tx.insertInto('public.subscription').values({ org_id: ORG_ID, plan_code: 'business', status: 'trialing', renews_at: '2027-03-01', company_limit: 3, seat_limit: 10, trial_ends_at: null })
     .onConflict((oc) => oc.column('org_id').doNothing()).execute();
 });
-console.log(`ผู้ใช้ dev: ${DEV_USER.email} (Owner ของบริษัท dev)`);
+// ผู้ใช้ dev คนที่สอง (ผู้จัดการบัญชี) — ใช้อนุมัติใบสำคัญจ่ายที่ผู้ใช้แรกสร้าง (แบ่งหน้าที่) · รหัสผ่าน/คีย์ 2FA เดียวกับผู้ใช้แรก
+export const DEV_APPROVER = { email: 'acct.mgr@innovera.co.th', name: '[ผู้จัดการบัญชี]' };
+await db.withPublic(async (tx) => {
+  const u = await tx.insertInto('public.app_user').values({
+    email: DEV_APPROVER.email, display_name: DEV_APPROVER.name, password_hash: pw, mfa_enabled: true, email_verified_at: new Date(), terms_accepted_at: new Date(),
+    totp_secret_enc: encrypt(DEV_USER.totp, process.env.ID_DATA_KEY ?? DEV_DATA_KEY), totp_last_step: null,
+  }).onConflict((oc) => oc.column('email').doUpdateSet({ password_hash: pw })).returning('id').executeTakeFirstOrThrow();
+  await tx.insertInto('public.org_membership').values({ org_id: ORG_ID, user_id: u.id, org_role: 'admin', expires_at: null }).onConflict((oc) => oc.columns(['org_id', 'user_id']).doNothing()).execute();
+  await tx.insertInto('public.company_membership').values({ company_id: COMPANY_ID, user_id: u.id, company_role: 'accounting_manager', approval_limit: '1000000.00', permissions: null, expires_at: null, last_used_at: null })
+    .onConflict((oc) => oc.columns(['company_id', 'user_id']).doNothing()).execute();
+});
+console.log(`ผู้ใช้ dev: ${DEV_USER.email} (Owner) · ${DEV_APPROVER.email} (ผู้จัดการบัญชี · วงเงินอนุมัติ 1,000,000)`);
 await db.close();

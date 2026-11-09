@@ -8,7 +8,9 @@ const OUT = fileURLToPath(new URL('../../../.playwright/', import.meta.url));
 
 const ID_API = process.env.ID_API_URL ?? 'http://localhost:4100';
 const COMPANY = process.env.DEV_COMPANY_ID ?? '00000000-0000-4000-8000-000000000001';
-const USER = { email: 'wei@innovera.co.th', password: 'innovera-dev-password-2569', totp: 'JBSWY3DPEHPK3PXP' }; // ตรงกับ apps/id-api/src/dev-seed.ts
+// DEV_USER=approver → ผู้จัดการบัญชี (ไฟล์ .playwright/dev-session-approver.json) · ตรงกับ apps/id-api/src/dev-seed.ts
+const APPROVER = process.env.DEV_USER === 'approver';
+const USER = { email: APPROVER ? 'acct.mgr@innovera.co.th' : 'wei@innovera.co.th', password: 'innovera-dev-password-2569', totp: 'JBSWY3DPEHPK3PXP' };
 
 const jar = new Map<string, string>();
 const keep = (res: Response) => { for (const c of res.headers.getSetCookie()) { const [kv] = c.split(';'); const i = kv!.indexOf('='); jar.set(kv!.slice(0, i), kv!.slice(i + 1)); } };
@@ -29,5 +31,5 @@ const expires = Math.floor(Date.now() / 1000) + 12 * 3600;
 const cookies = [...jar].filter(([k]) => k === 'inn_at' || k === 'inn_rt').map(([name, value]) => ({ name, value: decodeURIComponent(value), domain: 'localhost', path: '/', expires, httpOnly: true, secure: false, sameSite: 'Lax' as const }));
 cookies.push({ name: 'inn_co', value: COMPANY, domain: 'localhost', path: '/', expires, httpOnly: true, secure: false, sameSite: 'Lax' });
 mkdirSync(OUT, { recursive: true });
-writeFileSync(`${OUT}dev-session.json`, JSON.stringify({ cookies, origins: [] }, null, 2));
-console.log(`✓ session ของ ${USER.email} → .playwright/dev-session.json (${cookies.length} cookies)`);
+writeFileSync(`${OUT}${APPROVER ? 'dev-session-approver.json' : 'dev-session.json'}`, JSON.stringify({ cookies, origins: [] }, null, 2));
+console.log(`✓ session ของ ${USER.email} → .playwright/${APPROVER ? 'dev-session-approver.json' : 'dev-session.json'} (${cookies.length} cookies)`);

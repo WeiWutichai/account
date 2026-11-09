@@ -154,7 +154,7 @@ export async function getJournal(db: Db, companyId: string, by: { id?: string; n
 }
 
 export async function listContacts(db: Db, companyId: string) {
-  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code', 'name', 'kind']).orderBy('code').execute());
+  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code', 'name', 'kind', 'tax_id', 'branch_code', 'address', 'contact_person', 'phone', 'email', 'credit_days', 'credit_limit', 'external_source', 'external_ref']).orderBy('code').execute());
 }
 
 // ---------- สูตรลงบัญชี (ScreenFormula) · สูตรของบริษัท = version ล่าสุด ทับสูตรตั้งต้น ----------

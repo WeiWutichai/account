@@ -1,0 +1,32 @@
+// F6 กระทบยอดธนาคาร — design/project/ScreenBankRecon.dc.html
+import { api } from '../../lib/api';
+import { currentPeriod, Shell } from '../../lib/shell';
+import { BankReconScreen, type Recon } from './_screen';
+
+interface Account { code: string; name: string }
+const pad = (n: number) => String(n).padStart(2, '0');
+
+export default async function BankReconPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const { year, period } = await currentPeriod();
+  const y = year - 543;
+  const from = `${y}-${pad(period)}-01`;
+  const asOf = `${y}-${pad(period)}-${pad(new Date(Date.UTC(y, period, 0)).getUTCDate())}`;
+  const accounts = await api<Account[]>(`/v1/accounts?year=${year}&period=${period}`);
+  // บัญชีเงินฝากธนาคาร (11001xx–11002xx ในผังบริการ) · ชื่อแสดงตัดคำว่า "เงินฝากธนาคาร" ตามแบบร่าง
+  const banks = accounts.filter((a) => /^1100\d{3}$/u.test(a.code) && a.name.includes('ธนาคาร')).map((a) => ({ code: a.code, label: `${a.code} ${a.name.replace(/^เงินฝากธนาคาร\s*/u, '')}` }));
+  const account = banks.find((b) => b.code === sp.account)?.code ?? banks[0]?.code ?? '1100100';
+  const [rec, ledger] = await Promise.all([
+    api<Recon>(`/v1/bank/${account}/reconciliation?asOf=${asOf}`),
+    api<{ rows: { date: string; journal_no: string; description: string | null; debit: string; credit: string }[] }>(`/v1/ledger?account=${account}&from=${from}&to=${asOf}`),
+  ]);
+  // รายการในสมุดเดือนนี้ที่จับคู่แล้ว = ทุกรายการในแยกประเภทเดือนนี้ − รายการที่ยังไม่จับคู่
+  // TODO(backend): GET bank/:account/reconciliation ควรคืนรายการ statement ที่จับคู่แล้ว (พร้อม journal) — ตอนนี้คืนแค่จำนวน
+  const open = new Set(rec.unmatchedGl.map((g) => g.journal_no));
+  const matchedGl = ledger.rows.filter((r) => !open.has(r.journal_no));
+  return (
+    <Shell active="bank">
+      <BankReconScreen banks={banks} account={account} year={year} period={period} from={from} asOf={asOf} rec={rec} matchedGl={matchedGl} />
+    </Shell>
+  );
+}

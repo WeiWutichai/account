@@ -2,7 +2,7 @@
 export const ID_API = process.env.ID_API_URL ?? 'http://localhost:4100';
 export const ACCOUNTING_WEB = process.env.ACCOUNTING_WEB_URL ?? 'http://localhost:3010';
 /** ปลายทางหลังเข้าสู่ระบบที่อนุญาต (กัน open redirect) */
-const ALLOWED = (process.env.ID_REDIRECT_ORIGINS ?? 'http://localhost:3010,http://localhost:3100').split(',');
+const ALLOWED = (process.env.ID_REDIRECT_ORIGINS ?? 'http://localhost:3010,http://localhost:3100,http://localhost:3200').split(',');
 export function safeNext(next: string | null | undefined, fallback = `${ACCOUNTING_WEB}/companies`): string {
   if (!next) return fallback;
   try {

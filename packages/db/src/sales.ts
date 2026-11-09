@@ -6,6 +6,7 @@ import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
+import { emitTx } from './hub.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -203,6 +204,7 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
     }
     if (deposits.length) await tx.updateTable('acct.settlement').set({ voided: false }).where('document_id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'posted', { docNo, journalNo: j.journalNo });
+    await emitTx(tx, companyId, 'document.posted', { id, doc_type: d.doc_type, doc_no: docNo, external_source: d.external_source, external_ref: d.external_ref, grand_total: d.grand_total, journal_no: j.journalNo });
     return { docNo, journalNo: j.journalNo };
   });
 }
@@ -267,6 +269,8 @@ export async function receivePayment(db: Db, companyId: string, actor: Actor, in
         cheque_date: input.cheque.chequeDate, amount: totals.cashIn, document_id: rv.id, contact_id: input.contactId, deposited_on: null, cleared_on: null }).execute();
     }
     await event(tx, companyId, rv.id, actor.userId, 'posted', { docNo, journalNo: j.journalNo });
+    await emitTx(tx, companyId, 'payment.received', { id: rv.id, doc_no: docNo, contact_id: input.contactId, cash_in: totals.cashIn, wht: totals.wht,
+      applications: apps.map(({ o, a }) => ({ document_id: a.documentId, doc_no: o.doc.doc_no, external_ref: o.doc.external_ref, applied: a.applied, wht: a.wht })) });
     return { id: rv.id, docNo, journalNo: j.journalNo, totals, warnings, amountText: bahtText(totals.settled as MoneyString) };
   });
 }
@@ -311,12 +315,15 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
       reversal = r.journalNo;
     }
     await tx.updateTable('acct.settlement').set({ voided: true }).where('payment_id', '=', id).execute();
+    // ยกเลิกการจ่าย = ยกเลิก 50 ทวิ ที่ออกจากการจ่ายนั้น (ไม่เข้า ภ.ง.ด.)
+    await tx.updateTable('acct.wht_certificate').set({ voided: true }).where('payment_id', '=', id).execute();
     await tx.updateTable('acct.cheque').set({ status: 'cancelled' }).where('document_id', '=', id).execute();
     // ใบที่ยกเลิกถูกถอดออกจากใบวางบิล (ScreenDocVoid "จะถอดออกให้")
     await tx.deleteFrom('acct.billing_item').where('document_id', '=', id).execute();
     await tx.updateTable('acct.document').set({ status: 'voided', voided_at: new Date(), void_reason: p.reason, updated_at: new Date(),
       ...(reversal ? { void_journal_id: (await tx.selectFrom('acct.journal').select('id').where('journal_no', '=', reversal).executeTakeFirstOrThrow()).id } : {}) }).where('id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'voided', { reason: p.reason, reversal });
+    await emitTx(tx, companyId, 'document.voided', { id, doc_type: d.doc_type, doc_no: d.doc_no, external_source: d.external_source, external_ref: d.external_ref, reason: p.reason, reversal });
     return { reversal };
   });
 }
@@ -381,7 +388,7 @@ export interface DocFilter { docType?: string | string[]; status?: string; from?
 export async function listDocuments(db: Db, companyId: string, f: DocFilter = {}) {
   return db.withCompany(companyId, async (tx) => {
     let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
-      .select(['d.id', 'd.doc_type', 'd.doc_no', 'd.status', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.subtotal', 'd.vat', 'd.wht', 'd.tax_mode', 'd.created_at', 'd.ref_document_id', 'd.sent_at',
+      .select(['d.id', 'd.doc_type', 'd.doc_no', 'd.status', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.subtotal', 'd.vat', 'd.wht', 'd.tax_mode', 'd.created_at', 'd.ref_document_id', 'd.sent_at', 'd.vendor_ref', 'd.external_source', 'd.external_ref', 'd.pay_now', 'd.batch_ref',
         'c.id as contact_id', 'c.code as contact_code', 'c.name as contact_name',
         sql<string>`coalesce((select sum(s.applied + s.wht) from acct.settlement s where s.document_id = d.id and s.company_id = d.company_id and not s.voided), 0)`.as('settled')])
       .orderBy('d.issue_date', 'desc').orderBy('d.doc_no', 'desc').limit(f.limit ?? 500);
@@ -392,7 +399,9 @@ export async function listDocuments(db: Db, companyId: string, f: DocFilter = {}
     if (f.contactId) q = q.where('d.contact_id', '=', f.contactId);
     if (f.q) q = q.where((eb) => eb.or([eb('d.doc_no', 'ilike', `%${f.q}%`), eb('c.name', 'ilike', `%${f.q}%`), eb('c.code', 'ilike', `%${f.q}%`)]));
     const rows = await q.execute();
-    return rows.map((r) => ({ ...r, outstanding: ['IV', 'DN'].includes(r.doc_type) && r.status === 'posted' ? Money.parse(r.grand_total).minus(Money.parse(r.settled)).toString() : null }));
+    // ยอดค้าง: ขาย IV/DN · ซื้อ AP/EXP(ไม่ได้จ่ายทันที)/DNR
+    const open = (r: (typeof rows)[number]) => r.status === 'posted' && (['IV', 'DN', 'AP', 'DNR'].includes(r.doc_type) || (r.doc_type === 'EXP' && !r.pay_now));
+    return rows.map((r) => ({ ...r, outstanding: open(r) ? Money.parse(r.grand_total).minus(Money.parse(r.settled)).toString() : null }));
   });
 }
 
