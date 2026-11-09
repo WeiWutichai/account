@@ -91,7 +91,8 @@ export function contactValues(c: ContactInput) {
   if (c.creditDays !== undefined && c.creditDays !== null && (!Number.isInteger(c.creditDays) || c.creditDays < 0)) throw new LedgerError('เครดิต (วัน) ต้องเป็นจำนวนเต็มไม่ติดลบ');
   if (c.creditLimit && !/^\d+(\.\d{1,2})?$/u.test(c.creditLimit)) throw new LedgerError('วงเงินเครดิตไม่ถูกต้อง');
   if (c.priceLevel !== undefined && (c.priceLevel < 1 || c.priceLevel > 5)) throw new LedgerError('ระดับราคาต้องเป็น 1–5');
-  if (c.defaultWht && !WHT_TYPES[c.defaultWht]) throw new LedgerError(`ไม่รู้จักประเภทเงินได้ ${c.defaultWht}`);
+  // หลายประเภทคั่นด้วย "+" (เช่น ขนส่ง + ค่าบริการ · ScreenPurchaseBill "WHT ตั้งต้น 1% ค่าขนส่ง / 3% ค่าติดตั้ง") เหมือน wht_received
+  if (c.defaultWht && c.defaultWht.split('+').some((k) => !WHT_TYPES[k.trim()])) throw new LedgerError(`ไม่รู้จักประเภทเงินได้ ${c.defaultWht}`);
   return {
     code: c.code.trim(), name: c.name.trim(), kind: kindOf(c.roles), roles: c.roles, entity_type: c.entityType ?? 'juristic',
     tax_id: c.taxId || null, branch_code: c.branchCode || null, address: c.address || null, ship_address: c.shipAddress || null, contact_person: c.contactPerson || null,

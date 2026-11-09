@@ -59,6 +59,9 @@ describe('GET /v1/contacts (listContacts) — ข้อมูลที่ฟอ�
     expect((await contactDetail(db, A, id, '2026-11-30'))!.contact.default_wht).toBe('transport_domestic');
     await saveContact(db, A, null, { ...base, defaultWht: 'service' }, id);
     expect((await contactDetail(db, A, id, '2026-11-30'))!.contact.default_wht).toBe('service');
+    // หลายประเภทคั่นด้วย "+" (ScreenPurchaseBill "WHT ตั้งต้น 1% ค่าขนส่ง / 3% ค่าติดตั้ง")
+    await saveContact(db, A, null, { ...base, defaultWht: 'transport_domestic+hire_of_work' }, id);
+    await expect(saveContact(db, A, null, { ...base, defaultWht: 'transport_domestic+x' }, id)).rejects.toThrow(/ไม่รู้จักประเภทเงินได้/u);
     await saveContact(db, A, null, { ...base, defaultWht: 'transport_domestic' }, id);
   });
 });

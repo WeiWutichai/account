@@ -72,6 +72,9 @@ export async function seedSalesDocuments(db: Db, companyId: string, docs: Record
     const quote = { salesperson: d.salesperson ?? null, projectCode: d.dimension?.project ?? null, paymentTerms: d.payment_terms ?? null, priceLevel: d.price_level ?? null };
     const id = await saveSalesDraft(db, companyId, actor, { docType, contactId, dueDate: d.due ? ce(d.due) : (d['valid_until'] ? ce(String(d['valid_until'])) : null), ...(d.rule ? { ruleCode: d.rule } : {}), ...linesOf(no, d), ...quote, ...extra, issueDate: date } as SalesDraftInput);
     ids[no] = id;
+    // เอกสารที่มาจาก TMS (fixtures external) — ป้าย TMS ในรายการเอกสาร
+    const ext = d['external'] as { source: string; ref: string } | undefined;
+    if (ext) await db.withCompany(companyId, (tx) => tx.updateTable('acct.document').set({ external_source: ext.source, external_ref: ext.ref }).where('id', '=', id).execute());
     return id;
   }
   const post = async (no: string, id: string | null) => { if (id) await approveDocument(db, companyId, actor, id, { docNo: no }); };
