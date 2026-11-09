@@ -7,6 +7,7 @@ import { dbProvider } from './db.js';
 import { GlController } from './gl.controller.js';
 import { SalesController } from './sales.controller.js';
 import { PurchaseController } from './purchase.controller.js';
+import { M6Controller } from './m6.controller.js';
 
 @Controller()
 export class HealthController {
@@ -17,5 +18,5 @@ export class HealthController {
   }
 }
 
-@Module({ controllers: [HealthController, GlController, SalesController, PurchaseController], providers: [dbProvider, { provide: APP_GUARD, useClass: AuthGuard }] })
+@Module({ controllers: [HealthController, GlController, SalesController, PurchaseController, M6Controller], providers: [dbProvider, { provide: APP_GUARD, useClass: AuthGuard }] })
 export class AppModule {}
