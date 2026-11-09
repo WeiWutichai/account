@@ -21,6 +21,8 @@ await db.withPublic(async (tx) => {
   await tx.insertInto('public.org_membership').values({ org_id: ORG_ID, user_id: u.id, org_role: 'owner', expires_at: null }).onConflict((oc) => oc.columns(['org_id', 'user_id']).doNothing()).execute();
   await tx.insertInto('public.company_membership').values({ company_id: COMPANY_ID, user_id: u.id, company_role: 'owner', approval_limit: null, permissions: null, expires_at: null, last_used_at: null })
     .onConflict((oc) => oc.columns(['company_id', 'user_id']).doNothing()).execute();
+  // ทีม Innovera (Console M8) — DEV ONLY: ผู้ใช้ dev เป็น admin ของ Console ด้วย
+  await tx.insertInto('public.innovera_staff').values({ user_id: u.id, role: 'admin' }).onConflict((oc) => oc.column('user_id').doNothing()).execute();
   await tx.insertInto('public.subscription').values({ org_id: ORG_ID, plan_code: 'business', status: 'trialing', renews_at: '2027-03-01', company_limit: 3, seat_limit: 10, trial_ends_at: null })
     .onConflict((oc) => oc.column('org_id').doNothing()).execute();
 });
