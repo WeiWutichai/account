@@ -6,6 +6,7 @@ import { postJournal } from './ledger-service.ts';
 import { loadFixtures, seedCompany } from './seed.ts';
 import { SEEDED_SALES_TYPES, seedSalesDocuments } from './dev-seed-sales.ts';
 import { SEEDED_PURCHASE_TYPES, seedPurchaseDocuments } from './dev-seed-purchase.ts';
+import { seedM6 } from './dev-seed-m6.ts';
 
 const COMPANY_ID = process.env.DEV_COMPANY_ID ?? '00000000-0000-4000-8000-000000000001';
 const ORG_ID = '00000000-0000-4000-8000-0000000000aa';
@@ -39,5 +40,6 @@ if (exists) {
     }
   }
   console.log(`ผ่านรายการตัวอย่าง ${n} ชุด`);
+  for (const l of await seedM6(db, COMPANY_ID, fx as never)) console.log(l);
 }
 await db.close();
