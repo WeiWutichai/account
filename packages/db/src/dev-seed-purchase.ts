@@ -1,6 +1,8 @@
 // dev seed (DEV ONLY): เอกสารซื้อ/จ่ายเงินจาก fixtures ผ่าน purchase service จริง (เลขที่ตรง fixtures) — หน้าจอ M5
 import type { Db } from './index.ts';
-import { approvePayment, approvePurchase, createPaymentRun, savePurchaseDraft, type PurchaseDraftInput } from './purchase.ts';
+import { fromTuples } from '@innovera/ledger';
+import { postJournal } from './ledger-service.ts';
+import { approvePayment, approvePurchase, createPaymentRun, savePettyCash, savePurchaseDraft, type PurchaseDraftInput } from './purchase.ts';
 import { submitDocument, type Actor } from './sales.ts';
 
 type Fx = Record<string, unknown> & { type: string; date?: string; due?: string; contact?: string; status?: string; desc?: string; grand_total?: string; subtotal?: string;
@@ -55,6 +57,15 @@ export async function seedPurchaseDocuments(db: Db, companyId: string, docs: Rec
     const pv = docs[no]! as Fx & { paid: string; wht_cert: string };
     const v = r.vouchers.find((x) => x.paid === pv.paid);
     if (v) await approvePayment(db, companyId, approver, v.id, { docNo: no, certNos: [pv.wht_cert] });
+  }
+  // เงินสดย่อย: ตั้งวงเงิน + รายการที่แสดงในแบบร่าง (ยังไม่เบิกชดเชย) — TODO(Wei): อีก 6 รายการ (17,346.00) ไม่มีรายละเอียดใน fixtures
+  const pc = (docs as unknown as Record<string, unknown>).__petty as { imprest: string; items_shown: { date?: string; no: string; desc?: string; account?: string; vat?: string; amount: string; input_vat?: string; wht?: string; evidence?: string; by?: string }[] } | undefined;
+  if (pc) {
+    await postJournal(db, companyId, { date: '2026-10-01', lines: fromTuples([['Dr', '1000200', pc.imprest], ['Cr', '1100100', pc.imprest]]), role: 'owner', description: 'ตั้งวงเงินเงินสดย่อย' });
+    for (const i of pc.items_shown.filter((x) => x.date)) {
+      await savePettyCash(db, companyId, clerk, { date: ce(i.date!), description: i.desc!, accountCode: i.account!, amount: i.amount, vatMode: i.vat as 'none', inputVat: i.input_vat ?? null,
+        whtType: i.wht ? 'hire_of_work' : null, contactId: i.wht ? cid('P0001')! : null, evidence: i.evidence!, paidBy: i.by!, docNo: i.no });
+    }
   }
   // TODO(Wei): AP2610-0038 / AP2611-0090 / AP2610-0071 / EXP2611-0021 / EXP2611-0023 / AP2611-0085 อ้างผู้ขายที่ไม่มีรหัสใน fixtures → ไม่สร้าง
   return [`เอกสารซื้อ ${Object.keys(ids).length} ใบ + ใบสำคัญจ่าย ${r.vouchers.length} ใบ`];

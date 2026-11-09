@@ -15,7 +15,7 @@ async function periodOf(tx: CompanyTx, date: string, periodNo?: number) {
 }
 
 /** เลขที่ถัดไปแบบ {PREFIX}{YY}{MM}-{####} (YY = ค.ศ. 2 หลัก ตามเลขเอกสารในแบบร่าง เช่น IV2611-0052) · ล็อกแถวด้วย UPDATE ใน transaction เดียวกัน */
-export async function nextNumber(tx: CompanyTx, companyId: string, prefix: string, date: string): Promise<string> {
+export async function nextNumber(tx: CompanyTx, companyId: string, prefix: string, date: string, digits = 4): Promise<string> {
   const [y, m] = date.split('-') as [string, string];
   const key = `${y.slice(2)}${m}`;
   const r = await sql<{ n: number }>`
@@ -23,7 +23,7 @@ export async function nextNumber(tx: CompanyTx, companyId: string, prefix: strin
     values (${companyId}, ${prefix}, '{PREFIX}{YY}{MM}-{SEQ:4}', ${prefix}, ${key}, 2)
     on conflict (company_id, doc_type, period_key) do update set next_no = acct.number_series.next_no + 1
     returning next_no - 1 as n`.execute(tx);
-  return `${prefix}${key}-${String(r.rows[0]!.n).padStart(4, '0')}`;
+  return `${prefix}${key}-${String(r.rows[0]!.n).padStart(digits, '0')}`;
 }
 
 /**

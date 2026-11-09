@@ -2,6 +2,7 @@
 // กติกา (CLAUDE.md): หัก ณ ที่จ่ายรับรู้ตอนจ่ายเงินจริง · ออก 50 ทวิ และเข้า ภ.ง.ด.3/53 เดือนที่จ่าย · ฟรีแลนซ์ = ค่าตั้งของบริษัท "รอยืนยัน"
 import { Money, post, type MoneyString } from '@innovera/ledger';
 import { bahtText, FREELANCE_DEFAULT, pndOf, whtOnPayment, whtTypeFor, type FreelanceWhtConfig } from '@innovera/tax-th';
+import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Actor } from './sales.ts';
@@ -317,4 +318,82 @@ export async function whtCertificates(db: Db, companyId: string, f: { from?: str
 export async function setCompanySetting(db: Db, companyId: string, key: string, value: unknown) {
   await db.withCompany(companyId, (tx) => tx.insertInto('acct.company_setting').values({ company_id: companyId, key, value: JSON.stringify(value), updated_at: new Date() })
     .onConflict((oc) => oc.columns(['company_id', 'key']).doUpdateSet({ value: JSON.stringify(value), updated_at: new Date() })).execute());
+}
+
+// ---------- เงินสดย่อยแบบ imprest (ScreenPettyCash) ----------
+// รายการย่อย (PC) ไม่ลง GL จนกว่าจะเบิกชดเชย → 1 journal: Dr ค่าใช้จ่ายตามบัญชี · Dr ภาษีซื้อ (เฉพาะใบกำกับเต็มรูป) · Cr ธนาคาร · Cr 2150300 (ถ้ามีหัก ณ ที่จ่าย)
+// TODO(Wei): fixtures petty_cash.reimburse_journal ไม่มีบรรทัดภาษีหักของ PC2611-005 (45.00 · ภ.ง.ด.3) — ระบบลงตามกติกา "หักตอนจ่ายจริง"
+export const PETTY_CASH_ACCOUNT = '1000200';
+export interface PettyCashInput {
+  date: string; description: string; accountCode: string; amount: MoneyString;   // amount = ยอดตามหลักฐาน (รวม VAT)
+  vatMode: 'none' | 'abbreviated_no_claim' | 'full_invoice'; inputVat?: MoneyString | null;
+  whtType?: string | null; contactId?: string | null;                          // ผู้รับเงินที่ถูกหัก ณ ที่จ่าย (ต้องมีเพื่อออก 50 ทวิ)
+  evidence: string; paidBy: string; docNo?: string;
+}
+export async function savePettyCash(db: Db, companyId: string, actor: Actor, input: PettyCashInput) {
+  if (input.whtType && !input.contactId) throw new LedgerError('รายการที่หัก ณ ที่จ่ายต้องระบุผู้รับเงิน (เพื่อออก 50 ทวิ)');
+  const vat = input.vatMode === 'full_invoice' ? Money.of(input.inputVat ?? '0.00') : Money.zero();
+  return db.withCompany(companyId, async (tx) => {
+    const docNo = input.docNo ?? (await nextNumber(tx, companyId, 'PC', input.date, 3));
+    if (input.docNo) await reserveNumber(tx, companyId, input.docNo);
+    const d = await tx.insertInto('acct.document').values({
+      company_id: companyId, doc_type: 'PC', doc_no: docNo, status: 'approved', issue_date: input.date, due_date: null, contact_id: input.contactId ?? null, price_incl_vat: true,
+      subtotal: Money.of(input.amount).minus(vat).toString(), discount: '0.00', vat: vat.toString(), wht: '0.00', grand_total: input.amount, reference: input.evidence, notes: input.paidBy,
+      tax_mode: null, rule_code: null, created_by: actor.userId, approved_by: actor.userId, approved_at: new Date(), external_source: null, external_ref: null, branch_code: '00000', fee: '0.00', bill_discount: '0.00',
+      receive_account: PETTY_CASH_ACCOUNT, vendor_ref: input.vatMode,
+    } as never).returning('id').executeTakeFirstOrThrow();
+    await tx.insertInto('acct.document_line').values({ company_id: companyId, document_id: d.id, line_no: 1, line_type: 'item', product_code: null, description: input.description, qty: '1',
+      unit_price: Money.of(input.amount).minus(vat).toString(), discount: '0.00', amount: Money.of(input.amount).minus(vat).toString(), vat_rate: vat.isZero() ? null : '0.0700', account_code: input.accountCode, wht_type: input.whtType ?? null }).execute();
+    return { id: d.id, docNo };
+  });
+}
+export async function pettyCashSummary(db: Db, companyId: string) {
+  return db.withCompany(companyId, async (tx) => {
+    const gl = await tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
+      .select(sql<string>`coalesce(sum(l.debit) - sum(l.credit), 0)`.as('b')).where('l.account_code', '=', PETTY_CASH_ACCOUNT).where('j.status', '<>', 'draft').executeTakeFirstOrThrow();
+    const items = await tx.selectFrom('acct.document as d').innerJoin('acct.document_line as l', (j) => j.onRef('l.document_id', '=', 'd.id').onRef('l.company_id', '=', 'd.company_id'))
+      .leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+      .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.grand_total', 'd.vat', 'd.reference as evidence', 'd.notes as paid_by', 'd.vendor_ref as vat_mode', 'd.batch_ref', 'l.description', 'l.account_code', 'l.wht_type', 'c.name as payee'])
+      .where('d.doc_type', '=', 'PC').where('d.status', '=', 'approved').orderBy('d.issue_date').orderBy('d.doc_no').execute();
+    const pending = items.filter((i) => !i.batch_ref);
+    const spent = Money.sum(pending.map((i) => Money.parse(i.grand_total)));
+    const imprest = Money.parse(gl.b);
+    return { account: PETTY_CASH_ACCOUNT, imprest: imprest.toString(), spentPending: spent.toString(), onHand: imprest.minus(spent).toString(), inputVatPending: Money.sum(pending.map((i) => Money.parse(i.vat))).toString(), items };
+  });
+}
+/** เบิกชดเชย: รายการที่ยังไม่เบิกทั้งหมด → 1 journal + 50 ทวิ ของรายการที่หัก ณ ที่จ่าย · กองเงินสดย่อย (1000200) คงที่ */
+export async function reimbursePettyCash(db: Db, companyId: string, actor: Actor, p: { date: string; payFrom: string; batchRef?: string }) {
+  return db.withCompany(companyId, async (tx) => {
+    const items = await tx.selectFrom('acct.document as d').innerJoin('acct.document_line as l', (j) => j.onRef('l.document_id', '=', 'd.id').onRef('l.company_id', '=', 'd.company_id'))
+      .select(['d.id', 'd.doc_no', 'd.contact_id', 'd.grand_total', 'd.vat', 'l.amount', 'l.account_code', 'l.wht_type']).where('d.doc_type', '=', 'PC').where('d.status', '=', 'approved').where('d.batch_ref', 'is', null).execute();
+    if (!items.length) throw new LedgerError('ไม่มีรายการรอเบิกชดเชย');
+    const fl = await freelanceConfig(tx);
+    const byAcc = new Map<string, Money>();
+    let vat = Money.zero();
+    let wht = Money.zero();
+    const certs: { item: (typeof items)[number]; w: Awaited<ReturnType<typeof whtForBill>>[number] }[] = [];
+    for (const i of items) {
+      byAcc.set(i.account_code!, (byAcc.get(i.account_code!) ?? Money.zero()).plus(Money.parse(i.amount)));
+      vat = vat.plus(Money.parse(i.vat));
+      if (i.wht_type) {
+        const t = whtTypeFor(i.wht_type, fl);
+        const w = whtOnPayment(i.amount, t);
+        wht = wht.plus(Money.of(w.amount));
+        certs.push({ item: i, w: { type: i.wht_type, label: t.label, section: t.section ?? null, base: i.amount, rate: t.rate, amount: w.amount, pendingAuditor: w.pendingAuditor } });
+      }
+    }
+    const total = Money.sum(items.map((i) => Money.parse(i.grand_total)));
+    const lines = [
+      ...[...byAcc].map(([account, amount]) => ({ side: 'Dr' as const, account, amount })),
+      ...(vat.isZero() ? [] : [{ side: 'Dr' as const, account: '1170100', amount: vat }]),
+      { side: 'Cr' as const, account: p.payFrom, amount: total.minus(wht) },
+      ...(wht.isZero() ? [] : [{ side: 'Cr' as const, account: '2150300', amount: wht }]),
+    ];
+    const batch = p.batchRef ?? `PCR-${p.date}`;
+    const j = await postJournalTx(tx, companyId, { date: p.date, lines, role: actor.role, book: 'PV', description: `เบิกชดเชยเงินสดย่อย ${batch}` });
+    await tx.updateTable('acct.document').set({ batch_ref: batch, journal_id: j.id }).where('id', 'in', items.map((i) => i.id)).execute();
+    const issued = [];
+    for (const c of certs) issued.push(...(await issueCertificates(tx, companyId, c.item.id, c.item.contact_id!, p.date, [c.w])));
+    return { journalNo: j.journalNo, total: total.toString(), vat: vat.toString(), wht: wht.toString(), paid: total.minus(wht).toString(), items: items.length, certificates: issued };
+  });
 }

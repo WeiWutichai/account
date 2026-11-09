@@ -25,7 +25,7 @@ if (exists) {
   const fx = loadFixtures() as unknown as { documents: Record<string, { type: string; date?: string; expected_journal?: JournalLineTuple[] }> };
   // เอกสารขาย/รับเงิน: สร้างเป็นเอกสารจริงผ่าน sales service (M4) · ประเภทอื่นยังลง journal ตาม expected_journal จนกว่าจะมีโมดูล (M5+)
   for (const l of await seedSalesDocuments(db, COMPANY_ID, fx.documents as never)) console.log(l);
-  for (const l of await seedPurchaseDocuments(db, COMPANY_ID, fx.documents as never)) console.log(l);
+  for (const l of await seedPurchaseDocuments(db, COMPANY_ID, { ...fx.documents, __petty: (fx as unknown as { petty_cash: unknown }).petty_cash } as never)) console.log(l);
   let n = 0;
   for (const [no, d] of Object.entries(fx.documents)) {
     if (!d.expected_journal || !d.date || SEEDED_SALES_TYPES.includes(d.type) || SEEDED_PURCHASE_TYPES.includes(d.type)) continue;

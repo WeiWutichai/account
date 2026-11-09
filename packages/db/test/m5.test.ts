@@ -5,7 +5,9 @@ import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCompany, createOrganization } from '../src/company.ts';
 import type { Db } from '../src/index.ts';
-import { approvePayment, approvePurchase, createPayment, createPaymentRun, payables, savePurchaseDraft, setCompanySetting, whtCertificates } from '../src/purchase.ts';
+import { approvePayment, approvePurchase, createPayment, createPaymentRun, payables, pettyCashSummary, reimbursePettyCash, savePettyCash, savePurchaseDraft, setCompanySetting, whtCertificates } from '../src/purchase.ts';
+import { postJournal } from '../src/ledger-service.ts';
+import { fromTuples as ft } from '@innovera/ledger';
 import { getDocument, type Actor } from '../src/sales.ts';
 import { seedCompany } from '../src/seed.ts';
 import { appDb, freshSchema } from './helpers.ts';
@@ -118,5 +120,26 @@ describe('PAYRUN-2569-11-28: AP2611-0079 (+ CNR2611-0003) · AP2611-0088/0091 ·
     const p = await createPayment(db, A, clerk, { contactId: await contact('V0330'), date: '2026-11-29', payFrom: '1100100', bills: [{ documentId: b, settle: '4000.00' }] });
     expect([p.settled, p.wht, p.paid]).toEqual(['4000.00', '200.00', '3800.00']);
     await expect(createPayment(db, A, clerk, { contactId: await contact('V0330'), date: '2026-11-29', payFrom: '1100100', bills: [{ documentId: b, settle: '10000.01' }] })).rejects.toThrow(/ไม่เกินยอดค้าง/u);
+  });
+});
+
+describe('เงินสดย่อย imprest (ScreenPettyCash) — รายการจาก fixtures petty_cash.items_shown', () => {
+  it('รายการย่อยไม่ลง GL · เบิกชดเชย = 1 journal · ภาษีซื้อเฉพาะใบกำกับเต็มรูป · หัก ณ ที่จ่าย + 50 ทวิ', async () => {
+    const pc = (fx as unknown as { petty_cash: { imprest: string; items_shown: { date?: string; no: string; desc?: string; account?: string; vat?: string; amount: string; input_vat?: string; wht?: string; evidence?: string; by?: string }[] } }).petty_cash;
+    await postJournal(db, A, { date: '2026-11-01', lines: ft([['Dr', '1000200', pc.imprest], ['Cr', '1100100', pc.imprest]]), role: 'accounting_manager', description: 'ตั้งวงเงินเงินสดย่อย' });
+    const payee = await contact('P0001');
+    for (const i of pc.items_shown.filter((x) => x.date)) {
+      await savePettyCash(db, A, clerk, { date: ce(i.date!), description: i.desc!, accountCode: i.account!, amount: i.amount, vatMode: i.vat as 'none', inputVat: i.input_vat ?? null,
+        whtType: i.wht ? 'hire_of_work' : null, contactId: i.wht ? payee : null, evidence: i.evidence!, paidBy: i.by!, docNo: i.no });
+    }
+    const s0 = await pettyCashSummary(db, A);
+    expect([s0.imprest, s0.spentPending, s0.inputVatPending]).toEqual([pc.imprest, '6072.00', '182.00']);
+    expect(s0.items.map((i) => i.doc_no)).toEqual(['PC2611-001', 'PC2611-002', 'PC2611-003', 'PC2611-004', 'PC2611-005']);
+    const r = await reimbursePettyCash(db, A, mgr, { date: '2026-11-30', payFrom: '1100100' });
+    expect([r.total, r.vat, r.wht, r.paid]).toEqual(['6072.00', '182.00', '45.00', '6027.00']);
+    expect(r.certificates[0]).toMatchObject({ pnd: '3', amount: '45.00' });
+    const s1 = await pettyCashSummary(db, A);
+    expect([s1.imprest, s1.spentPending, s1.onHand]).toEqual([pc.imprest, '0.00', pc.imprest]);
+    await expect(reimbursePettyCash(db, A, mgr, { date: '2026-11-30', payFrom: '1100100' })).rejects.toThrow(/ไม่มีรายการ/u);
   });
 });
