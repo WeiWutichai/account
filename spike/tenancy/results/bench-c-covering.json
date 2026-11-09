@@ -1,0 +1,50 @@
+{
+  "at": "2026-11-09T16:41:00.913Z",
+  "companies": 300,
+  "results": {
+    "C": [
+      {
+        "workload": "W3",
+        "concurrency": 50,
+        "seconds": 30,
+        "ops": 2257,
+        "ops_per_sec": 75.2,
+        "p50_ms": 582.1,
+        "p95_ms": 1313.1,
+        "p99_ms": 2165.8,
+        "errors": 0,
+        "first_error": "",
+        "max_pg_backends_app": 27,
+        "rss_mb": 112
+      },
+      {
+        "workload": "W4",
+        "concurrency": 50,
+        "seconds": 60,
+        "ops": 23158,
+        "ops_per_sec": 386,
+        "p50_ms": 102.4,
+        "p95_ms": 300.3,
+        "p99_ms": 510.6,
+        "errors": 0,
+        "first_error": "",
+        "max_pg_backends_app": 27,
+        "rss_mb": 149
+      },
+      {
+        "workload": "W4",
+        "concurrency": 200,
+        "seconds": 60,
+        "ops": 23878,
+        "ops_per_sec": 398,
+        "p50_ms": 457.3,
+        "p95_ms": 881.3,
+        "p99_ms": 1281.1,
+        "errors": 0,
+        "first_error": "",
+        "max_pg_backends_app": 27,
+        "rss_mb": 142
+      }
+    ]
+  }
+}

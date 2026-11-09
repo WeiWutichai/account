@@ -1,0 +1,31 @@
+{
+  "name": "@innovera/spike-tenancy",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "prisma generate",
+    "setup": "tsx src/setup.ts",
+    "leak": "vitest run",
+    "bench": "tsx src/bench.ts",
+    "ops": "tsx src/ops.ts",
+    "lint": "eslint src test",
+    "typecheck": "tsc --noEmit",
+    "test": "echo 'spike: รัน pnpm leak ด้วยตนเอง (ต้องมีข้อมูลจาก pnpm setup)'"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
+    "kysely": "0.29.8",
+    "pg": "8.23.1",
+    "ulid": "3.0.2"
+  },
+  "devDependencies": {
+    "@innovera/config": "workspace:*",
+    "@types/node": "26.6.6",
+    "@types/pg": "8.23.1",
+    "prisma": "7.10.1",
+    "tsx": "4.23.15",
+    "vitest": "5.1.0"
+  }
+}

@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+  - "spike/*"
+minimumReleaseAgeExclude:
+  - "@nestjs/common@12.4.2"
+  - "@nestjs/core@12.4.2"
+  - "@nestjs/platform-express@12.4.2"
+allowBuilds:
+  esbuild: true
+  prisma: true
+  "@prisma/engines": true

@@ -1,0 +1,24 @@
+{
+  "at": "2026-11-09T16:24:45.504Z",
+  "matrix": {
+    "A": {
+      "write A → read B": "isolated",
+      "no context": "blocked-error",
+      "context sticky across tx": "blocked-error",
+      "raw SQL to other schema": "LEAK"
+    },
+    "B": {
+      "write A → read B": "isolated",
+      "client bound to schema": "isolated",
+      "raw SQL to other schema": "LEAK"
+    },
+    "C": {
+      "write A → read B": "isolated",
+      "no context": "blocked-empty",
+      "insert without context": "blocked-error",
+      "context sticky across tx": "blocked-empty",
+      "raw SQL to other company": "blocked-empty",
+      "forged company_id on insert": "blocked-error"
+    }
+  }
+}

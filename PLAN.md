@@ -49,7 +49,7 @@ innovera-platform/                 (monorepo แบบเดียวกับ P
 │  ├─ id-web/                     Next.js — หน้า A1–A7 (login/signup/2FA/invite/profile/org)
 │  └─ console-web/                Next.js — Innovera Console X1–X8 (แยกโดเมน admin.*)
 ├─ packages/
-│  ├─ db/                         Prisma schema + migrations (public + tenant template)
+│  ├─ db/                         Kysely + migrations (public + ตารางบัญชีรวม + RLS policies)
 │  ├─ ledger/                     Posting Engine (pure TS, ไม่พึ่ง Nest) ← หัวใจ
 │  ├─ tax-th/                     VAT / WHT / ปฏิทินยื่น / RD Prep / e-Tax payload (pure TS)
 │  ├─ ui/                         Carbon TH components จาก Design System (tokens.json → CSS vars)
@@ -60,17 +60,15 @@ innovera-platform/                 (monorepo แบบเดียวกับ P
 
 **Stack**: TypeScript strict · NestJS · PostgreSQL 16+ · Next.js (App Router) · Redis (rate-limit/queue) · BullMQ (jobs) · Vitest/Jest · Playwright (e2e) · Docker compose สำหรับ dev — **ใช้เวอร์ชันเสถียรล่าสุด ณ วันเริ่ม M0** และ pin ใน lockfile (ตรวจเวอร์ชันจริงก่อน ห้ามใช้จากความจำ)
 
-**ORM / data access — ยังไม่ตัดสินใจ (ตอบใน §9 ข้อ 1)**: Prisma ใส่ชื่อ schema กำกับทุกตารางใน SQL ที่สร้าง (`"public"."journal"`) จึงน่าจะใช้ `SET LOCAL search_path` สลับบริษัทไม่ได้ — ต้องพิสูจน์ด้วย spike ก่อนเลือก ตัวเลือก:
-- (ก) Prisma สำหรับ `public` + Kysely/Drizzle/SQL สำหรับตารางบัญชีใน `co_<ulid>` (ใช้ search_path ได้)
-- (ข) Prisma client ต่อบริษัท (`?schema=co_x`) + cache แบบ LRU — ระวังจำนวน connection เมื่อบริษัทหลักร้อย
-- (ค) เปลี่ยนเป็นตารางรวม + `company_id` + Postgres Row-Level Security (เลิก schema-per-company)
-ห้ามเริ่ม M1 จนกว่า Wei อนุมัติทางเลือกจาก spike
+**ORM / data access — ตัดสินแล้ว (ADR-001, Wei 2026-11-09)**: spike M0 พิสูจน์ว่า Prisma ใช้ `search_path` สลับบริษัทไม่ได้ (ยังหา `public.document`) · เลือก **ทาง ค: ตารางรวม + `company_id` + Postgres Row-Level Security** · data access ด้วย **Kysely** (ยืนยันใน TP M1) · ผลทดลอง `docs/spike-tenancy-report.md`
 
 **Multi-tenant** (FR-TN):
 - `public` schema: `user`, `tenant(org)`, `company`, `membership`, `invite`, `plan`, `subscription`(hook), `entitlement`, `audit_console`
-- **schema-per-company** `co_<ulid>`: ทุกตารางบัญชี · สร้างจาก Prisma template ด้วย `CREATE SCHEMA` + migrate
-- ทุก request: resolve `company_id` → `SET LOCAL search_path TO co_x, public` ใน transaction · PgBouncer **transaction mode** → ห้าม session-level state
-- `company.db_dsn` nullable — ถ้ามี ให้ใช้ connection แยก (Enterprise, Phase 2 จริง ๆ แต่โครงต้องรองรับตั้งแต่ P1)
+- **ตารางบัญชีทุกตารางเป็นตารางรวม มีคอลัมน์ `company_id NOT NULL`** · `ENABLE` + `FORCE ROW LEVEL SECURITY` · policy `company_id = current_setting('app.company_id')` ทั้ง USING และ WITH CHECK · index ทุกตัวขึ้นต้นด้วย `company_id`
+- ทุก request: resolve `company_id` → `withCompany(companyId, tx => …)` = `set_config('app.company_id', …, true)` ใน transaction (ทางเดียวที่เข้าถึงตารางบัญชีได้) · PgBouncer **transaction mode** → ห้าม session-level state
+- แอปต่อด้วย role ที่ไม่ใช่เจ้าของตาราง (RLS ไม่ถูกข้าม) · งานข้ามบริษัท (Console) ใช้ role แยกที่มี `BYPASSRLS` เฉพาะ service นั้น + audit
+- เครื่องมือ export/import รายบริษัท (ตาม company_id) สำหรับ backup รายบริษัท / ย้ายไป DB แยก / PDPA — ต้องมีก่อน M3.5 · migration แบบ expand/contract + `CREATE INDEX CONCURRENTLY`
+- `company.db_dsn` nullable — ถ้ามี ให้ใช้ connection แยก (Enterprise: DB เดียวกันโครงเดิม มีบริษัทเดียว)
 - Middleware ตรวจ membership + role ทุก route; ไม่มี route ไหนอ่านข้ามบริษัท
 
 **Innovera ID** (A1–A7): Argon2id · TOTP (RFC 6238) + backup codes 10 ชุด (bcrypt) + lockout (ใช้แนวเดียวกับ PropSpace P1.8: Redis counters, atomic UPDATE, pending-session cookie ผูก IP/UA HMAC) · session JWT สั้น + refresh rotation · OAuth 2.1 + PKCE server สำหรับแอป Innovera (TMS) และ MCP client · Org roles: owner/admin/billing_admin/member/guest
@@ -168,7 +166,7 @@ innovera-platform/                 (monorepo แบบเดียวกับ P
 
 ## 9. คำถามที่ Technical Plan ต้องตอบ (รอ Wei อนุมัติก่อน build)
 
-1. ORM/tenancy: ทดลองจริงว่า Prisma ใช้กับ `SET LOCAL search_path` ได้หรือไม่ (คาดว่าไม่ได้เพราะใส่ชื่อ schema กำกับตาราง) แล้วเลือกจากทางเลือก ก/ข/ค ใน §2 · แนบ SQL ที่ ORM สร้างจริง + benchmark กับ 300 schema + จำนวน connection ผ่าน PgBouncer transaction mode
+1. ~~ORM/tenancy~~ — ตอบแล้วใน M0: ทาง ค (ตารางรวม + RLS) · `docs/spike-tenancy-report.md` · `docs/ADR-001-tenancy.md`
 2. โครงตาราง `journal`/`journal_line` และ constraint Dr=Cr ที่ DB (trigger vs deferred constraint)
 3. การเก็บตัวเลข: ความละเอียดตาม §3 (เงิน 2 · qty/ราคา 4 · FX 6) + `decimal.js` ใน TS — ยืนยันและกำหนด helper
 4. โครง `posting_rule` JSON schema และวิธี versioning rule เมื่อ tenant แก้

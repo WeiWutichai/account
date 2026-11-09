@@ -1,0 +1,17 @@
+{
+  "extends": "@innovera/config/tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "types": [
+      "node"
+    ],
+    "allowImportingTsExtensions": true
+  },
+  "include": [
+    "src",
+    "test"
+  ],
+  "exclude": [
+    "src/generated"
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "name": "@innovera/ledger",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "vitest": "5.1.0",
+    "@innovera/config": "workspace:*",
+    "@types/node": "26.6.6"
+  }
+}

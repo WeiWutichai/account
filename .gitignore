@@ -11,3 +11,4 @@ coverage/
 spike/tenancy/results/raw/
 playwright-report/
 test-results/
+spike/tenancy/src/generated/
