@@ -12,6 +12,7 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     code: 'Service[IV]', docType: 'IV', name: 'บริการ (VAT เมื่อรับเงิน)', book: 'SJ', settlement: 'open',
     lines: [
       { side: 'Dr', account: AR, amount: 'grand_total' },
+      { side: 'Dr', account: { default: '2140100' }, amount: 'deposit', memo: 'หักเงินมัดจำรับ (ScreenDeposit)' },
       { side: 'Cr', account: { default: '4100200' }, amount: 'net' },
       { side: 'Cr', account: { default: '2150400' }, amount: 'vat', memo: 'ภาษีขายยังไม่ถึงกำหนด' },
     ],
