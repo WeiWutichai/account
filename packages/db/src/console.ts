@@ -61,7 +61,8 @@ export async function openTicket(db: Db, staffId: string, input: { orgId: string
 }
 export async function listTickets(db: Db) {
   return db.withPublic((tx) => tx.selectFrom('public.support_ticket as t').innerJoin('public.organization as o', 'o.id', 't.org_id').leftJoin('public.app_user as u', 'u.id', 't.assignee')
-    .select(['t.id', 't.number', 't.subject', 't.status', 't.updated_at', 't.company_id', 'o.name as org_name', 'u.display_name as assignee_name']).orderBy('t.number', 'desc').limit(200).execute());
+    .leftJoin('public.company as c', 'c.id', 't.company_id')
+    .select(['t.id', 't.number', 't.subject', 't.status', 't.updated_at', 't.company_id', 'c.name_th as company_name', 'o.name as org_name', 'u.display_name as assignee_name']).orderBy('t.number', 'desc').limit(200).execute());
 }
 
 /** เจ้าหน้าที่ขอเข้าดู: ต้องมี ticket · เหตุผล + ขอบเขต · ไม่เกิน 60 นาที · support ขอสิทธิ์เขียนไม่ได้ */
@@ -114,6 +115,7 @@ export async function startAccess(db: Db, staff: { userId: string }, accessId: s
     if (a.status !== 'approved') throw new LedgerError('ยังไม่ได้รับ consent จาก Owner ลูกค้า');
     const ends = new Date(now.getTime() + a.minutes * 60_000);
     await tx.updateTable('public.support_access').set({ status: 'active', started_at: now, ends_at: ends }).where('id', '=', accessId).execute();
+    await tx.insertInto('public.audit_console').values({ actor: 'staff', actor_user: staff.userId, action: 'support.session_start', target_company_id: a.company_id, reason: `${a.minutes} นาที`, consent_ref: accessId, access_id: accessId }).execute();
     return { companyId: a.company_id, endsAt: ends };
   });
 }
@@ -138,6 +140,7 @@ export async function withSupportAccess<T>(db: Db, staff: { userId: string }, ac
 export async function endAccess(db: Db, staff: { userId: string }, accessId: string) {
   await db.withPublic(async (tx) => {
     await tx.updateTable('public.support_access').set({ status: 'ended', ends_at: new Date() }).where('id', '=', accessId).where('requested_by', '=', staff.userId).where('status', '=', 'active').execute();
+    await tx.insertInto('public.audit_console').values({ actor: 'staff', actor_user: staff.userId, action: 'support.session_end', target_company_id: null, reason: 'จบเซสชัน', consent_ref: accessId, access_id: accessId }).execute();
     const views = await tx.selectFrom('public.audit_console').select(['reason', 'at']).where('access_id', '=', accessId).where('action', '=', 'support.view').orderBy('at').execute();
     const a = await tx.selectFrom('public.support_access').select('company_id').where('id', '=', accessId).executeTakeFirstOrThrow();
     const owners = await tx.selectFrom('public.company_membership as m').innerJoin('public.app_user as u', 'u.id', 'm.user_id').select('u.email').where('m.company_id', '=', a.company_id).where('m.company_role', '=', 'owner').execute();
@@ -170,4 +173,27 @@ export async function listFlags(db: Db) {
 export async function consoleAudit(db: Db) {
   return db.withPublic((tx) => tx.selectFrom('public.audit_console as a').leftJoin('public.app_user as u', 'u.id', 'a.actor_user').leftJoin('public.company as c', 'c.id', 'a.target_company_id')
     .select(['a.id', 'a.at', 'a.actor', 'a.action', 'a.reason', 'a.consent_ref', 'u.display_name', 'c.name_th as company']).orderBy('a.id', 'desc').limit(300).execute());
+}
+
+/** คำขอเข้าดูของ ticket (สถานะ · เวลาสิ้นสุด) — หน้า ConsoleSupport */
+export async function accessForTicket(db: Db, ticketId: string) {
+  return db.withPublic((tx) => tx.selectFrom('public.support_access as a').leftJoin('public.app_user as u', 'u.id', 'a.requested_by')
+    .select(['a.id', 'a.status', 'a.scope', 'a.reason', 'a.minutes', 'a.write_access', 'a.created_at', 'a.decided_at', 'a.started_at', 'a.ends_at', 'u.display_name as staff_name'])
+    .where('a.ticket_id', '=', ticketId).orderBy('a.created_at', 'desc').execute());
+}
+export async function cancelAccess(db: Db, staff: { userId: string }, accessId: string) {
+  await db.withPublic(async (tx) => {
+    const r = await tx.updateTable('public.support_access').set({ status: 'cancelled' }).where('id', '=', accessId).where('requested_by', '=', staff.userId).where('status', 'in', ['pending', 'approved']).executeTakeFirst();
+    if (Number(r.numUpdatedRows) !== 1) throw new LedgerError('ยกเลิกได้เฉพาะคำขอของคุณที่ยังไม่เริ่ม');
+    await tx.insertInto('public.audit_console').values({ actor: 'staff', actor_user: staff.userId, action: 'support.cancel_access', target_company_id: null, reason: 'ยกเลิกคำขอ', consent_ref: accessId, access_id: accessId }).execute();
+  });
+}
+export async function setTicketStatus(db: Db, staffId: string, ticketId: string, status: 'open' | 'in_progress' | 'waiting_billing' | 'closed') {
+  await db.withPublic(async (tx) => {
+    await tx.updateTable('public.support_ticket').set({ status, updated_at: new Date(), closed_at: status === 'closed' ? new Date() : null }).where('id', '=', ticketId).execute();
+    // ปิด ticket = ปิดเซสชัน/คำขอที่ค้างทั้งหมด
+    if (status === 'closed') await tx.updateTable('public.support_access').set({ status: 'cancelled' }).where('ticket_id', '=', ticketId).where('status', 'in', ['pending', 'approved']).execute();
+    if (status === 'closed') await tx.updateTable('public.support_access').set({ status: 'ended', ends_at: new Date() }).where('ticket_id', '=', ticketId).where('status', '=', 'active').execute();
+    await tx.insertInto('public.audit_console').values({ actor: 'staff', actor_user: staffId, action: `ticket.${status}`, target_company_id: null, reason: ticketId, consent_ref: null, access_id: null }).execute();
+  });
 }

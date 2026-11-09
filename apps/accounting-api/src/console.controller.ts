@@ -3,7 +3,7 @@
 import { Body, CanActivate, Controller, ExecutionContext, ForbiddenException, Get, Inject, Injectable, Param, Post, Query, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { verifyAccess } from '@innovera/auth';
 import { createDb, type Db } from '@innovera/db';
-import { consoleAudit, consoleOps, consoleOverview, consoleTenants, decideAccess, endAccess, listFlags, listTickets, openTicket, pendingAccessFor, requestAccess, setFlag, staffRole, startAccess, withSupportAccess, type StaffRole } from '@innovera/db/console';
+import { accessForTicket, cancelAccess, setTicketStatus, consoleAudit, consoleOps, consoleOverview, consoleTenants, decideAccess, endAccess, listFlags, listTickets, openTicket, pendingAccessFor, requestAccess, setFlag, staffRole, startAccess, withSupportAccess, type StaffRole } from '@innovera/db/console';
 import { trialBalance } from '@innovera/db/ledger';
 import { listMigrations } from '@innovera/db/migrate';
 import { reconChecks } from '@innovera/db/reports';
@@ -38,12 +38,18 @@ export class StaffGuard implements CanActivate {
 @Controller('console/v1')
 export class ConsoleController {
   constructor(@Inject(DB) private readonly db: Db, @Inject(READER) private readonly reader: Db) {}
-  @Get('me') me(@Req() req: StaffReq) { return req.staff; }
+  @Get('me') async me(@Req() req: StaffReq) {
+    const u = await this.db.withPublic((tx) => tx.selectFrom('public.app_user').select(['email', 'display_name']).where('id', '=', req.staff!.userId).executeTakeFirst());
+    return { ...req.staff, email: u?.email ?? null, displayName: u?.display_name ?? null };
+  }
   @Get('overview') overview() { return consoleOverview(this.reader); }
   @Get('tenants') tenants(@Query('q') q?: string) { return consoleTenants(this.reader, q); }
   @Get('ops') ops() { return consoleOps(this.reader, listMigrations().map((m) => m.id)); }
   @Get('tickets') tickets() { return listTickets(this.db); }
   @Post('tickets') ticket(@Req() req: StaffReq, @Body() b: { orgId: string; companyId?: string; subject: string }) { return openTicket(this.db, req.staff!.userId, b); }
+  @Get('tickets/:id/access') ticketAccess(@Param('id') id: string) { return accessForTicket(this.db, id); }
+  @Post('tickets/:id/status') async status(@Req() req: StaffReq, @Param('id') id: string, @Body() b: { status: 'open' | 'in_progress' | 'waiting_billing' | 'closed' }) { await setTicketStatus(this.db, req.staff!.userId, id, b.status); return { ok: true }; }
+  @Post('access/:id/cancel') async cancel(@Req() req: StaffReq, @Param('id') id: string) { await cancelAccess(this.db, req.staff!, id); return { ok: true }; }
   @Post('access') request(@Req() req: StaffReq, @Body() b: { ticketId: string; reason: string; scope: string; minutes: 30 | 60; write?: boolean }) { return requestAccess(this.db, req.staff!, b); }
   @Post('access/:id/start') start(@Req() req: StaffReq, @Param('id') id: string) { return startAccess(this.db, req.staff!, id); }
   @Post('access/:id/end') async end(@Req() req: StaffReq, @Param('id') id: string) { await endAccess(this.db, req.staff!, id); return { ok: true }; }
