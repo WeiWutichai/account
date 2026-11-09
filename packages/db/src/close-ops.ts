@@ -2,7 +2,7 @@
 import { depreciationSchedule, Money, yearEndClose, type CompanyRole, type JournalLine, type MoneyString } from '@innovera/ledger';
 import { createHash } from 'node:crypto';
 import { sql } from 'kysely';
-import type { Db } from './index.ts';
+import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
 import { emitTx } from './hub.ts';
 
@@ -129,9 +129,14 @@ export async function runDepreciation(db: Db, companyId: string, actor: OpsActor
 }
 
 // ---------- กระทบยอดธนาคาร (ScreenBankRecon) ----------
+// จับคู่ 1 ต่อหลาย: acct.bank_match (statement 1 รายการ ↔ journal หลายใบ) · matched_journal_id = journal แรก (เข้ากันได้กับของเดิม)
+// ปิดกระทบยอดเดือน (acct.bank_recon_close): ล็อกรายการ statement ของเดือน — นำเข้า/จับคู่/ยกเลิกจับคู่ไม่ได้
+// TODO(Wei) ScreenBankRecon.dc.html: "พิมพ์งบกระทบยอด" ยังไม่มีแบบพิมพ์ในแบบร่าง
 
-/** CSV: วันที่ (YYYY-MM-DD หรือ DD/MM/YYYY พ.ศ.), รายละเอียด, ยอด (+/−), ยอดคงเหลือ(ไม่บังคับ) · TODO(M6): OFX และรูปแบบไฟล์ของแต่ละธนาคาร */
-export function parseStatementCsv(text: string): { date: string; description: string; amount: string; balance: string | null }[] {
+export type StatementRow = { date: string; description: string; amount: string; balance: string | null; ref?: string | null };
+
+/** CSV: วันที่ (YYYY-MM-DD หรือ DD/MM/YYYY พ.ศ.), รายละเอียด, ยอด (+/−), ยอดคงเหลือ(ไม่บังคับ) · TODO(M6): รูปแบบไฟล์เฉพาะของแต่ละธนาคาร */
+export function parseStatementCsv(text: string): StatementRow[] {
   const out = [];
   for (const line of text.split(/\r?\n/u).map((l) => l.trim()).filter(Boolean)) {
     const cells = line.match(/("([^"]|"")*"|[^,]*)(,|$)/gu)!.map((c) => c.replace(/,$/u, '').replace(/^"|"$/gu, '').replace(/""/gu, '"').trim()).filter((_, i, a) => i < a.length - 1 || a[i] !== '');
@@ -146,8 +151,56 @@ export function parseStatementCsv(text: string): { date: string; description: st
   return out;
 }
 
-export async function importStatement(db: Db, companyId: string, bankAccount: string, rows: ReturnType<typeof parseStatementCsv>, batch: string) {
+/**
+ * OFX (SGML 1.x หรือ XML 2.x): <STMTTRN> แต่ละรายการ → วันที่ (DTPOSTED) · ยอด (TRNAMT +/−) · รายละเอียด (NAME / MEMO) · อ้างอิง (FITID)
+ * ยอดคงเหลือ (LEDGERBAL/BALAMT) ใส่ให้รายการสุดท้ายของวันที่ DTASOF (ถ้ามี)
+ */
+export function parseStatementOfx(text: string): StatementRow[] {
+  const tag = (block: string, name: string) => new RegExp(`<${name}>([^<\\r\\n]*)`, 'iu').exec(block)?.[1]?.trim() ?? null;
+  const ymd = (v: string | null) => (v && /^\d{8}/u.test(v) ? `${v.slice(0, 4)}-${v.slice(4, 6)}-${v.slice(6, 8)}` : null);
+  const amount = (v: string | null) => {
+    const n = (v ?? '').replace(/,/gu, '').replace(/^\+/u, '');
+    if (!/^-?\d+(\.\d{1,2})?$/u.test(n)) throw new LedgerError(`ยอดไม่ถูกต้อง: ${v ?? ''}`);
+    return Money.parse(n).toString();
+  };
+  const out: StatementRow[] = [];
+  for (const m of text.matchAll(/<STMTTRN>([\s\S]*?)(?=<\/STMTTRN>|<STMTTRN>|<\/BANKTRANLIST>)/giu)) {
+    const b = m[1]!;
+    const date = ymd(tag(b, 'DTPOSTED'));
+    if (!date) throw new LedgerError('OFX: รายการไม่มีวันที่ (DTPOSTED)');
+    const name = tag(b, 'NAME');
+    const memo = tag(b, 'MEMO');
+    out.push({ date, description: [name, memo].filter(Boolean).join(' ') || (tag(b, 'TRNTYPE') ?? ''), amount: amount(tag(b, 'TRNAMT')), balance: null, ref: tag(b, 'FITID') });
+  }
+  const bal = /<LEDGERBAL>([\s\S]*?)(?=<\/LEDGERBAL>|<AVAILBAL>|<\/STMTRS>)/iu.exec(text)?.[1];
+  if (bal && out.length) {
+    const asOf = ymd(tag(bal, 'DTASOF'));
+    const lastDate = out.reduce((a, r) => (r.date > a ? r.date : a), out[0]!.date);
+    const i = out.map((r) => r.date).lastIndexOf(lastDate);
+    if (!asOf || asOf >= lastDate) out[i] = { ...out[i]!, balance: amount(tag(bal, 'BALAMT')) };
+  }
+  return out;
+}
+
+/** ตรวจรูปแบบจากเนื้อไฟล์: OFX (มี OFXHEADER หรือ <OFX>) · อื่น ๆ = CSV */
+export function parseStatement(text: string): StatementRow[] {
+  return /OFXHEADER|<OFX>/iu.test(text.slice(0, 2000)) ? parseStatementOfx(text) : parseStatementCsv(text);
+}
+
+const monthStart = (date: string) => `${date.slice(0, 7)}-01`;
+async function closedMonths(tx: CompanyTx, bankAccount: string): Promise<Set<string>> {
+  const rows = await tx.selectFrom('acct.bank_recon_close').select(sql<string>`to_char(month, 'YYYY-MM-DD')`.as('m')).where('bank_account', '=', bankAccount).execute();
+  return new Set(rows.map((r) => r.m));
+}
+async function assertOpen(tx: CompanyTx, bankAccount: string, dates: string[]) {
+  const closed = await closedMonths(tx, bankAccount);
+  const hit = dates.find((d) => closed.has(monthStart(d)));
+  if (hit) throw new LedgerError(`ปิดกระทบยอดเดือน ${hit.slice(0, 7)} แล้ว — รายการธนาคารของเดือนนี้ถูกล็อก`);
+}
+
+export async function importStatement(db: Db, companyId: string, bankAccount: string, rows: StatementRow[], batch: string) {
   return db.withCompany(companyId, async (tx) => {
+    await assertOpen(tx, bankAccount, rows.map((r) => r.date));
     let added = 0;
     const seen = new Map<string, number>();
     for (const r of rows) {
@@ -156,52 +209,150 @@ export async function importStatement(db: Db, companyId: string, bankAccount: st
       seen.set(k, n);
       const fp = createHash('sha256').update(`${k}|${n}`).digest('hex').slice(0, 32);
       const res = await tx.insertInto('acct.bank_statement_line').values({ company_id: companyId, bank_account: bankAccount, line_date: r.date, description: r.description, amount: r.amount, balance: r.balance,
-        ref: null, import_batch: batch, fingerprint: fp, matched_journal_id: null }).onConflict((oc) => oc.columns(['company_id', 'bank_account', 'fingerprint']).doNothing()).executeTakeFirst();
+        ref: r.ref ?? null, import_batch: batch, fingerprint: fp, matched_journal_id: null }).onConflict((oc) => oc.columns(['company_id', 'bank_account', 'fingerprint']).doNothing()).executeTakeFirst();
       added += res.numInsertedOrUpdatedRows ? Number(res.numInsertedOrUpdatedRows) : 0;
     }
     return { added, skipped: rows.length - added };
   });
 }
 
-/** จับคู่อัตโนมัติ: ยอดเท่ากัน (เข้า = Dr / ออก = Cr ของบัญชีธนาคาร) วันที่ห่างไม่เกิน 3 วัน · 1 journal ต่อ 1 รายการ · เลือกวันที่ใกล้สุด */
+type GlCand = { id: string; journal_no: string; journal_date: string; description: string | null; amount: Money; batch_ref: string | null; doc_no: string | null };
+/** journal ที่ลงบัญชีธนาคารนี้แล้วและยังไม่ถูกจับคู่ (ยอดสุทธิ + = เข้า / − = ออก) · batch_ref ของเอกสารต้นทาง (รอบจ่าย) */
+async function openGl(tx: CompanyTx, bankAccount: string, asOf?: string): Promise<GlCand[]> {
+  let q = tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
+    .leftJoin('acct.document as d', (jn) => jn.onRef('d.id', '=', 'j.source_document_id').onRef('d.company_id', '=', 'j.company_id'))
+    .select(['j.id', 'j.journal_no', 'j.journal_date', 'j.description', 'd.batch_ref', 'd.doc_no', sql<string>`sum(l.debit) - sum(l.credit)`.as('net')])
+    .where('l.account_code', '=', bankAccount).where('j.status', '=', 'posted')
+    .where(({ not, exists, selectFrom }) => not(exists(selectFrom('acct.bank_match as m').innerJoin('acct.bank_statement_line as s', (jn) => jn.onRef('s.id', '=', 'm.statement_line_id').onRef('s.company_id', '=', 'm.company_id'))
+      .select('m.journal_id').whereRef('m.journal_id', '=', 'j.id').where('s.bank_account', '=', bankAccount))))
+    .groupBy(['j.id', 'j.journal_no', 'j.journal_date', 'j.description', 'd.batch_ref', 'd.doc_no']);
+  if (asOf) q = q.where('j.journal_date', '<=', asOf);
+  return (await q.orderBy('j.journal_date').orderBy('j.journal_no').execute()).map((r) => ({ ...r, amount: Money.parse(r.net) }));
+}
+const dayDiff = (a: string, b: string) => Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000;
+
+export interface MatchProposal { lineId: string; journals: { id: string; journal_no: string; journal_date: string; description: string | null; doc_no: string | null; amount: string }[]; kind: 'single' | 'batch'; batchRef: string | null; days: number }
+/**
+ * ข้อเสนอการจับคู่ของรายการที่ยังไม่จับคู่:
+ * 1) 1 ต่อ 1 — ยอดเท่ากัน ทิศเดียวกัน วันที่ห่างไม่เกิน 3 วัน (เลือกวันที่ใกล้สุด)
+ * 2) 1 ต่อหลาย — journal จากเอกสารที่ batch_ref เดียวกัน (รอบจ่าย) ทุกใบยังไม่จับคู่ · วันที่ห่างไม่เกิน 3 วัน · ผลรวมเท่ายอด statement (เช่น BULK 895,500.00 = PV2611-0031 + 0032 + 0033)
+ */
+function propose(lines: { id: string; line_date: string; amount: string }[], gl: GlCand[]): MatchProposal[] {
+  const used = new Set<string>();
+  const out: MatchProposal[] = [];
+  const view = (g: GlCand) => ({ id: g.id, journal_no: g.journal_no, journal_date: g.journal_date, description: g.description, doc_no: g.doc_no, amount: g.amount.toString() });
+  for (const s of lines) {
+    const amt = Money.parse(s.amount);
+    const near = gl.filter((g) => !used.has(g.id) && dayDiff(g.journal_date, s.line_date) <= 3);
+    const single = near.filter((g) => g.amount.equals(amt)).sort((a, b) => dayDiff(a.journal_date, s.line_date) - dayDiff(b.journal_date, s.line_date))[0];
+    if (single) {
+      used.add(single.id);
+      out.push({ lineId: s.id, journals: [view(single)], kind: 'single', batchRef: single.batch_ref, days: dayDiff(single.journal_date, s.line_date) });
+      continue;
+    }
+    const batches = new Map<string, GlCand[]>();
+    for (const g of near) if (g.batch_ref) batches.set(g.batch_ref, [...(batches.get(g.batch_ref) ?? []), g]);
+    for (const [ref, gs] of batches) {
+      if (gs.length < 2 || !Money.sum(gs.map((g) => g.amount)).equals(amt)) continue;
+      // ทุกใบของรอบต้องอยู่ในชุดนี้ (ไม่มีใบของรอบที่ยังไม่จับคู่นอกช่วงวันที่)
+      if (gl.some((g) => g.batch_ref === ref && !used.has(g.id) && !gs.includes(g))) continue;
+      for (const g of gs) used.add(g.id);
+      out.push({ lineId: s.id, journals: gs.map(view), kind: 'batch', batchRef: ref, days: Math.max(...gs.map((g) => dayDiff(g.journal_date, s.line_date))) });
+      break;
+    }
+  }
+  return out;
+}
+
+async function setMatch(tx: CompanyTx, companyId: string, lineId: string, journalIds: string[], status: 'auto' | 'manual') {
+  await tx.deleteFrom('acct.bank_match').where('statement_line_id', '=', lineId).execute();
+  for (const journalId of journalIds) await tx.insertInto('acct.bank_match').values({ company_id: companyId, statement_line_id: lineId, journal_id: journalId }).execute();
+  await tx.updateTable('acct.bank_statement_line').set({ matched_journal_id: journalIds[0] ?? null, match_status: status }).where('id', '=', lineId).execute();
+}
+
+/** จับคู่อัตโนมัติตามข้อเสนอ (1 ต่อ 1 และ 1 ต่อหลายตามรอบจ่าย) · ข้ามเดือนที่ปิดกระทบยอดแล้ว */
 export async function autoMatch(db: Db, companyId: string, bankAccount: string) {
   return db.withCompany(companyId, async (tx) => {
-    const lines = await tx.selectFrom('acct.bank_statement_line').selectAll().where('bank_account', '=', bankAccount).where('match_status', '=', 'unmatched').orderBy('line_date').execute();
-    const used = new Set((await tx.selectFrom('acct.bank_statement_line').select('matched_journal_id').where('bank_account', '=', bankAccount).where('matched_journal_id', 'is not', null).execute()).map((x) => x.matched_journal_id));
-    let matched = 0;
-    for (const s of lines) {
-      const amt = Money.parse(s.amount);
-      const cands = await tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
-        .select(['j.id', 'j.journal_date']).where('l.account_code', '=', bankAccount).where('j.status', '=', 'posted')
-        .where(amt.isNegative() ? 'l.credit' : 'l.debit', '=', amt.abs().toString())
-        .where('j.journal_date', '>=', sql<string>`${s.line_date}::date - 3`).where('j.journal_date', '<=', sql<string>`${s.line_date}::date + 3`).execute();
-      const best = cands.filter((c) => !used.has(c.id)).sort((a, b) => Math.abs(Date.parse(a.journal_date) - Date.parse(s.line_date)) - Math.abs(Date.parse(b.journal_date) - Date.parse(s.line_date)))[0];
-      if (!best) continue;
-      await tx.updateTable('acct.bank_statement_line').set({ matched_journal_id: best.id, match_status: 'auto' }).where('id', '=', s.id).execute();
-      used.add(best.id);
-      matched++;
-    }
-    return { matched, remaining: lines.length - matched };
+    const closed = await closedMonths(tx, bankAccount);
+    const lines = (await tx.selectFrom('acct.bank_statement_line').select(['id', 'line_date', 'amount']).where('bank_account', '=', bankAccount).where('match_status', '=', 'unmatched').orderBy('line_date').execute())
+      .filter((s) => !closed.has(monthStart(s.line_date)));
+    const props = propose(lines, await openGl(tx, bankAccount));
+    for (const p of props) await setMatch(tx, companyId, p.lineId, p.journals.map((j) => j.id), 'auto');
+    return { matched: props.length, remaining: lines.length - props.length };
   });
 }
 
-export async function matchManually(db: Db, companyId: string, lineId: string, journalId: string | null) {
-  await db.withCompany(companyId, (tx) => tx.updateTable('acct.bank_statement_line').set(journalId ? { matched_journal_id: journalId, match_status: 'manual' } : { matched_journal_id: null, match_status: 'ignored' }).where('id', '=', lineId).execute());
+/**
+ * จับคู่เอง: journalIds 1 ใบขึ้นไป (ยอดรวมต้องเท่ายอด statement) · journalId = null → พักไว้ (ignored) · journalIds = [] → ยกเลิกจับคู่
+ * เดือนที่ปิดกระทบยอดแล้ว → ปฏิเสธ
+ */
+export async function matchManually(db: Db, companyId: string, lineId: string, journalIds: string[] | null) {
+  await db.withCompany(companyId, async (tx) => {
+    const s = await tx.selectFrom('acct.bank_statement_line').selectAll().where('id', '=', lineId).executeTakeFirst();
+    if (!s) throw new LedgerError('ไม่พบรายการ statement');
+    await assertOpen(tx, s.bank_account, [s.line_date]);
+    if (journalIds === null) {
+      await tx.deleteFrom('acct.bank_match').where('statement_line_id', '=', lineId).execute();
+      await tx.updateTable('acct.bank_statement_line').set({ matched_journal_id: null, match_status: 'ignored' }).where('id', '=', lineId).execute();
+      return;
+    }
+    if (!journalIds.length) {
+      await tx.deleteFrom('acct.bank_match').where('statement_line_id', '=', lineId).execute();
+      await tx.updateTable('acct.bank_statement_line').set({ matched_journal_id: null, match_status: 'unmatched' }).where('id', '=', lineId).execute();
+      return;
+    }
+    const ids = [...new Set(journalIds)];
+    const nets = await tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
+      .select(['j.id', sql<string>`sum(l.debit) - sum(l.credit)`.as('net')]).where('j.id', 'in', ids).where('l.account_code', '=', s.bank_account).where('j.status', '=', 'posted').groupBy('j.id').execute();
+    if (nets.length !== ids.length) throw new LedgerError('จับคู่ได้เฉพาะรายการที่ลงบัญชีธนาคารนี้แล้ว');
+    const taken = await tx.selectFrom('acct.bank_match as m').innerJoin('acct.bank_statement_line as x', (jn) => jn.onRef('x.id', '=', 'm.statement_line_id').onRef('x.company_id', '=', 'm.company_id'))
+      .select('m.journal_id').where('m.journal_id', 'in', ids).where('x.bank_account', '=', s.bank_account).where('m.statement_line_id', '<>', lineId).execute();
+    if (taken.length) throw new LedgerError('รายการในสมุดนี้จับคู่กับ statement รายการอื่นแล้ว');
+    if (ids.length > 1 && !Money.sum(nets.map((n) => Money.parse(n.net))).equals(Money.parse(s.amount))) throw new LedgerError('ยอดรวมของรายการในสมุดต้องเท่ากับยอดใน statement');
+    await setMatch(tx, companyId, lineId, ids, 'manual');
+  });
 }
 
-/** สรุปการกระทบยอด ณ วันที่: ยอดตาม statement ↔ GL · รายการที่ยังไม่จับคู่ทั้งสองฝั่ง */
+/**
+ * สรุปการกระทบยอด ณ วันที่: ยอดตาม statement ↔ GL · รายการที่ยังไม่จับคู่ทั้งสองฝั่ง · รายการที่จับคู่แล้ว (พร้อม journal) · ข้อเสนอการจับคู่ · สถานะปิดกระทบยอดของเดือน asOf
+ */
 export async function reconciliation(db: Db, companyId: string, bankAccount: string, asOf: string) {
   return db.withCompany(companyId, async (tx) => {
-    const st = await tx.selectFrom('acct.bank_statement_line').selectAll().where('bank_account', '=', bankAccount).where('line_date', '<=', asOf).orderBy('line_date').execute();
+    const st = await tx.selectFrom('acct.bank_statement_line').selectAll().where('bank_account', '=', bankAccount).where('line_date', '<=', asOf).orderBy('line_date').orderBy('created_at').execute();
     const gl = await tx.selectFrom('acct.journal_line as l').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'l.journal_id').onRef('j.company_id', '=', 'l.company_id'))
       .select(['j.id', 'j.journal_no', 'j.journal_date', 'j.description', 'l.debit', 'l.credit']).where('l.account_code', '=', bankAccount).where('j.status', '<>', 'draft').where('j.journal_date', '<=', asOf).orderBy('j.journal_date').execute();
     const glBal = Money.sum(gl.map((g) => Money.parse(g.debit).minus(Money.parse(g.credit))));
     const stBal = st.length && st.at(-1)!.balance !== null ? Money.parse(st.at(-1)!.balance!) : Money.sum(st.map((s) => Money.parse(s.amount)));
-    const matchedIds = new Set(st.map((s) => s.matched_journal_id).filter(Boolean));
+    const matches = st.length ? await tx.selectFrom('acct.bank_match as m').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'm.journal_id').onRef('j.company_id', '=', 'm.company_id'))
+      .leftJoin('acct.document as d', (jn) => jn.onRef('d.id', '=', 'j.source_document_id').onRef('d.company_id', '=', 'j.company_id'))
+      .select(['m.statement_line_id', 'j.id', 'j.journal_no', 'j.journal_date', 'j.description', 'd.doc_no',
+        sql<string>`(select coalesce(sum(x.debit) - sum(x.credit), 0) from acct.journal_line x where x.company_id = j.company_id and x.journal_id = j.id and x.account_code = ${bankAccount})`.as('amount')])
+      .where('m.statement_line_id', 'in', st.map((s) => s.id)).orderBy('j.journal_no').execute() : [];
+    const matchedIds = new Set(matches.map((m) => m.id));
+    const isMatched = (s: (typeof st)[number]) => s.match_status === 'auto' || s.match_status === 'manual';
+    const unmatchedStatement = st.filter((s) => s.match_status === 'unmatched');
+    const month = monthStart(asOf);
+    const close = await tx.selectFrom('acct.bank_recon_close').selectAll().where('bank_account', '=', bankAccount).where('month', '=', month).executeTakeFirst();
     return {
       asOf, bankAccount, statementBalance: stBal.toString(), glBalance: glBal.toString(), diff: stBal.minus(glBal).toString(),
-      unmatchedStatement: st.filter((s) => s.match_status === 'unmatched'), unmatchedGl: gl.filter((g) => !matchedIds.has(g.id)),
-      matched: st.filter((s) => s.match_status === 'auto' || s.match_status === 'manual').length, total: st.length,
+      unmatchedStatement, unmatchedGl: gl.filter((g) => !matchedIds.has(g.id)),
+      matched: st.filter(isMatched).length, total: st.length,
+      matchedLines: st.filter(isMatched).map((s) => ({ ...s, journals: matches.filter((m) => m.statement_line_id === s.id).map((j) => ({ id: j.id, journal_no: j.journal_no, journal_date: j.journal_date, description: j.description, doc_no: j.doc_no, amount: j.amount })) })),
+      proposals: propose(unmatchedStatement.filter((s) => !close || monthStart(s.line_date) !== month), await openGl(tx, bankAccount, asOf)),
+      closed: close ? { month: close.month, closedAt: close.closed_at, closedBy: close.closed_by } : null,
     };
   });
+}
+
+/** ปิดกระทบยอดเดือน (ScreenBankRecon "ปิดกระทบยอดเดือนนี้"): ได้เมื่อผลต่าง ณ สิ้นเดือนเป็น 0.00 · ล็อกรายการ statement ของเดือน */
+export async function closeReconciliation(db: Db, companyId: string, actor: OpsActor, bankAccount: string, month: string) {
+  if (!/^\d{4}-\d{2}$/u.test(month)) throw new LedgerError('ระบุเดือนเป็น YYYY-MM');
+  const [y, m] = month.split('-').map(Number) as [number, number];
+  const asOf = `${month}-${String(new Date(Date.UTC(y, m, 0)).getUTCDate()).padStart(2, '0')}`;
+  const rec = await reconciliation(db, companyId, bankAccount, asOf);
+  if (rec.closed) throw new LedgerError(`ปิดกระทบยอดเดือน ${month} แล้ว`);
+  if (!Money.parse(rec.diff).isZero()) throw new LedgerError(`ปิดกระทบยอดได้เมื่อผลต่างเป็น 0.00 (ตอนนี้ ${rec.diff})`);
+  await db.withCompany(companyId, (tx) => tx.insertInto('acct.bank_recon_close').values({ company_id: companyId, bank_account: bankAccount, month: `${month}-01`,
+    statement_balance: rec.statementBalance, gl_balance: rec.glBalance, closed_by: actor.userId }).execute());
+  return { month, statementBalance: rec.statementBalance, glBalance: rec.glBalance };
 }
