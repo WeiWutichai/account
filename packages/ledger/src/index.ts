@@ -5,3 +5,4 @@ export { DEFAULT_RULES, ruleByCode } from './rules/default.ts';
 export { annualDepreciation, schedule as depreciationSchedule, type AssetInput, type DepreciationLine } from './depreciation.ts';
 export { INCOME_SUMMARY, LEGAL_RESERVE, legalReserveAllocation, RETAINED_EARNINGS, yearEndClose, type AccountBalance } from './close.ts';
 export { canPost, type CompanyRole, type PeriodStatus } from './period.ts';
+export { docTotals, lineGross, outstanding, receiptTotals, type DocLineInput, type DocTotals, type ReceiptApplication } from './sales.ts';

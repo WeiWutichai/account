@@ -21,3 +21,10 @@ CREATE DATABASE innovera_test_id OWNER postgres;
 GRANT CONNECT ON DATABASE innovera_test_id TO app, migrator, console_reader;
 GRANT CREATE ON DATABASE innovera_test_id TO migrator;
 GRANT CREATE, USAGE ON SCHEMA public TO migrator;
+-- ฐานข้อมูลปลายทางของ test กู้คืนรายบริษัท (packages/db/test/transfer.test.ts · ต่อตรงด้วย migrator ไม่ผ่าน PgBouncer)
+\c postgres
+CREATE DATABASE innovera_test_restore OWNER postgres;
+\c innovera_test_restore
+GRANT CONNECT ON DATABASE innovera_test_restore TO app, migrator, console_reader;
+GRANT CREATE ON DATABASE innovera_test_restore TO migrator;
+GRANT CREATE, USAGE ON SCHEMA public TO migrator;

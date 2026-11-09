@@ -1,0 +1,18 @@
+# TLS อัตโนมัติ (Let's Encrypt) · HSTS · ส่ง IP จริงไปแอป (id-api trust proxy 1 ชั้น)
+{
+	email {$ACME_EMAIL}
+}
+(common) {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy strict-origin-when-cross-origin
+	header -Server
+}
+app.{$DOMAIN} {
+	import common
+	reverse_proxy accounting-web:3000
+}
+id.{$DOMAIN} {
+	import common
+	reverse_proxy id-web:3000
+}

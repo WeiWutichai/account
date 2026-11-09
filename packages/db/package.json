@@ -10,7 +10,12 @@
     "./migrate": "./src/migrate.ts",
     "./import": "./src/import.ts",
     "./ledger": "./src/ledger-service.ts",
-    "./queries": "./src/queries.ts"
+    "./queries": "./src/queries.ts",
+    "./sales": "./src/sales.ts",
+    "./transfer": "./src/company-transfer.ts",
+    "./purchase": "./src/purchase.ts",
+    "./reports": "./src/reports.ts",
+    "./close-ops": "./src/close-ops.ts"
   },
   "scripts": {
     "lint": "eslint src test",
@@ -18,19 +23,24 @@
     "test": "vitest run",
     "migrate": "tsx src/migrate-cli.ts up",
     "migrate:down": "tsx src/migrate-cli.ts down",
-    "seed:dev": "tsx src/dev-seed.ts"
+    "seed:dev": "tsx src/dev-seed.ts",
+    "reset:dev": "tsx src/migrate-cli.ts reset",
+    "company:export": "tsx src/transfer-cli.ts export",
+    "company:import": "tsx src/transfer-cli.ts import"
   },
   "dependencies": {
-    "kysely": "0.29.8",
-    "pg": "8.23.1",
     "@innovera/ledger": "workspace:*",
-    "exceljs": "4.4.0"
+    "@innovera/tax-th": "workspace:*",
+    "decimal.js": "10.6.0",
+    "exceljs": "4.4.0",
+    "kysely": "0.29.8",
+    "pg": "8.23.1"
   },
   "devDependencies": {
-    "vitest": "5.1.0",
-    "tsx": "4.23.15",
+    "@innovera/config": "workspace:*",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
-    "@innovera/config": "workspace:*"
+    "tsx": "4.23.15",
+    "vitest": "5.1.0"
   }
 }

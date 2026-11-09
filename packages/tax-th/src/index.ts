@@ -58,3 +58,5 @@ export function whtOnReceipt(p: { base: MoneyString; rate: string; certified: Mo
   const warning = diff.abs().gt(tol) ? `ยอดตาม 50 ทวิ ${certified.toString()} ต่างจากที่คำนวณได้ ${expected.toString()} อยู่ ${diff.abs().toString()} บาท` : null;
   return { amount: certified.toString(), expected: expected.toString(), diff: diff.toString(), warning };
 }
+export { bahtText, thaiNumber } from './baht.ts';
+export { FREELANCE_DEFAULT, pndOf, WHT_TYPES, whtTypeFor, type FreelanceWhtConfig } from './wht-types.ts';

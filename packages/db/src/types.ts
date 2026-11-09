@@ -20,7 +20,7 @@ export interface PublicDB {
     wht_recognition: Generated<'on_payment' | 'on_invoice'>; fiscal_year_start: Generated<string>; db_dsn: string | null;
     status: Generated<'active' | 'suspended' | 'archived'>; created_at: Ts;
     setup_step: Generated<number>; setup_done: Generated<boolean>; chart_template: Generated<'service' | 'trading' | 'dbd' | 'import'>; modules: Json;
-    go_live_date: DateCol | null; created_by: string | null;
+    go_live_date: DateCol | null; created_by: string | null; address: string | null; phone: string | null; email: string | null;
   };
   'public.org_membership': { org_id: string; user_id: string; org_role: 'owner' | 'admin' | 'billing_admin' | 'member' | 'guest'; created_at: Ts; expires_at: DateCol | null };
   'public.company_membership': {
@@ -45,6 +45,7 @@ export interface PublicDB {
   'public.trusted_device': { id: Generated<string>; user_id: string; label: string | null; created_at: Ts; expires_at: Ts; revoked_at: Ts | null };
   'public.email_token': { id: Generated<string>; user_id: string; purpose: 'verify_email' | 'reset_password'; token_hash: string; attempts: Generated<number>; created_at: Ts; expires_at: Ts; used_at: Ts | null };
   'public.outbox_email': { id: Generated<string>; to_email: string; template: string; payload: Json; created_at: Ts; sent_at: Ts | null };
+  'public.doc_share': { token_hash: string; company_id: string; document_id: string; created_at: Ts; expires_at: Ts | null; revoked_at: Ts | null };
   'public.login_event': { id: Generated<string>; at: Ts; user_id: string | null; email: string; event: string; ip_hash: string | null; user_agent: string | null };
 }
 
@@ -56,15 +57,37 @@ export interface AcctDB {
   'acct.period': { company_id: string; fiscal_year: number; period_no: number; starts_on: DateCol; ends_on: DateCol;
     status: Generated<'open' | 'soft_closed' | 'hard_closed'>; closed_at: Date | null; closed_by: string | null };
   'acct.contact': { company_id: string; id: Generated<string>; code: string; name: string; kind: 'customer' | 'vendor' | 'both' | 'contractor' | 'employee';
-    tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts };
+    tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts;
+    address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null };
   'acct.product': { company_id: string; code: string; name: string; kind: Generated<'service' | 'goods' | 'expense' | 'kit'>; unit: string | null;
     price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null };
   'acct.document': { company_id: string; id: Generated<string>; doc_type: string; doc_no: string | null;
     status: Generated<'draft' | 'pending_approval' | 'approved' | 'posted' | 'voided'>; issue_date: DateCol; due_date: string | null; contact_id: string | null;
     currency: Generated<string>; price_incl_vat: Generated<boolean>; subtotal: Money; discount: Money; vat: Money; wht: Money; grand_total: Money;
-    branch_code: Generated<string>; external_source: string | null; external_ref: string | null; created_at: Ts; updated_at: Ts };
+    branch_code: Generated<string>; external_source: string | null; external_ref: string | null; created_at: Ts; updated_at: Ts;
+    // M4 (0007)
+    rule_code: string | null; tax_mode: 'on_payment' | 'immediate' | null; ref_document_id: string | null; address: string | null; notes: string | null; reference: string | null;
+    journal_id: string | null; created_by: string | null; approved_by: string | null; approved_at: Ts | null; voided_at: Ts | null; void_reason: string | null; void_journal_id: string | null;
+    receive_account: string | null; fee: Money; fee_account: string | null; wht_cert_no: string | null; wht_rate: string | null; bill_discount: Money; credit_days: number | null; sent_at: Ts | null;
+    vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> };
+  'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
+    pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
+  'acct.bank_statement_line': { company_id: string; id: Generated<string>; bank_account: string; line_date: DateCol; description: string; amount: string; balance: string | null; ref: string | null;
+    import_batch: string; fingerprint: string; matched_journal_id: string | null; match_status: Generated<'unmatched' | 'auto' | 'manual' | 'ignored'>; created_at: Ts };
+  'acct.fixed_asset': { company_id: string; id: Generated<string>; code: string; name: string; asset_account: string; accum_account: string; expense_account: string; start_date: DateCol;
+    life_years: string; cost: string; salvage: Money; opening_accum: Money; opening_accum_date: DateCol | null; status: Generated<'active' | 'disposed' | 'fully_depreciated'>; disposed_on: DateCol | null;
+    source_document_id: string | null; created_at: Ts };
+  'acct.depreciation_run': { company_id: string; fiscal_year: number; period_no: number; journal_id: string; total: string; detail: ColumnType<unknown, string, string>; created_at: Ts };
+  'acct.report_format': { company_id: string; id: Generated<string>; name: string; definition: ColumnType<unknown, string, string>; updated_at: Ts };
+  'acct.company_setting': { company_id: string; key: string; value: ColumnType<unknown, string, string>; updated_at: Ts };
+  'acct.settlement': { company_id: string; id: Generated<string>; payment_id: string; document_id: string; applied: string; wht: Money; wht_base: string | null; vat_due: Money; voided: Generated<boolean>; created_at: Ts };
+  'acct.billing_item': { company_id: string; billing_id: string; document_id: string; line_no: number };
+  'acct.cheque': { company_id: string; id: Generated<string>; direction: 'received' | 'issued'; cheque_no: string; bank: string; branch: string | null; cheque_date: DateCol; amount: string;
+    status: Generated<'on_hand' | 'deposited' | 'cleared' | 'bounced' | 'cancelled' | 'issued' | 'presented'>; document_id: string | null; contact_id: string | null; deposited_on: DateCol | null; cleared_on: DateCol | null; created_at: Ts };
+  'acct.document_event': { company_id: string; id: Generated<string>; document_id: string; at: Ts; actor: string | null; event: string; detail: ColumnType<unknown, string | undefined, string> };
+  'acct.doc_setting': { company_id: string; doc_type: string; prefix: string; pattern: Generated<string>; reset: Generated<'monthly' | 'yearly' | 'never'>; settings: ColumnType<Record<string, unknown>, string | undefined, string>; updated_at: Ts };
   'acct.document_line': { company_id: string; id: Generated<string>; document_id: string; line_no: number; line_type: Generated<'item' | 'heading' | 'note'>;
-    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null };
+    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null; wht_type: string | null };
   'acct.number_series': { company_id: string; doc_type: string; pattern: string; prefix: string; period_key: string; next_no: Generated<number> };
   'acct.journal': { company_id: string; id: Generated<string>; journal_no: string; journal_date: DateCol; fiscal_year: number; period_no: number;
     book: Generated<string>; description: string | null; source_document_id: string | null; status: Generated<'draft' | 'posted' | 'voided'>;

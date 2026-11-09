@@ -15,4 +15,5 @@ export function proxy(req: NextRequest) {
   return NextResponse.next({ request: { headers: h } });
 }
 
-export const config = { matcher: ['/((?!api/|_next/|favicon.ico).*)'] };
+// /d/<token> = หน้าเอกสารสำหรับลูกค้า (ScreenSendDoc) เปิดได้โดยไม่ต้องเข้าสู่ระบบ
+export const config = { matcher: ['/((?!api/|_next/|d/|favicon.ico).*)'] };

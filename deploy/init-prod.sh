@@ -1,0 +1,13 @@
+#!/bin/sh
+# สร้าง role ตาม ADR-001 ด้วยรหัสผ่านจาก env (ไม่มีรหัสผ่านในไฟล์) · รันครั้งเดียวตอนสร้าง volume ใหม่
+set -eu
+psql -v ON_ERROR_STOP=1 -U postgres <<SQL
+CREATE ROLE migrator LOGIN PASSWORD '${MIGRATOR_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE;
+CREATE ROLE app LOGIN PASSWORD '${APP_DB_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE NOBYPASSRLS;
+CREATE ROLE console_reader LOGIN PASSWORD '${CONSOLE_READER_PASSWORD}' NOSUPERUSER NOCREATEDB NOCREATEROLE BYPASSRLS;
+CREATE DATABASE innovera OWNER postgres;
+\c innovera
+GRANT CONNECT ON DATABASE innovera TO app, migrator, console_reader;
+GRANT CREATE ON DATABASE innovera TO migrator;
+GRANT CREATE, USAGE ON SCHEMA public TO migrator;
+SQL

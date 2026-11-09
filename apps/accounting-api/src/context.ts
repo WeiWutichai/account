@@ -9,7 +9,7 @@ import { createRemoteJWKSet } from 'jose';
 import type { Request } from 'express';
 import { DB } from './db.js';
 
-export interface ReqCtx { userId: string; email: string; companyId: string; role: AuthRole; ledgerRole: CompanyRole; permissions: Permissions }
+export interface ReqCtx { userId: string; email: string; companyId: string; role: AuthRole; ledgerRole: CompanyRole; permissions: Permissions; approvalLimit: string | null }
 type WithCtx = Request & { ctx?: ReqCtx };
 
 const ID_API = process.env.ID_API_URL ?? 'http://localhost:4100';
@@ -51,6 +51,7 @@ export class AuthGuard implements CanActivate {
     let email: string;
     let role: AuthRole;
     let override: Parameters<typeof effectivePermissions>[1] = null;
+    let approvalLimit: string | null = null;
     if (DEV_HEADERS && !tokenOf(req)) {
       userId = 'dev';
       email = 'dev@localhost';
@@ -61,18 +62,19 @@ export class AuthGuard implements CanActivate {
       const claims = await verifyAccess(token, jwks, 'accounting').catch(() => { throw new UnauthorizedException('session หมดอายุ — กรุณาเข้าสู่ระบบใหม่'); });
       userId = claims.sub;
       email = claims.email;
-      const m = await this.db.withPublic((tx) => tx.selectFrom('public.company_membership').select(['company_role', 'permissions', 'expires_at', 'require_2fa'])
+      const m = await this.db.withPublic((tx) => tx.selectFrom('public.company_membership').select(['company_role', 'permissions', 'expires_at', 'require_2fa', 'approval_limit'])
         .where('user_id', '=', userId).where('company_id', '=', companyId).executeTakeFirst());
       if (!m || (m.expires_at && m.expires_at < new Date().toISOString().slice(0, 10))) throw new ForbiddenException('ไม่มีสิทธิ์เข้าบริษัทนี้');
       // บริษัทบังคับ 2FA: session ต้องผ่าน otp/backup_code/อุปกรณ์ที่เชื่อถือ
       if (m.require_2fa && !claims.amr.some((a) => a === 'otp' || a === 'backup_code' || a === 'trusted_device')) throw new ForbiddenException('บริษัทนี้บังคับ 2FA — ตั้งค่า 2FA ก่อนใช้งาน');
       role = m.company_role as AuthRole;
       override = m.permissions;
+      approvalLimit = m.approval_limit;
     }
     const permissions = effectivePermissions(role, override);
     const need = this.reflector.getAllAndOverride<{ area: Area; action: Action } | undefined>(PERM, [ctx.getHandler(), ctx.getClass()]);
     if (need && !can(permissions, need.area, need.action)) throw new ForbiddenException('ไม่มีสิทธิ์ทำรายการนี้');
-    req.ctx = { userId, email, companyId, role, ledgerRole: toLedgerRole(role, permissions), permissions };
+    req.ctx = { userId, email, companyId, role, ledgerRole: toLedgerRole(role, permissions), permissions, approvalLimit };
     return true;
   }
 }

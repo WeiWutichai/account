@@ -7,7 +7,7 @@ import type { AccountType, Db } from './index.ts';
 const FIXTURES = fileURLToPath(new URL('../../../fixtures/sample-company.json', import.meta.url));
 
 interface FxAccount { code: string; name: string; type: AccountType; control?: 'ar' | 'ap' }
-interface FxContact { code: string; name: string; type: 'customer' | 'vendor'; tax_id?: string }
+interface FxContact { code: string; name: string; type: 'customer' | 'vendor'; tax_id?: string; credit_days?: number; credit_limit?: string }
 interface FxProduct { code: string; name: string; unit?: string; price?: string; price_2?: string; vat?: boolean; revenue_account?: string; type?: string }
 interface Fixtures { chart_of_accounts: FxAccount[]; contacts: FxContact[]; products: FxProduct[] }
 
@@ -67,8 +67,10 @@ export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569, 
         .onConflict((oc) => oc.columns(['company_id', 'fiscal_year', 'period_no']).doNothing()).execute();
     }
     for (const c of sample ? fx.contacts : []) {
+      const extra = { credit_days: c.credit_days ?? null, credit_limit: c.credit_limit ?? null };
       await tx.insertInto('acct.contact').values({ company_id: companyId, code: c.code, name: c.name, kind: c.type, tax_id: c.tax_id ?? null,
-        branch_code: null, external_source: null, external_ref: null }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: c.name })).execute();
+        branch_code: null, external_source: null, external_ref: null, address: null, contact_person: null, phone: null, email: null, ...extra })
+        .onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: c.name, ...extra })).execute();
     }
     const accounts = new Set(fx.chart_of_accounts.map((a) => a.code));
     for (const p of sample ? fx.products : []) {

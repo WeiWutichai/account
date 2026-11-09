@@ -26,6 +26,20 @@ export async function nextNumber(tx: CompanyTx, companyId: string, prefix: strin
   return `${prefix}${key}-${String(r.rows[0]!.n).padStart(4, '0')}`;
 }
 
+/**
+ * เลขที่ที่ระบุเอง (นำเข้าเอกสารเดิม / seed) ต้องเลื่อนตัวนับให้เกินเลขนั้น — กันเลขย้อน/ซ้ำ (ใบกำกับภาษีต้องเรียงต่อเนื่อง ม.86/4)
+ * รูปแบบที่ไม่ใช่ {PREFIX}{YYMM}-{SEQ} ไม่แตะตัวนับ
+ */
+export async function reserveNumber(tx: CompanyTx, companyId: string, docNo: string): Promise<void> {
+  const m = /^([A-Z]+)(\d{4})-(\d+)$/u.exec(docNo);
+  if (!m) return;
+  const [, prefix, key, seq] = m as unknown as [string, string, string, string];
+  await sql`
+    insert into acct.number_series (company_id, doc_type, pattern, prefix, period_key, next_no)
+    values (${companyId}, ${prefix}, '{PREFIX}{YY}{MM}-{SEQ:4}', ${prefix}, ${key}, ${Number(seq) + 1})
+    on conflict (company_id, doc_type, period_key) do update set next_no = greatest(acct.number_series.next_no, excluded.next_no)`.execute(tx);
+}
+
 export interface PostJournalInput {
   date: string; // YYYY-MM-DD (ค.ศ.)
   lines: readonly JournalLine[];
@@ -37,6 +51,7 @@ export interface PostJournalInput {
   periodNo?: number; // 13 = ปรับปรุงปิดปี
   journalNo?: string;
   reversalOf?: string;
+  ruleVersionId?: string; // สูตรที่ใช้ลง (ADR-002: journal เก็บ rule_version_id)
 }
 
 export async function postJournal(db: Db, companyId: string, j: PostJournalInput): Promise<{ id: string; journalNo: string }> {
@@ -53,7 +68,7 @@ export async function postJournalTx(tx: CompanyTx, companyId: string, j: PostJou
   const row = await tx.insertInto('acct.journal').values({
     company_id: companyId, journal_no: journalNo, journal_date: j.date, fiscal_year: p.fiscal_year, period_no: p.period_no,
     book: j.book ?? 'GJ', description: j.description ?? null, source_document_id: j.sourceDocumentId ?? null,
-    reversal_of: j.reversalOf ?? null, rule_version_id: null, posted_at: null,
+    reversal_of: j.reversalOf ?? null, rule_version_id: j.ruleVersionId ?? null, posted_at: null,
   }).returning('id').executeTakeFirstOrThrow();
   await tx.insertInto('acct.journal_line').values(j.lines.map((l, i) => ({
     company_id: companyId, journal_id: row.id, line_no: i + 1, account_code: l.account, contact_id: l.contactId ?? null,
@@ -66,25 +81,25 @@ export async function postJournalTx(tx: CompanyTx, companyId: string, j: PostJou
 
 /** ยกเลิก: สร้าง reversal เลขที่เดิม + "R" ลงวันที่ที่ระบุ แล้วตั้งต้นฉบับเป็น voided (golden 8 · ADR-002) */
 export async function voidJournal(db: Db, companyId: string, journalId: string, p: { date: string; role: CompanyRole; reason: string; actorId?: string }) {
+  return db.withCompany(companyId, (tx) => voidJournalTx(tx, companyId, journalId, p));
+}
+
+/** ยกเลิก journal = กลับรายการเลขเดิม + R (ADR-002) · ภายใน transaction ที่มีอยู่ */
+export async function voidJournalTx(tx: CompanyTx, companyId: string, journalId: string, p: { date: string; role: CompanyRole; reason: string; actorId?: string }) {
   if (!p.reason.trim()) throw new LedgerError('ต้องระบุเหตุผลการยกเลิก');
-  const orig = await db.withCompany(companyId, async (tx) => {
-    const j = await tx.selectFrom('acct.journal').selectAll().where('id', '=', journalId).executeTakeFirst();
-    if (!j) throw new LedgerError('ไม่พบ journal');
-    if (j.status !== 'posted') throw new LedgerError(`journal ${j.journal_no} สถานะ ${j.status} ยกเลิกไม่ได้`);
-    const lines = await tx.selectFrom('acct.journal_line').selectAll().where('journal_id', '=', journalId).orderBy('line_no').execute();
-    return { j, lines };
-  });
-  const reversed: JournalLine[] = orig.lines.map((l) => ({
+  const j = await tx.selectFrom('acct.journal').selectAll().where('id', '=', journalId).executeTakeFirst();
+  if (!j) throw new LedgerError('ไม่พบ journal');
+  if (j.status !== 'posted') throw new LedgerError(`journal ${j.journal_no} สถานะ ${j.status} ยกเลิกไม่ได้`);
+  const lines = await tx.selectFrom('acct.journal_line').selectAll().where('journal_id', '=', journalId).orderBy('line_no').execute();
+  const reversed: JournalLine[] = lines.map((l) => ({
     side: Money.parse(l.debit).isZero() ? 'Dr' : 'Cr', account: l.account_code,
     amount: Money.parse(Money.parse(l.debit).isZero() ? l.credit : l.debit), ...(l.contact_id ? { contactId: l.contact_id } : {}),
   }));
-  const rev = await postJournal(db, companyId, { date: p.date, lines: reversed, role: p.role, book: orig.j.book as 'GJ', journalNo: `${orig.j.journal_no}R`,
-    description: `กลับรายการ ${orig.j.journal_no}: ${p.reason}`, reversalOf: journalId, ...(orig.j.source_document_id ? { sourceDocumentId: orig.j.source_document_id } : {}) });
-  await db.withCompany(companyId, async (tx) => {
-    await tx.updateTable('acct.journal').set({ status: 'voided' }).where('id', '=', journalId).execute();
-    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: p.actorId ?? null, action: 'journal.void', entity: 'journal', entity_id: journalId,
-      before: JSON.stringify({ status: 'posted' }), after: JSON.stringify({ status: 'voided', reversal: rev.journalNo, reason: p.reason }), prev_hash: null, hash: null }).execute();
-  });
+  const rev = await postJournalTx(tx, companyId, { date: p.date, lines: reversed, role: p.role, book: j.book as 'GJ', journalNo: `${j.journal_no}R`,
+    description: `กลับรายการ ${j.journal_no}: ${p.reason}`, reversalOf: journalId, ...(j.source_document_id ? { sourceDocumentId: j.source_document_id } : {}) });
+  await tx.updateTable('acct.journal').set({ status: 'voided' }).where('id', '=', journalId).execute();
+  await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: p.actorId ?? null, action: 'journal.void', entity: 'journal', entity_id: journalId,
+    before: JSON.stringify({ status: 'posted' }), after: JSON.stringify({ status: 'voided', reversal: rev.journalNo, reason: p.reason }), prev_hash: null, hash: null }).execute();
   return rev;
 }
 

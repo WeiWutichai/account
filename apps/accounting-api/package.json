@@ -16,6 +16,7 @@
     "@innovera/contracts": "workspace:*",
     "@innovera/db": "workspace:*",
     "@innovera/ledger": "workspace:*",
+    "@innovera/tax-th": "workspace:*",
     "@nestjs/common": "12.4.2",
     "@nestjs/core": "12.4.2",
     "@nestjs/platform-express": "12.4.2",
