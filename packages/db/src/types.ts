@@ -31,6 +31,9 @@ export interface AcctDB {
     status: Generated<'draft' | 'pending_approval' | 'approved' | 'posted' | 'voided'>; issue_date: DateCol; due_date: string | null; contact_id: string | null;
     currency: Generated<string>; price_incl_vat: Generated<boolean>; subtotal: Money; discount: Money; vat: Money; wht: Money; grand_total: Money;
     branch_code: Generated<string>; external_source: string | null; external_ref: string | null; created_at: Ts; updated_at: Ts };
+  'acct.document_line': { company_id: string; id: Generated<string>; document_id: string; line_no: number; line_type: Generated<'item' | 'heading' | 'note'>;
+    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null };
+  'acct.number_series': { company_id: string; doc_type: string; pattern: string; prefix: string; period_key: string; next_no: Generated<number> };
   'acct.journal': { company_id: string; id: Generated<string>; journal_no: string; journal_date: DateCol; fiscal_year: number; period_no: number;
     book: Generated<string>; description: string | null; source_document_id: string | null; status: Generated<'draft' | 'posted' | 'voided'>;
     reversal_of: string | null; rule_version_id: string | null; posted_at: Date | null; created_at: Ts };

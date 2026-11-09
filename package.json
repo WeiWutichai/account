@@ -12,7 +12,7 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:golden": "pnpm --filter @innovera/ledger test",
+    "test:golden": "pnpm --filter @innovera/golden --filter @innovera/ledger --filter @innovera/tax-th test",
     "check:shared": "node scripts/check-shared-files.mjs",
     "verify": "pnpm check:shared && pnpm lint && pnpm typecheck && pnpm test",
     "db:up": "docker compose -f docker/compose.yaml up -d",

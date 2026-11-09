@@ -1,0 +1,9 @@
+{
+  "name": "@innovera/golden",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": { "lint": "eslint test", "typecheck": "tsc --noEmit", "test": "vitest run" },
+  "dependencies": { "@innovera/ledger": "workspace:*", "@innovera/tax-th": "workspace:*", "@innovera/db": "workspace:*" },
+  "devDependencies": { "vitest": "5.1.0", "@types/node": "26.6.6", "@innovera/config": "workspace:*" }
+}

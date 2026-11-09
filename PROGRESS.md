@@ -2,14 +2,14 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-10 00:50** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 01:40** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
 - **โหมด:** Wei สั่งทำต่อเนื่องข้ามคืน (2026-11-09) = **อนุมัติ Technical Plan ล่วงหน้า** · เรื่องที่ต้องให้ Wei/ผู้สอบบัญชีตัดสิน → TODO ใน §4 ไม่ตัดสินเอง
-- **M0 ✅ · M1 ✅** (merge เข้า main) · ถัดไป **M2 Ledger core** (Posting Engine + golden tests 1–10 + ยอดยกมา)
+- **M0 ✅ · M1 ✅** (merge เข้า main) · **M2 backend ✅** (branch `m2`: engine + golden 1–10 + property 10k + นำเข้า Excel/ยอดยกมา) · กำลังทำ **M2b UI** (`packages/ui` + B1–B4 + A4)
 - repo = โฟลเดอร์นี้ (git local) · build โดย Claude Code · `pnpm verify` เขียว
 - รัน dev: `nvm use` (Node 26.13) → `pnpm install` → `pnpm db:up` → `pnpm db:migrate` → `pnpm verify` (test ใช้ DB `innovera_test` ผ่าน PgBouncer)
 
@@ -24,6 +24,7 @@
 | ผล spike tenancy | `docs/spike-tenancy-report.md` · `spike/tenancy/results/` | แนะนำทาง ค |
 | ADR | `docs/ADR-001-tenancy.md` (อนุมัติ ทาง ค) · `docs/ADR-002-posting-engine.md` | |
 | Technical Plan M1 | `docs/technical-plan-M1.md` | อนุมัติล่วงหน้า · เสร็จ |
+| Technical Plan M2 | `docs/technical-plan-M2.md` | อนุมัติล่วงหน้า · backend เสร็จ |
 | แบบร่าง (สำเนา) | `design/project/*.dc.html` + `design/MANIFEST.json` + `design/README.md` | อ่านอย่างเดียว · เปิดดู `cd design/project && python3 -m http.server 8080` |
 | แบบร่าง (ต้นฉบับ) | https://claude.ai/artifact/LQTTxmYPCna8EntkntYCCQ | แก้ที่นี่แล้วส่งออกทับ `design/` |
 | รหัสหน้าจอ ↔ ไฟล์ ↔ milestone | `docs/page-map.md` | Wei อนุมัติครบ |
@@ -68,6 +69,7 @@
 **TODO รอ Wei (เจอระหว่าง build)**
 - T1. ผังบัญชี "บริการ 186 บัญชี" ใน CLAUDE.md ไม่มีรายการในไฟล์ใด · ScreenCOA บอก 84 · fixtures มี 53 → seed ตาม fixtures ไปก่อน (ต้องการรายการจริง)
 - T2. ScreenFormula ใช้ 1154200 เป็นภาษีถูกหัก ณ ที่จ่าย แต่ fixtures/ScreenCOA ใช้ 1160100 → ใช้ 1160100 ตาม fixtures
+- T3. golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัด IV2611-0052 ในแบบร่าง/fixtures ระบุ 4100100 → สูตร Service[IV] ใช้บัญชีรายได้ของสูตรไปก่อน
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
 5. `ScreenReconReport` ยอด IV 61 ใบ (1,736,580) และ RV 42 ใบ (2,104,318.60) เป็นค่ากำหนดใหม่ ไม่ได้รวมจากรายใบ เพราะ fixtures มีเอกสารไม่ครบ — ถ้าจะทำ e2e ที่ต้องรวมจากรายใบ ต้องเพิ่มเอกสารใน fixtures
@@ -90,6 +92,7 @@
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
 
+- **2026-11-10 01:40** · Claude Code · **M2 backend เสร็จ**: engine + 8 สูตร · tax-th · postJournal/void/TB/draft idempotent · นำเข้า Excel · golden 1–10 ✅ · property 10k ✅ · แก้ fixtures (ไฟล์ร่วม): `opening_balance_2569_12_31_company_c.lines_shown` 1500100/1500190 → 1530100/1530190 ให้ตรงแบบร่าง v26 (v26 แก้ไม่ครบ)
 - **2026-11-10 00:50** · Claude Code · **M1 เสร็จ**: migrations (public + acct 12 ตาราง · RLS ENABLE+FORCE ทุกตาราง · Dr=Cr deferred trigger · posted immutable · ล็อกงวดปิดแข็ง · audit append-only) · `@innovera/db` (withCompany/withPublic/createCompany/seed จาก fixtures) · `@innovera/contracts` (zod 4 + OpenAPI components) · roles migrator/app/console_reader · PgBouncer config เอง (2 DB) · test 21 ข้อ (leak, Dr=Cr, migration ย้อนได้, policy ทุกตาราง)
 - **2026-11-10 00:10** · Wei + Claude Code · เลือก tenancy ทาง ค · แก้ PLAN §2 + CLAUDE.md · ปิด M0 (merge เข้า main)
 - **2026-11-09 23:55** · Claude Code · M0: spike tenancy ครบ (300 บริษัท · leak 17/17 · bench · ops) · รายงาน + ADR-001/002 · แนะนำทาง ค
