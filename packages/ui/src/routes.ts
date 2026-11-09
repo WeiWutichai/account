@@ -1,5 +1,9 @@
 // เส้นทางของแอป ↔ ไฟล์แบบร่าง ↔ milestone (docs/page-map.md) · ใช้ทั้ง Sidebar และหน้า "ยังไม่เปิดใช้"
-export interface RouteDef { id: string; path: string; design: string; milestone: string }
+/** app: 'id' = หน้าอยู่ใน id-web (Innovera ID) — href() ใส่ origin ของ id-web ให้ */
+export interface RouteDef { id: string; path: string; design: string; milestone: string; app?: 'id' }
+
+/** origin ของ id-web (ตั้ง NEXT_PUBLIC_ID_WEB_URL ใน production) */
+export const ID_WEB_ORIGIN: string = (typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_ID_WEB_URL : undefined) ?? 'http://localhost:3100';
 
 export const ROUTES: readonly RouteDef[] = [
   { id: 'home', path: '/', design: 'Main', milestone: 'M4' },
@@ -38,8 +42,15 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'opening', path: '/setup/opening-balance', design: 'ScreenOpeningBalance', milestone: 'M2' },
   { id: 'companyCreate', path: '/companies/new', design: 'ScreenCompanyCreate', milestone: 'M3' },
   { id: 'companies', path: '/companies', design: 'ScreenCompanyPicker', milestone: 'M3' },
-  { id: 'profile', path: '/me', design: 'ScreenProfile', milestone: 'M3' },
-  { id: 'login', path: '/login', design: 'ScreenLogin', milestone: 'M3' },
+  { id: 'userEdit', path: '/settings/users/[id]', design: 'ScreenUserEdit', milestone: 'M3' },
+  { id: 'profile', path: '/me', design: 'ScreenProfile', milestone: 'M3', app: 'id' },
+  { id: 'login', path: '/login', design: 'ScreenLogin', milestone: 'M3', app: 'id' },
+  { id: 'signup', path: '/signup', design: 'ScreenSignup', milestone: 'M3', app: 'id' },
+  { id: 'twofactor', path: '/2fa', design: 'ScreenTwoFactor', milestone: 'M3', app: 'id' },
+  { id: 'passwordReset', path: '/password/reset', design: 'ScreenPasswordReset', milestone: 'M3', app: 'id' },
+  { id: 'inviteAccept', path: '/invite/[token]', design: 'ScreenInviteAccept', milestone: 'M3', app: 'id' },
+  { id: 'orgMembers', path: '/org', design: 'ScreenOrgMembers', milestone: 'M3', app: 'id' },
+  { id: 'plan', path: '/org/plan', design: 'ScreenPlan', milestone: 'M3', app: 'id' },
 ];
 
 export const route = (id: string): RouteDef => {
@@ -47,4 +58,9 @@ export const route = (id: string): RouteDef => {
   if (!r) throw new Error(`ไม่มี route ${id}`);
   return r;
 };
-export const href = (id: string): string => route(id).path;
+/** ลิงก์ของหน้า · หน้าใน id-web ได้ URL เต็ม (ข้ามแอป) · ใส่ค่าแทน [param] ได้ */
+export const href = (id: string, params: Record<string, string> = {}): string => {
+  const r = route(id);
+  const path = r.path.replace(/\[(\w+)\]/gu, (_, k: string) => encodeURIComponent(params[k] ?? ''));
+  return r.app === 'id' ? `${ID_WEB_ORIGIN}${path}` : path;
+};

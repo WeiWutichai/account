@@ -10,7 +10,9 @@ const APP = process.env.APP_URL ?? 'http://localhost:3010';
 const out = `docs/screens/${milestone}`;
 mkdirSync(out, { recursive: true });
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+// STATE=.playwright/dev-session.json → เข้าสู่ระบบแล้ว (สร้างด้วย pnpm dev:session)
+const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, ...(process.env.STATE ? { storageState: process.env.STATE } : {}) });
+const page = await context.newPage();
 for (const p of pairs) {
   const [name, path] = p.split('=');
   await page.goto(`${DESIGN}/${name}.dc.html`, { waitUntil: 'networkidle' });

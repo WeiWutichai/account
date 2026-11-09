@@ -12,3 +12,6 @@ spike/tenancy/results/raw/
 playwright-report/
 test-results/
 spike/tenancy/src/generated/
+
+# Playwright session ของผู้ใช้ dev (scripts/dev-session.ts)
+.playwright/
