@@ -11,6 +11,8 @@ import { DB } from './db.js';
 const app = await NestFactory.create<NestExpressApplication>(AppModule, { logger: ['error', 'warn', 'log'] });
 app.useBodyParser('raw', { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', limit: '20mb' });
 app.useGlobalFilters(new AppErrorFilter());
+// IP จริงใน audit log: เชื่อ x-forwarded-for เฉพาะจาก proxy ในเครือข่ายภายใน (accounting-web /api/proxy)
+app.set('trust proxy', 'loopback, linklocal, uniquelocal');
 // เรียกผ่าน proxy ของ accounting-web (same-origin) — ไม่เปิด CORS
 // ตัวส่ง webhook (outbox) ทุก 30 วินาที · บริษัทที่มีรายการรอส่ง · ปิดได้ด้วย WEBHOOK_WORKER=0
 if (process.env.WEBHOOK_WORKER !== '0') {
