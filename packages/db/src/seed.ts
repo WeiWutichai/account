@@ -50,7 +50,9 @@ export function calendarPeriods(fiscalYear: number) {
 
 export interface SeedResult { accounts: number; periods: number; contacts: number; products: number }
 
-export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569): Promise<SeedResult> {
+/** sample = true: ใส่คู่ค้า/สินค้าตัวอย่างจาก fixtures ด้วย (dev/test) · บริษัทจริงของลูกค้าใช้ false (ผังบัญชี + งวดเท่านั้น) */
+export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569, opts: { sample?: boolean } = {}): Promise<SeedResult> {
+  const sample = opts.sample ?? true;
   const fx = loadFixtures();
   return db.withCompany(companyId, async (tx) => {
     for (const a of fx.chart_of_accounts) {
@@ -64,12 +66,12 @@ export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569):
       await tx.insertInto('acct.period').values({ company_id: companyId, fiscal_year: fiscalYear, ...p, closed_at: null, closed_by: null })
         .onConflict((oc) => oc.columns(['company_id', 'fiscal_year', 'period_no']).doNothing()).execute();
     }
-    for (const c of fx.contacts) {
+    for (const c of sample ? fx.contacts : []) {
       await tx.insertInto('acct.contact').values({ company_id: companyId, code: c.code, name: c.name, kind: c.type, tax_id: c.tax_id ?? null,
         branch_code: null, external_source: null, external_ref: null }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: c.name })).execute();
     }
     const accounts = new Set(fx.chart_of_accounts.map((a) => a.code));
-    for (const p of fx.products) {
+    for (const p of sample ? fx.products : []) {
       await tx.insertInto('acct.product').values({ company_id: companyId, code: p.code, name: p.name, unit: p.unit ?? null,
         kind: p.type === 'goods' ? 'goods' : 'service', price: p.price ?? null, price_2: p.price_2 ?? null, vat: p.vat ?? true,
         revenue_account: p.revenue_account && accounts.has(p.revenue_account) ? p.revenue_account : null, expense_account: null })

@@ -198,3 +198,13 @@ export async function openingBalance(db: Db, companyId: string, fiscalYear: numb
       ar: it('OB-AR'), ap: it('OB-AP') };
   });
 }
+
+/** ปีบัญชีของยอดยกมา: ปีแรกที่มีงวด 0 ยังไม่ปิดแข็ง (บริษัทใหม่ = ปีที่เริ่มใช้ระบบ) ไม่มีก็ปีล่าสุด */
+export async function openingYear(db: Db, companyId: string): Promise<number | null> {
+  return db.withCompany(companyId, async (tx) => {
+    const open = await tx.selectFrom('acct.period').select('fiscal_year').where('period_no', '=', 0).where('status', '<>', 'hard_closed').orderBy('fiscal_year').executeTakeFirst();
+    if (open) return open.fiscal_year;
+    const last = await tx.selectFrom('acct.period').select('fiscal_year').where('period_no', '=', 0).orderBy('fiscal_year', 'desc').executeTakeFirst();
+    return last?.fiscal_year ?? null;
+  });
+}

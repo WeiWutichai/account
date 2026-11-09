@@ -14,3 +14,10 @@ CREATE DATABASE innovera_test OWNER postgres;
 GRANT CONNECT ON DATABASE innovera_test TO app, migrator, console_reader;
 GRANT CREATE ON DATABASE innovera_test TO migrator;
 GRANT CREATE, USAGE ON SCHEMA public TO migrator;
+-- ฐานข้อมูล test ของ id-api (แยกจาก innovera_test เพราะ turbo รัน test หลาย package พร้อมกัน)
+\c postgres
+CREATE DATABASE innovera_test_id OWNER postgres;
+\c innovera_test_id
+GRANT CONNECT ON DATABASE innovera_test_id TO app, migrator, console_reader;
+GRANT CREATE ON DATABASE innovera_test_id TO migrator;
+GRANT CREATE, USAGE ON SCHEMA public TO migrator;
