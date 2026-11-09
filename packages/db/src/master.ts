@@ -6,6 +6,7 @@ import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx } from './ledger-service.ts';
 import { voidDocumentTx, type Actor } from './sales.ts';
+import { filingStatus } from './reports.ts';
 
 // ---------- คู่ค้า (ScreenContacts) ----------
 
@@ -368,7 +369,9 @@ export async function sidebarBadges(db: Db, companyId: string, today: string): P
     const online = ext ? ext.value !== false : true; // รอผู้สอบบัญชี: ค่าตั้งต้นชั่วคราว true (CLAUDE.md)
     const m = Number(today.slice(5, 7));
     const next = TH_MONTH[m % 12]!;
-    const filings = [...(certs ? [`ยื่น ภ.ง.ด. ภายใน ${online ? 15 : 7} ${next}`] : []), ...(vatRegistered ? [`ภ.พ.30 ภายใน ${online ? 23 : 15} ${next}`] : [])];
+    // นับเฉพาะแบบที่ยังไม่บันทึกว่ายื่นแล้ว (acct.tax_filing)
+    const st = (await filingStatus(tx, [month], vatRegistered)).get(month);
+    const filings = [...(certs && st?.pnd !== 'filed' ? [`ยื่น ภ.ง.ด. ภายใน ${online ? 15 : 7} ${next}`] : []), ...(vatRegistered && st?.pp30 !== 'filed' ? [`ภ.พ.30 ภายใน ${online ? 23 : 15} ${next}`] : [])];
     const out: Record<string, SidebarBadgeRow> = {};
     if (n()) out['home'] = { count: n(), tone: 'act', hint: `รออนุมัติ ${n()} เอกสาร` };
     if (n('IV')) out['invoice'] = { count: n('IV'), tone: 'act', hint: 'รออนุมัติ' };
