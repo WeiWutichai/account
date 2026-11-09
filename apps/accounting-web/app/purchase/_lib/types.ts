@@ -17,6 +17,8 @@ export interface PDoc {
   rule_code: string | null; ref_document_id: string | null; notes: string | null; reference: string | null; journal_id: string | null;
   vendor_ref: string | null; pay_now: boolean; receive_account: string | null; external_source: string | null; external_ref: string | null;
   created_at: string; updated_at: string; approved_at: string | null; voided_at: string | null; void_reason: string | null;
+  /** ม.82/3 เดือนที่ใช้ภาษีซื้อ YYYY-MM · null = เดือนตามบิล */
+  vat_claim_month?: string | null;
 }
 export interface PLine {
   id: string; line_no: number; line_type: 'item' | 'heading' | 'note'; product_code: string | null; description: string;
