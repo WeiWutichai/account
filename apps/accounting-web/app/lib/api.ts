@@ -1,12 +1,21 @@
-// เรียก accounting-api จากฝั่ง server · M2: ส่งบริษัทผ่าน header (dev) — TODO(M3): ใช้ session ของ Innovera ID
+// เรียก accounting-api จากฝั่ง server ด้วย session ของผู้ใช้ (cookie) · 401 → ต่อ session/เข้าสู่ระบบใหม่ · 403/ไม่มีบริษัท → เลือกบริษัท
 import 'server-only';
+import { cookies, headers } from 'next/headers';
+import { redirect } from 'next/navigation';
+import { ACCOUNTING_API, apiHeaders, refreshUrl } from './session';
 
-const BASE = process.env.ACCOUNTING_API_URL ?? 'http://localhost:4000';
-export const COMPANY_ID = process.env.DEV_COMPANY_ID ?? '00000000-0000-4000-8000-000000000001';
+export async function currentUrl(): Promise<string> {
+  const h = await headers();
+  return `${h.get('x-forwarded-proto') ?? 'http'}://${h.get('host') ?? 'localhost:3010'}${h.get('x-invoke-path') ?? h.get('x-pathname') ?? '/'}`;
+}
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, { ...init, cache: 'no-store', headers: { 'x-company-id': COMPANY_ID, 'x-role': 'accounting_manager', ...(init?.headers ?? {}) } });
+  const jar = await cookies();
+  const res = await fetch(`${ACCOUNTING_API}${path}`, { ...init, cache: 'no-store', headers: { ...apiHeaders((n) => jar.get(n)?.value), ...(init?.headers ?? {}) } });
+  if (res.status === 401) redirect(refreshUrl(await currentUrl()));
   const body = (await res.json()) as T & { error?: string };
+  if (res.status === 400 && /เลือกบริษัท/u.test(body.error ?? '')) redirect('/companies');
+  if (res.status === 403 && /ไม่มีสิทธิ์เข้าบริษัท/u.test(body.error ?? '')) redirect('/companies');
   if (!res.ok) throw new Error(body.error ?? `API ${res.status}`);
   return body;
 }
