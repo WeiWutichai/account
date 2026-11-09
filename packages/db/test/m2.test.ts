@@ -93,20 +93,18 @@ describe('golden 10: idempotency ของเอกสารจากภาย�
 
 describe('นำเข้ายอดยกมาจาก Excel (A4) · บริษัท C ใน fixtures', () => {
   const ob = fx.opening_balance_2569_12_31_company_c;
-  const shown: { account: string; name: string; dr?: string; cr?: string }[] = ob.lines_shown;
-  // fixtures แสดงแค่ 4 บรรทัด · เติมเงินฝากและกำไรสะสมให้ยอดรวมฝั่งละ = trial_balance_total (6,317,920.55)
-  const rows: [string, string, string][] = [
-    ...shown.map((l) => [l.account, l.dr ?? '', l.cr ?? ''] as [string, string, string]),
-    ['1100100', '905520.55', ''],
-    ['3200100', '', '4009270.55'],
-  ];
+  // งบทดลองยกมาครบชุดจากแบบร่าง ScreenOpeningBalance (fixtures lines_full)
+  const full: { account: string; name: string; dr?: string; cr?: string }[] = ob.lines_full;
+  const rows: [string, string, string][] = full.map((l) => [l.account, l.dr ?? '', l.cr ?? '']);
+  const knownCodes = new Set((fx.chart_of_accounts as { code: string }[]).map((a) => a.code));
+  const newAccounts = full.filter((l) => !knownCodes.has(l.account));
   const arItems = Array.from({ length: 14 }, (_, i) => [`C9${String(i).padStart(3, '0')}`, `OB-IV-${i + 1}`, '2026-12-31', '', i < 13 ? '43700.00' : String((612400 - 43700 * 13).toFixed(2))]);
   const apItems = Array.from({ length: 9 }, (_, i) => [`V9${String(i).padStart(3, '0')}`, `OB-AP-${i + 1}`, '2026-12-31', '', i < 8 ? '43000.00' : String((388650 - 43000 * 8).toFixed(2))]);
 
   async function workbook(opts: { breakBalance?: boolean; badAccount?: boolean } = {}) {
     const wb = new ExcelJS.Workbook();
     const ws = (name: keyof typeof TEMPLATE, data: (string | number)[][]) => { const s = wb.addWorksheet(name); s.addRow([...TEMPLATE[name]]); data.forEach((r) => s.addRow(r)); };
-    ws('ผังบัญชี', [['1530100', 'ยานพาหนะ (ราคาทุน)', 'สินทรัพย์', ''], ['1530190', 'ค่าเสื่อมราคาสะสม — ยานพาหนะ', 'contra_asset', '']]);
+    ws('ผังบัญชี', newAccounts.map((l) => [l.account, l.name, l.account.startsWith('2') ? 'หนี้สิน' : l.account.startsWith('3') ? 'ทุน' : 'สินทรัพย์', '']));
     ws('คู่ค้า', [...arItems.map((r) => [r[0]!, `ลูกค้า ${r[0]}`, 'ลูกค้า', '', '']), ...apItems.map((r) => [r[0]!, `ผู้ขาย ${r[0]}`, 'ผู้ขาย', '', ''])]);
     // ใส่ตัวเลขเป็น number แบบที่ Excel เก็บจริง
     ws('ยอดยกมา', rows.map(([a, d, c], i) => [opts.badAccount && i === 0 ? '9999999' : a, d ? Number(d) + (opts.breakBalance && i === 0 ? 1 : 0) : '', c ? Number(c) : '']));
@@ -136,7 +134,7 @@ describe('นำเข้ายอดยกมาจาก Excel (A4) · บร�
   it('นำเข้าสำเร็จ → งบทดลองตรงไฟล์ต้นทาง · ยอดรวม 6,317,920.55 · รายใบ = บัญชีคุม', async () => {
     const r = await importWorkbook(db, C, await workbook(), { openingDate: '2027-01-01', role: 'owner' });
     expect(r.ok).toBe(true);
-    if (r.ok) expect(r.counts).toMatchObject({ openItems: 23, openingLines: 6 });
+    if (r.ok) expect(r.counts).toMatchObject({ openItems: 23, openingLines: 11 });
     const tb = await trialBalance(db, C, { fiscalYear: 2570 });
     const dr = tb.reduce((s, x) => s + Number(x.debit), 0);
     expect(dr.toFixed(2)).toBe(ob.trial_balance_total);

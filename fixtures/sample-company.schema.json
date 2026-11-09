@@ -555,6 +555,9 @@
      "credit_limit": {
       "$ref": "#/$defs/money"
      },
+     "credit_limit_note": {
+      "type": "string"
+     },
      "billing_cycle": {
       "type": "array"
      },
@@ -5086,10 +5089,42 @@
        "note"
       ]
      }
+    },
+    "lines_full": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "account": {
+        "type": "string"
+       },
+       "name": {
+        "type": "string"
+       },
+       "dr": {
+        "$ref": "#/$defs/money"
+       },
+       "open_items": {
+        "type": "number"
+       },
+       "cr": {
+        "$ref": "#/$defs/money"
+       }
+      },
+      "required": [
+       "account",
+       "name"
+      ]
+     }
+    },
+    "lines_full_source": {
+     "type": "string"
     }
    },
    "required": [
     "balanced",
+    "lines_full",
+    "lines_full_source",
     "lines_shown",
     "trial_balance_total"
    ]

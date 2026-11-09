@@ -69,6 +69,7 @@
 **TODO รอ Wei (เจอระหว่าง build)**
 - T1. ผังบัญชี "บริการ 186 บัญชี" ใน CLAUDE.md ไม่มีรายการในไฟล์ใด · ScreenCOA บอก 84 · fixtures มี 53 → seed ตาม fixtures ไปก่อน (ต้องการรายการจริง)
 - T2. ScreenFormula ใช้ 1154200 เป็นภาษีถูกหัก ณ ที่จ่าย แต่ fixtures/ScreenCOA ใช้ 1160100 → ใช้ 1160100 ตาม fixtures
+- T4. ลูกค้า A (C0012): `credit_limit_remaining` 452,920 = 500,000 − 47,080 (ยอดค้างเดิม) แต่ยอดค้างปัจจุบัน 42,800 → ควรเป็น 457,200 หรือ 446,500 (ถ้านับใบรออนุมัติ) · แสดงใน ScreenInvoice
 - T3. golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัด IV2611-0052 ในแบบร่าง/fixtures ระบุ 4100100 → สูตร Service[IV] ใช้บัญชีรายได้ของสูตรไปก่อน
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
@@ -92,6 +93,7 @@
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
 
+- **2026-11-10 02:00** · Claude Code · เจอช่องโหว่การตรวจ: ยอดในช่องกรอก (`<input value>`) ของแบบร่างไม่เคยถูกตรวจกับ fixtures (ทั้งของ Claude Code และ Cowork) → ขาด 6 ค่า · เติม fixtures (ไฟล์ร่วม): `opening_balance_2569_12_31_company_c.lines_full` (งบทดลองยกมาครบ 11 บัญชีจาก ScreenOpeningBalance) + `C0012.credit_limit` · เพิ่มการตรวจถาวรใน `pnpm verify` (532 ค่า ครบ)
 - **2026-11-10 01:40** · Claude Code · **M2 backend เสร็จ**: engine + 8 สูตร · tax-th · postJournal/void/TB/draft idempotent · นำเข้า Excel · golden 1–10 ✅ · property 10k ✅ · แก้ fixtures (ไฟล์ร่วม): `opening_balance_2569_12_31_company_c.lines_shown` 1500100/1500190 → 1530100/1530190 ให้ตรงแบบร่าง v26 (v26 แก้ไม่ครบ)
 - **2026-11-10 00:50** · Claude Code · **M1 เสร็จ**: migrations (public + acct 12 ตาราง · RLS ENABLE+FORCE ทุกตาราง · Dr=Cr deferred trigger · posted immutable · ล็อกงวดปิดแข็ง · audit append-only) · `@innovera/db` (withCompany/withPublic/createCompany/seed จาก fixtures) · `@innovera/contracts` (zod 4 + OpenAPI components) · roles migrator/app/console_reader · PgBouncer config เอง (2 DB) · test 21 ข้อ (leak, Dr=Cr, migration ย้อนได้, policy ทุกตาราง)
 - **2026-11-10 00:10** · Wei + Claude Code · เลือก tenancy ทาง ค · แก้ PLAN §2 + CLAUDE.md · ปิด M0 (merge เข้า main)
