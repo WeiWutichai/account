@@ -17,7 +17,8 @@ async function getBrowser(): Promise<Browser> {
   return browser;
 }
 
-export type PrintKind = 'invoice' | 'receipt-tax' | 'credit-note' | 'debit-note' | 'billing' | 'quote' | 'receipt' | 'receipt-voucher';
+export type PrintKind = 'invoice' | 'receipt-tax' | 'credit-note' | 'debit-note' | 'billing' | 'quote' | 'receipt' | 'receipt-voucher'
+  | 'wht50' | 'payment-voucher' | 'purchase-order'; // M5 (D4 · D7 · D9)
 
 /** GET /print/<kind>/<id>/pdf → application/pdf (A4) */
 export function pdfRoute(kind: PrintKind) {
