@@ -1,0 +1,101 @@
+# production นำร่อง (M3.5) บน VPS เครื่องเดียว · docker compose -f deploy/compose.prod.yaml --env-file deploy/.env up -d
+# API ไม่เปิดพอร์ตออกนอกเครื่อง — เว็บเรียกผ่านเครือข่ายภายใน · DB/Redis ไม่เปิดพอร์ต
+x-app: &app
+  restart: unless-stopped
+  env_file: .env
+  networks: [internal]
+  logging: { driver: json-file, options: { max-size: "20m", max-file: "5" } }
+
+services:
+  postgres:
+    image: postgres:18.6
+    restart: unless-stopped
+    environment: { POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}" }
+    volumes: [pgdata:/var/lib/postgresql, ./init-prod.sh:/docker-entrypoint-initdb.d/01-roles.sh:ro]
+    env_file: .env
+    networks: [internal]
+    healthcheck: { test: ["CMD", "pg_isready", "-U", "postgres"], interval: 10s, retries: 5 }
+  pgbouncer:
+    image: edoburu/pgbouncer:v1.26.1-p0
+    restart: unless-stopped
+    environment:
+      DB_HOST: postgres
+      AUTH_TYPE: scram-sha-256
+      POOL_MODE: transaction
+      DB_USER: app
+      DB_PASSWORD: "${APP_DB_PASSWORD}"
+      MAX_CLIENT_CONN: "1000"
+      DEFAULT_POOL_SIZE: "20"
+      IGNORE_STARTUP_PARAMETERS: extra_float_digits,options
+    depends_on: { postgres: { condition: service_healthy } }
+    networks: [internal]
+  redis:
+    image: redis:8.10.3
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD}", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    networks: [internal]
+  migrate:
+    image: innovera/accounting-api
+    working_dir: /repo/packages/db
+    command: ["./node_modules/.bin/tsx", "src/migrate-cli.ts", "up"]
+    environment: { MIGRATE_DATABASE_URL: "postgres://migrator:${MIGRATOR_PASSWORD}@postgres:5432/innovera" }
+    depends_on: { postgres: { condition: service_healthy } }
+    networks: [internal]
+    restart: "no"
+  id-api:
+    <<: *app
+    image: innovera/id-api
+    environment:
+      PORT: "4100"
+      DATABASE_URL: "postgres://app:${APP_DB_PASSWORD}@pgbouncer:5432/innovera"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      ID_COOKIE_DOMAIN: ".${DOMAIN}"
+      ID_AUDIENCE: "id,accounting"
+    depends_on: [pgbouncer, redis, migrate]
+  accounting-api:
+    <<: *app
+    image: innovera/accounting-api
+    environment:
+      PORT: "4000"
+      DATABASE_URL: "postgres://app:${APP_DB_PASSWORD}@pgbouncer:5432/innovera"
+      ID_API_URL: "http://id-api:4100"
+    depends_on: [pgbouncer, id-api]
+  id-web:
+    <<: *app
+    image: innovera/id-web
+    environment:
+      PORT: "3000"
+      ID_API_URL: "http://id-api:4100"
+      ACCOUNTING_WEB_URL: "https://app.${DOMAIN}"
+      ID_REDIRECT_ORIGINS: "https://app.${DOMAIN},https://id.${DOMAIN}"
+    depends_on: [id-api]
+  accounting-web:
+    <<: *app
+    image: innovera/accounting-web
+    environment:
+      PORT: "3000"
+      ACCOUNTING_API_URL: "http://accounting-api:4000"
+      ID_API_URL: "http://id-api:4100"
+      ID_WEB_URL: "https://id.${DOMAIN}"
+      NEXT_PUBLIC_ID_WEB_URL: "https://id.${DOMAIN}"
+    depends_on: [accounting-api]
+  caddy:
+    image: caddy:2.10.2
+    restart: unless-stopped
+    ports: ["80:80", "443:443"]
+    env_file: .env
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddydata:/data]
+    depends_on: [accounting-web, id-web]
+    networks: [internal]
+  backup:
+    image: postgres:18.6
+    restart: unless-stopped
+    env_file: .env
+    entrypoint: ["sh", "/backup/backup-loop.sh"]
+    volumes: [./backup:/backup:ro, backups:/backups]
+    depends_on: [postgres]
+    networks: [internal]
+
+networks: { internal: {} }
+volumes: { pgdata: {}, redisdata: {}, caddydata: {}, backups: {} }

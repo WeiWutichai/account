@@ -1,0 +1,13 @@
+**/node_modules
+**/.next
+**/.turbo
+**/*.tsbuildinfo
+.git
+.playwright
+docs/screens
+design
+design-system
+spike
+deploy/.env
+**/.env
+**/.env.*
