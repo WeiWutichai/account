@@ -73,7 +73,9 @@ export async function event(tx: CompanyTx, companyId: string, documentId: string
   await tx.insertInto('acct.document_event').values({ company_id: companyId, document_id: documentId, actor, event: ev, detail: JSON.stringify(detail) }).execute();
   const action = AUDITED_EVENTS[ev];
   if (action) {
-    const d = await tx.selectFrom('acct.document').select(['doc_type', 'doc_no', 'status', 'grand_total']).where('id', '=', documentId).executeTakeFirst();
+    const d = await tx.selectFrom('acct.document').select(['doc_type', 'doc_no', 'status', 'grand_total', 'journal_id']).where('id', '=', documentId).executeTakeFirst();
+    // ยกเลิกเอกสารที่มี journal: voidJournalTx บันทึก journal.void แล้ว — ไม่บันทึกซ้ำ
+    if (ev === 'voided' && d?.journal_id) return;
     await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor, action, entity: 'document', entity_id: documentId, before: null,
       after: JSON.stringify({ ...(detail && typeof detail === 'object' ? detail : {}), doc_type: d?.doc_type ?? null, status: d?.status ?? null, grand_total: d?.grand_total ?? null }), prev_hash: null, hash: null }).execute();
   }

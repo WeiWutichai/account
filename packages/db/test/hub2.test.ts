@@ -8,6 +8,7 @@ import {
 } from '../src/hub.ts';
 import { withAuditContext, type Db } from '../src/index.ts';
 import { createDraftDocument } from '../src/ledger-service.ts';
+import { companySettings, saveCompanySettings } from '../src/master.ts';
 import { approveDocument, getDocument, saveSalesDraft, submitDocument } from '../src/sales.ts';
 import { seedCompany } from '../src/seed.ts';
 import { admin, appDb, freshSchema } from './helpers.ts';
@@ -84,22 +85,22 @@ describe('GET /v1/audit — แบ่งหน้า + จำนวนทั้�
     for (let i = 0; i < 5; i++) await recordAudit(db, B, { actorId: wei, action: 'period.close', entity: 'period', entityId: `2569-${i + 1}` });
     await recordAudit(db, B, { actorId: null, action: 'support.view', entity: 'support_access', entityId: 'x' });
     const p1 = await auditLog(db, B, { limit: 2 });
-    expect(p1.total).toBe(6);
+    expect(p1.count).toBe(6);
     expect(p1.rows).toHaveLength(2);
     const p3 = await auditLog(db, B, { limit: 2, offset: 4 });
     expect(p3.rows.map((r) => r.id)).not.toContain(p1.rows[0]!.id);
-    expect((await auditLog(db, B, { important: true })).total).toBe(5);
-    expect((await auditLog(db, B, { category: 'period' })).total).toBe(5);
-    expect((await auditLog(db, B, { category: 'api' })).total).toBe(0);
+    expect((await auditLog(db, B, { important: true })).count).toBe(5);
+    expect((await auditLog(db, B, { category: 'period' })).count).toBe(5);
+    expect((await auditLog(db, B, { category: 'api' })).count).toBe(0);
     const byName = await auditLog(db, B, { q: 'wei' });
-    expect(byName.total).toBe(5);
+    expect(byName.count).toBe(5);
     expect(byName.rows[0]).toMatchObject({ actor_name: 'Wei', action: 'period.close' });
-    expect((await auditLog(db, B, { actor: wei })).total).toBe(5);
-    expect((await auditLog(db, B, { actor: 'system' })).total).toBe(1);
+    expect((await auditLog(db, B, { actor: wei })).count).toBe(5);
+    expect((await auditLog(db, B, { actor: 'system' })).count).toBe(1);
     expect(p1.actors.map((a) => a.name).sort()).toEqual(['Wei', 'ระบบ']);
     const today = new Date(Date.now() + 7 * 3_600_000).toISOString().slice(0, 10);
-    expect((await auditLog(db, B, { from: today, to: today })).total).toBe(6);
-    expect((await auditLog(db, B, { from: '2000-01-01', to: '2000-01-31' })).total).toBe(0);
+    expect((await auditLog(db, B, { from: today, to: today })).count).toBe(6);
+    expect((await auditLog(db, B, { from: '2000-01-01', to: '2000-01-31' })).count).toBe(0);
   });
 });
 
@@ -130,12 +131,16 @@ describe('สถิติ API/MCP + สิ่งที่ client สร้าง
 });
 
 describe('จัดการ client', () => {
-  it('เพิกถอน: เก็บผู้เพิกถอน + เหตุผล · แจ้ง Owner + ผู้อนุญาตเดิมทาง outbox · ไม่คงร่าง → ลบร่างที่ client สร้าง · เพิกถอนซ้ำไม่ได้', async () => {
+  it('เพิกถอน: เก็บผู้เพิกถอน + เหตุผล · แจ้ง Owner + ผู้อนุญาตเดิมทาง outbox · ร่างที่ไม่คงไว้ถูกลบ (เฉพาะของ client นี้) · เพิกถอนซ้ำไม่ได้', async () => {
     const c = await createApiClient(db, A, mgrId, { name: 'OCR', kind: 'mcp', scopes: ['documents:draft'] });
     const d = await createDraftDocument(db, A, draft('OCR-1') as never, c.id);
-    const r = await revokeApiClient(db, A, c.id, wei, 'เลิกใช้งาน', { notify: true, keepDrafts: false });
+    const keep = await createDraftDocument(db, A, draft('OCR-2') as never, c.id);
+    const other = await createDraftDocument(db, A, draft('OTHER-1') as never, null);
+    const r = await revokeApiClient(db, A, c.id, wei, 'เลิกใช้งาน', { notify: true, deleteDraftIds: [d.id, other.id] });
     expect(r.deletedDrafts).toBe(1);
     expect(await getDocument(db, A, d.id)).toBeNull();
+    expect(await getDocument(db, A, keep.id)).not.toBeNull();
+    expect(await getDocument(db, A, other.id)).not.toBeNull();
     const row = (await listApiClients(db, A)).find((x) => x.id === c.id);
     expect(row).toMatchObject({ revoked_by_name: 'Wei', revoke_reason: 'เลิกใช้งาน' });
     const mail = await admin((cl) => cl.query("select to_email from public.outbox_email where template = 'api_client_revoked' order by to_email"));
@@ -174,5 +179,21 @@ describe('จัดการ client', () => {
     expect((await verifyApiKey(db, c.key))?.scopes).toEqual(['documents:read']);
     // CHECK ใน DB กันอีกชั้น
     await expect(db.withPublic((tx) => tx.updateTable('public.api_client').set({ scopes: ['documents:post'] }).where('id', '=', c.id).execute())).rejects.toThrow();
+  });
+});
+
+describe('บังคับ 2FA ทุกผู้ใช้ (ScreenSettings)', () => {
+  it('เปิด enforce2fa → สมาชิกทุกคน require_2fa = true · ปิดแล้วไม่คืนค่ารายคน', async () => {
+    await admin((c) => c.query('update public.company_membership set require_2fa = false where company_id = $1', [A]));
+    const s = await companySettings(db, A);
+    const input = { nameTh: 'บริษัท ก จำกัด', branchCode: '00000', businessType: 'service' as const, vatRegistered: true, serviceTaxPoint: 'on_payment' as const };
+    await saveCompanySettings(db, A, wei, { ...input, defaults: { ...s.defaults, enforce2fa: false } });
+    const off = await admin((c) => c.query<{ r: boolean }>('select require_2fa r from public.company_membership where company_id = $1', [A]));
+    expect(off.rows.every((x) => !x.r)).toBe(true);
+    await saveCompanySettings(db, A, wei, { ...input, defaults: { ...s.defaults, enforce2fa: true } });
+    const on = await admin((c) => c.query<{ r: boolean }>('select require_2fa r from public.company_membership where company_id = $1', [A]));
+    expect(on.rows.length).toBe(2);
+    expect(on.rows.every((x) => x.r)).toBe(true);
+    expect((await companySettings(db, A)).defaults.enforce2fa).toBe(true);
   });
 });

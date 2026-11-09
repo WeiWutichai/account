@@ -29,13 +29,14 @@ export class HubController {
   create(@Req() req: Request, @Body() b: { name: string; kind: 'tms' | 'mcp' | 'custom'; scopes: ApiScope[] }) {
     return createApiClient(this.db, companyOf(req), actorIdOf(req), b);
   }
-  /** เพิกถอน (ScreenRevoke): เหตุผลบังคับ · notify = เข้าคิวอีเมลถึง Owner + ผู้อนุญาตเดิม · keepDrafts=false = ลบร่างที่ client สร้าง
+  /** เพิกถอน (ScreenRevoke): เหตุผลบังคับ · notify = เข้าคิวอีเมลถึง Owner + ผู้อนุญาตเดิม · deleteDraftIds = ร่างของ client นี้ที่ไม่คงไว้ (ลบ)
    *  TODO(Wei/backend): "ต้องยืนยันด้วยรหัส 2FA" — id-api ยังไม่มี endpoint step-up (ยืนยัน TOTP ของผู้ที่เข้าสู่ระบบแล้ว แล้วออก token ที่ accounting-api ตรวจได้) */
   @Need('settings', 'write') @Delete('api-clients/:id')
-  async revoke(@Req() req: Request, @Param('id') id: string, @Body() b?: { reason?: string; notify?: boolean; keepDrafts?: boolean }) {
+  async revoke(@Req() req: Request, @Param('id') id: string, @Body() b?: { reason?: string; notify?: boolean; deleteDraftIds?: string[] }) {
     const reason = b?.reason?.trim() ?? '';
     if (!reason) throw new BadRequestException('ต้องระบุเหตุผล');
-    return { ok: true, ...(await revokeApiClient(this.db, companyOf(req), id, actorIdOf(req), reason, { notify: b?.notify === true, keepDrafts: b?.keepDrafts !== false })) };
+    const del = Array.isArray(b?.deleteDraftIds) ? b.deleteDraftIds.filter((x): x is string => typeof x === 'string') : [];
+    return { ok: true, ...(await revokeApiClient(this.db, companyOf(req), id, actorIdOf(req), reason, { notify: b?.notify === true, deleteDraftIds: del })) };
   }
   /** ระงับชั่วคราว (ค่าตั้งต้น 7 วัน) */
   @Need('settings', 'write') @Post('api-clients/:id/suspend')
@@ -62,7 +63,7 @@ export class HubController {
   @Need('settings', 'write') @Post('webhooks/deliveries/:id/redeliver')
   async again(@Req() req: Request, @Param('id') id: string) { await redeliver(this.db, companyOf(req), id); return { ok: true }; }
   /** แบ่งหน้าฝั่ง server: ?limit (≤1000, ค่าตั้งต้น 50) &offset · ตัวกรอง ?category &actor (user id | client:<id> | system) &from &to (YYYY-MM-DD เวลาไทย) &q &important=1 &entity
-   *  → { rows, total, limit, offset, actors } */
+   *  → { rows, count, limit, offset, actors } */
   @Need('reports', 'read') @Get('audit')
   audit(@Req() req: Request, @Query() q: Record<string, string | undefined>) {
     const limit = int(q.limit);

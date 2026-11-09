@@ -79,17 +79,19 @@ export async function recordAudit(db: Db, companyId: string, row: { actorId: str
     before: row.before === undefined ? null : JSON.stringify(row.before), after: row.after === undefined ? null : JSON.stringify(row.after), prev_hash: null, hash: null }).execute());
 }
 
-export interface RevokeOptions { notify?: boolean; keepDrafts?: boolean }
-/** เพิกถอนทันที (ScreenRevoke "เพิกถอนทั้งหมดทันที") · เก็บผู้เพิกถอน + เหตุผล · ปิด webhook · notify → อีเมลถึง Owner + ผู้อนุญาตเดิม (คิว outbox) · keepDrafts=false → ลบร่างที่ client สร้าง */
+/** deleteDraftIds = ร่างที่ไม่ "คงไว้ให้คนตรวจต่อ" (ScreenRevoke) — ลบเฉพาะร่างที่ client นี้สร้างเท่านั้น */
+export interface RevokeOptions { notify?: boolean; deleteDraftIds?: string[] }
+/** เพิกถอนทันที (ScreenRevoke "เพิกถอนทั้งหมดทันที") · เก็บผู้เพิกถอน + เหตุผล · ปิด webhook · notify → อีเมลถึง Owner + ผู้อนุญาตเดิม (คิว outbox) */
 export async function revokeApiClient(db: Db, companyId: string, id: string, actorId: string | null = null, reason = '', opts: RevokeOptions = {}) {
   const c = await liveClient(db, companyId, id);
   await db.withPublic((tx) => tx.updateTable('public.api_client').set({ revoked_at: new Date(), revoked_by: actorId, revoke_reason: reason || null }).where('id', '=', id).where('company_id', '=', companyId).execute());
   const deleted = await db.withCompany(companyId, async (tx) => {
     await tx.updateTable('acct.webhook_endpoint').set({ active: false }).where('api_client_id', '=', id).execute();
     let drafts: string[] = [];
-    if (opts.keepDrafts === false) {
-      // ร่างยังไม่ผ่านรายการ → ลบได้ (เอกสารที่ผ่านรายการแล้วไม่ถูกแตะ)
-      drafts = (await tx.selectFrom('acct.document').select('id').where('created_by_client', '=', id).where('status', '=', 'draft').execute()).map((d) => d.id);
+    const ask = (opts.deleteDraftIds ?? []).filter((x) => UUID_RE.test(x));
+    if (ask.length) {
+      // ร่างยังไม่ผ่านรายการ → ลบได้ (เอกสารที่ผ่านรายการแล้ว/ของ client อื่นไม่ถูกแตะ)
+      drafts = (await tx.selectFrom('acct.document').select('id').where('created_by_client', '=', id).where('status', '=', 'draft').where('id', 'in', ask).execute()).map((d) => d.id);
       if (drafts.length) {
         await tx.deleteFrom('acct.document_line').where('document_id', 'in', drafts).execute();
         await tx.deleteFrom('acct.document').where('id', 'in', drafts).where('status', '=', 'draft').execute();
@@ -331,7 +333,8 @@ export async function auditLog(db: Db, companyId: string, f: AuditFilter = {}) {
   const clientHits = needle ? clientRows.filter((c) => c.name.toLowerCase().includes(needle.toLowerCase())).map((c) => c.id) : [];
   const res = await db.withCompany(companyId, async (tx) => {
     // ตัวกรองยกเว้นผู้กระทำ (ใช้สร้างรายชื่อผู้กระทำในตัวเลือก)
-    let base = tx.selectFrom('acct.audit_log as a').leftJoin('acct.document as d', (j) => j.on('a.entity', '=', 'document').on(sql<boolean>`d.id::text = a.entity_id`).onRef('d.company_id', '=', 'a.company_id'));
+    let base = tx.selectFrom('acct.audit_log as a').leftJoin('acct.document as d', (j) => j.on('a.entity', '=', 'document').on(sql<boolean>`d.id::text = a.entity_id`).onRef('d.company_id', '=', 'a.company_id'))
+      .leftJoin('acct.journal as jn', (j) => j.on('a.entity', '=', 'journal').on(sql<boolean>`jn.id::text = a.entity_id`).onRef('jn.company_id', '=', 'a.company_id'));
     if (f.entity) base = base.where('a.entity', '=', f.entity);
     const prefixes = f.category ? AUDIT_CATEGORIES[f.category] : undefined;
     if (f.category) base = prefixes ? base.where((eb) => eb.or(prefixes.map((p) => eb('a.action', 'like', `${p}%`)))) : base.where(sql<boolean>`false`);
@@ -341,7 +344,7 @@ export async function auditLog(db: Db, companyId: string, f: AuditFilter = {}) {
     if (needle) {
       const like = `%${needle}%`;
       base = base.where((eb) => eb.or([
-        eb('a.action', 'ilike', like), eb('a.entity_id', 'ilike', like), eb('d.doc_no', 'ilike', like),
+        eb('a.action', 'ilike', like), eb('a.entity_id', 'ilike', like), eb('d.doc_no', 'ilike', like), eb('jn.journal_no', 'ilike', like),
         eb(sql<string>`coalesce(a.before::text, '')`, 'ilike', like), eb(sql<string>`coalesce(a.after::text, '')`, 'ilike', like),
         ...(nameHits.length ? [eb('a.actor_id', 'in', nameHits.map((n) => n.id))] : []),
         ...(clientHits.length ? [eb('a.api_client_id', 'in', clientHits)] : []),
@@ -352,10 +355,10 @@ export async function auditLog(db: Db, companyId: string, f: AuditFilter = {}) {
     if (f.actor === 'system') q = q.where('a.actor_id', 'is', null).where('a.api_client_id', 'is', null);
     else if (f.actor?.startsWith('client:') && UUID_RE.test(f.actor.slice(7))) q = q.where('a.actor_id', 'is', null).where('a.api_client_id', '=', f.actor.slice(7));
     else if (f.actor && UUID_RE.test(f.actor)) q = q.where('a.actor_id', '=', f.actor);
-    const total = Number((await q.select(sql<string>`count(*)`.as('n')).executeTakeFirstOrThrow()).n);
-    const rows = await q.select(['a.id', 'a.at', 'a.actor_id', 'a.action', 'a.entity', 'a.entity_id', 'a.before', 'a.after', 'a.channel', 'a.ip', 'a.api_client_id', 'd.doc_no',
+    const count = Number((await q.select(sql<string>`count(*)`.as('n')).executeTakeFirstOrThrow()).n);
+    const rows = await q.select(['a.id', 'a.at', 'a.actor_id', 'a.action', 'a.entity', 'a.entity_id', 'a.before', 'a.after', 'a.channel', 'a.ip', 'a.api_client_id', 'd.doc_no', 'jn.journal_no',
       sql<string>`encode(a.hash, 'hex')`.as('hash'), sql<string>`encode(a.prev_hash, 'hex')`.as('prev_hash')]).orderBy('a.id', 'desc').limit(limit).offset(offset).execute();
-    return { rows, total, actors };
+    return { rows, count, actors };
   });
   const names = await userNames(db, [...res.rows.map((r) => r.actor_id), ...res.actors.map((a) => a.actor_id)]);
   const client = Object.fromEntries(clientRows.map((c) => [c.id, c]));
@@ -366,7 +369,7 @@ export async function auditLog(db: Db, companyId: string, f: AuditFilter = {}) {
     else actorOpts.set('system', 'ระบบ');
   }
   return {
-    total: res.total, limit, offset,
+    count: res.count, limit, offset,
     actors: [...actorOpts].map(([id, name]) => ({ id, name })).sort((x, y) => x.name.localeCompare(y.name, 'th')),
     rows: res.rows.map((r) => ({ ...r, actor_name: r.actor_id ? names[r.actor_id] ?? null : null,
       client_name: r.api_client_id ? client[r.api_client_id]?.name ?? null : null, client_kind: r.api_client_id ? client[r.api_client_id]?.kind ?? null : null })),
