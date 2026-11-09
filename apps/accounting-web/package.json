@@ -4,14 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev -p 3000",
+    "dev": "APP_TODAY=${APP_TODAY:-2026-11-30} next dev -p 3010",
     "build": "next build",
-    "start": "next start -p 3000",
+    "start": "next start -p 3010",
     "lint": "eslint app test",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
-  "dependencies": { "next": "16.4.5", "react": "19.3.1", "react-dom": "19.3.1" },
+  "dependencies": {
+    "next": "16.4.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
+    "@innovera/ui": "workspace:*",
+    "server-only": "0.0.1"
+  },
   "devDependencies": {
     "@innovera/config": "workspace:*",
     "@types/node": "26.6.6",

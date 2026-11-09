@@ -16,14 +16,36 @@ export function loadFixtures(): Fixtures {
 }
 
 const pad = (n: number) => String(n).padStart(2, '0');
-/** งวดปีบัญชี ปฏิทิน (01-01) · fiscalYear = พ.ศ. · งวด 13 = 31 ธ.ค. (ปรับปรุงปิดปี) */
+
+/** หมวดย่อยตามรหัสบัญชี (ผังบริการ) — ใช้แสดงใน ScreenCOA */
+export function categoryOf(code: string, type: AccountType): string {
+  if (type === 'asset' || type === 'contra_asset') return code < '1500000' ? 'สินทรัพย์หมุนเวียน' : 'สินทรัพย์ไม่หมุนเวียน';
+  if (type === 'liability') return code < '2300000' ? 'หนี้สินหมุนเวียน' : 'หนี้สินไม่หมุนเวียน';
+  if (type === 'equity') return 'ส่วนของเจ้าของ';
+  if (type === 'revenue' || type === 'contra_revenue') return 'รายได้';
+  return code.startsWith('53') || code.startsWith('54') ? 'ค่าใช้จ่ายในการบริหาร' : 'ค่าใช้จ่าย';
+}
+
+/** ข้อความ "คุม / ผูกกับ" ของบัญชีที่ระบบใช้เฉพาะ (ScreenCOA) */
+export const BINDINGS: Readonly<Record<string, string>> = {
+  '1130100': 'บัญชีคุม · ต้องระบุคู่ค้า',
+  '2110100': 'บัญชีคุม · ต้องระบุคู่ค้า',
+  '1160100': 'รายงานภาษีถูกหัก',
+  '2150100': 'รายงานภาษีขาย · ภ.พ.30',
+  '2150300': 'ภ.ง.ด.3/53',
+  '4100100': 'ค่าเริ่มต้นสูตร IV',
+  '4101100': 'mapping TMS',
+  '5301200': 'WHT 3% ตั้งต้น',
+};
+/** งวดปีบัญชี ปฏิทิน (01-01) · fiscalYear = พ.ศ. · งวด 0 = ยอดยกมา (31 ธ.ค. ปีก่อน) · งวด 13 = 31 ธ.ค. (ปรับปรุงปิดปี) */
 export function calendarPeriods(fiscalYear: number) {
   const y = fiscalYear - 543;
+  const opening = { period_no: 0, starts_on: `${y - 1}-12-31`, ends_on: `${y - 1}-12-31` };
   const months = Array.from({ length: 12 }, (_, i) => {
     const last = new Date(Date.UTC(y, i + 1, 0)).getUTCDate();
     return { period_no: i + 1, starts_on: `${y}-${pad(i + 1)}-01`, ends_on: `${y}-${pad(i + 1)}-${pad(last)}` };
   });
-  return [...months, { period_no: 13, starts_on: `${y}-12-31`, ends_on: `${y}-12-31` }];
+  return [opening, ...months, { period_no: 13, starts_on: `${y}-12-31`, ends_on: `${y}-12-31` }];
 }
 
 export interface SeedResult { accounts: number; periods: number; contacts: number; products: number }
@@ -35,7 +57,8 @@ export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569):
       await tx.insertInto('acct.account').values({
         company_id: companyId, code: a.code, name: a.name, type: a.type, parent_code: null,
         is_control: Boolean(a.control), control_kind: a.control ?? null, requires_contact: Boolean(a.control),
-      }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: a.name })).execute();
+        category: categoryOf(a.code, a.type), binding: BINDINGS[a.code] ?? null,
+      }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet({ name: a.name, category: categoryOf(a.code, a.type), binding: BINDINGS[a.code] ?? null })).execute();
     }
     for (const p of calendarPeriods(fiscalYear)) {
       await tx.insertInto('acct.period').values({ company_id: companyId, fiscal_year: fiscalYear, ...p, closed_at: null, closed_by: null })

@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts",
+    "dev": "APP_TODAY=${APP_TODAY:-2026-11-30} tsx watch src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/main.js",
     "lint": "eslint src test",
@@ -18,13 +18,19 @@
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
     "pg": "8.23.1",
-    "ioredis": "6.0.0"
+    "ioredis": "6.0.0",
+    "@innovera/db": "workspace:*",
+    "@innovera/ledger": "workspace:*",
+    "@innovera/contracts": "workspace:*",
+    "exceljs": "4.4.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
     "@innovera/config": "workspace:*",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
     "tsx": "4.23.15",
-    "vitest": "5.1.0"
+    "vitest": "5.1.0",
+    "@types/express": "5.0.6"
   }
 }

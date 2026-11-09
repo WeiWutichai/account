@@ -4,7 +4,20 @@
   "private": true,
   "type": "module",
   "main": "./src/index.ts",
-  "exports": { ".": "./src/index.ts" },
-  "scripts": { "lint": "eslint src", "typecheck": "tsc --noEmit", "test": "vitest run --passWithNoTests" },
-  "devDependencies": { "vitest": "5.1.0", "@types/node": "26.6.6", "@innovera/config": "workspace:*" }
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "lint": "eslint src test",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "vitest": "5.1.0",
+    "@types/node": "26.6.6",
+    "@innovera/config": "workspace:*"
+  },
+  "dependencies": {
+    "@innovera/ledger": "workspace:*"
+  }
 }
