@@ -2,14 +2,16 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-10 (บ่าย)** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 (เย็น)** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
 - **โหมด:** Wei สั่งทำต่อเนื่องข้ามคืน (2026-11-09) = **อนุมัติ Technical Plan ล่วงหน้า** · เรื่องที่ต้องให้ Wei/ผู้สอบบัญชีตัดสิน → TODO ใน §4 ไม่ตัดสินเอง
-- **M0–M6 ✅ · M8 ✅** (merge เข้า main) · **M7** backend ✅ (API ภายนอก · webhooks · MCP · audit hash chain) — UI 4 หน้าค้าง · **M3.5** เตรียมในเครื่องครบ รอ VPS/secrets ของ Wei (T12) · Wei สั่ง 2026-11-10 "ทำต่อจนจบทุก milestone"
+- **M0–M8 ✅ ครบทุก milestone ของ Phase 1** (merge เข้า main) ยกเว้นส่วนที่ต้องให้ Wei: **M3.5** deploy จริง (T12) · OAuth แทน API key (T14) · spec RD Prep (T11) · เรื่องรอผู้สอบบัญชี · ข้อขัดแย้งแบบร่าง (T6–T10, T13, T15, T16)
+- `pnpm verify` เขียวแบบไม่ใช้ cache (`turbo run lint typecheck test --force` 42/42) · e2e: `apps/id-web` (สมัคร→2FA→เชิญ→รับ · ลืมรหัสผ่าน) และ `apps/accounting-web/e2e` (QO→IV→BN→RV→PDF) ผ่าน
+- ⚠️ ถ้าหน้าเว็บ dev โหลดตัวเองวน หลังรัน typecheck/test แบบ --force: รีสตาร์ต `next dev` ของแอปนั้น
 - ผู้ใช้ dev คนที่สอง acct.mgr@innovera.co.th (ผู้จัดการบัญชี · ใช้อนุมัติใบสำคัญจ่ายตามหลักแบ่งหน้าที่) · `DEV_USER=approver pnpm dev:session` · Console (admin) http://localhost:3200
 - รีเซ็ตข้อมูล dev: `pnpm db:reset && pnpm dev:session` (เอกสารขาย/ซื้อจาก fixtures สร้างผ่าน service จริง เลขที่ตรง fixtures)
 - M3.5 (deploy VPS จริง) ต้องใช้เซิร์ฟเวอร์/secrets ของ Wei — เตรียมได้แค่ไฟล์ deploy + ทดสอบ backup/restore ในเครื่อง
@@ -110,6 +112,8 @@
 - แก้แบบร่าง → เผยแพร่เวอร์ชันใหม่ → ดาวน์โหลดกลับมาเทียบ → ส่งออกทับ `design/` + อัปเดต `MANIFEST.json` + เลขเวอร์ชันใน `CLAUDE.md`, `design/README.md`, `docs/page-map.md`, ไฟล์นี้
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
+
+- **2026-11-10 เย็น** · Claude Code · **M7 เสร็จ (merge เข้า main)**: หน้าจอ ScreenApps · ScreenMcp · ScreenAudit · ScreenRevoke + การ์ดคำขอเข้าดูของทีม Innovera ในคิวหน้าแรก (Owner อนุมัติ/ปฏิเสธ) · แก้: webhook ของ client ที่ถูกเพิกถอนไม่ส่งต่อ · สร้าง/เพิกถอน key ลง audit · ปิด/เปิด webhook ได้ · **แก้ turbo test inputs** (เดิมนับแค่ src/test → cache ปิดบังผล test ของแอป) + vitest config แยก e2e · verify แบบไม่ใช้ cache เขียว 42/42 (db 87 test)
 
 - **2026-11-10 บ่าย** · Claude Code · **M5 + M6 + M8 เสร็จ (merge เข้า main)** · M5: ซื้อ/ค่าใช้จ่าย/ลดหนี้ซื้อ/จ่ายชำระ (รอบจ่าย · สายอนุมัติ + แบ่งหน้าที่ · 50 ทวิ) · เงินสดย่อย imprest · แบบพิมพ์ D4/D7/D9 · แก้: กันจ่ายซ้ำ EXP จ่ายทันที · ยกเลิกการจ่ายยกเลิก 50 ทวิ · M6: รายงานภาษีขาย/ซื้อ · ภ.พ.30 · ภ.ง.ด.3/53 + ไฟล์ RD Prep (รอ spec · T11) · ตรวจความถูกต้อง · อายุหนี้ · งบ · ปิดงวด/ปิดปี · ทรัพย์สิน + ค่าเสื่อม · กระทบยอดธนาคาร · แบบพิมพ์ D12–D15 · M7 backend: audit hash chain · API key + /ext/v1 · webhooks (HMAC · retry 3 · dead-letter) · MCP (post_document ถูกปฏิเสธ) · M8: Console 8 หน้า · consent ก่อนเข้าดูข้อมูลลูกค้า (Gate ผ่าน e2e) · หน้าจอทำโดย subagent 7 ตัว ตรวจซ้ำแล้ว · `pnpm verify` เขียว (db 86 test)
 

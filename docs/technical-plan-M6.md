@@ -1,6 +1,6 @@
 # Technical Plan — M6 ธนาคาร + ภาษี + ปิดงวด
 
-> สถานะ: **อนุมัติล่วงหน้า** (Wei 2026-11-09/10) · อ้างอิง `PLAN.md` §6 (M6) · แบบร่าง: ScreenBankRecon · ScreenAging · ScreenTax · ScreenReconReport · ScreenPeriodClose · ScreenAssets · ScreenReports · ScreenReportBuilder · PrintVatSales (D12) · PrintVatPurchase (D13) · PrintPnd3Attach (D14) · PrintPnd53Attach (D15)
+> สถานะ: **เสร็จ 2026-11-10** (รายการค้างอยู่ท้ายไฟล์) · **อนุมัติล่วงหน้า** (Wei 2026-11-09/10) · อ้างอิง `PLAN.md` §6 (M6) · แบบร่าง: ScreenBankRecon · ScreenAging · ScreenTax · ScreenReconReport · ScreenPeriodClose · ScreenAssets · ScreenReports · ScreenReportBuilder · PrintVatSales (D12) · PrintVatPurchase (D13) · PrintPnd3Attach (D14) · PrintPnd53Attach (D15)
 
 ## Gate
 ภ.พ.30 = รายงานภาษีขาย/ซื้อ = GL (test) · RD Prep TXT ผ่าน validator spec

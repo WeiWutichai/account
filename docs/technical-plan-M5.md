@@ -1,6 +1,6 @@
 # Technical Plan — M5 ซื้อ + จ่ายเงิน
 
-> สถานะ: **อนุมัติล่วงหน้า** (Wei 2026-11-09/10 "ทำต่อจนจบทุก milestone") · อ้างอิง `PLAN.md` §6 (M5) · CLAUDE.md (WHT รับรู้ตอนจ่าย · ฟรีแลนซ์รอผู้สอบบัญชี) · แบบร่าง: ScreenPurchaseOrder · ScreenPurchaseList · ScreenPurchaseBill · ScreenExpense · ScreenPurchaseCreditNote · ScreenPayment · ScreenPettyCash · PrintWht50 (D4) · PrintPaymentVoucher (D7) · PrintPurchaseOrder (D9)
+> สถานะ: **เสร็จ 2026-11-10** (รายการค้างอยู่ท้ายไฟล์) · **อนุมัติล่วงหน้า** (Wei 2026-11-09/10 "ทำต่อจนจบทุก milestone") · อ้างอิง `PLAN.md` §6 (M5) · CLAUDE.md (WHT รับรู้ตอนจ่าย · ฟรีแลนซ์รอผู้สอบบัญชี) · แบบร่าง: ScreenPurchaseOrder · ScreenPurchaseList · ScreenPurchaseBill · ScreenExpense · ScreenPurchaseCreditNote · ScreenPayment · ScreenPettyCash · PrintWht50 (D4) · PrintPaymentVoucher (D7) · PrintPurchaseOrder (D9)
 
 ## Gate
 e2e PO → AP → PV → 50 ทวิ · WHT เฉพาะตอนจ่าย

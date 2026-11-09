@@ -22,6 +22,8 @@ export async function createApiClient(db: Db, companyId: string, actorId: string
   const key = `inn_${input.kind}_${randomBytes(24).toString('base64url')}`;
   const row = await db.withPublic((tx) => tx.insertInto('public.api_client').values({ company_id: companyId, name: input.name, kind: input.kind, key_prefix: key.slice(0, 12), key_hash: sha(key),
     scopes: input.scopes, created_by: actorId, last_used_at: null, revoked_at: null }).returning('id').executeTakeFirstOrThrow());
+  await db.withCompany(companyId, (tx) => tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: 'api_client.create', entity: 'api_client', entity_id: row.id,
+    before: null, after: JSON.stringify({ name: input.name, kind: input.kind, scopes: input.scopes }), prev_hash: null, hash: null }).execute());
   return { id: row.id, key }; // key แสดงครั้งเดียว
 }
 export async function verifyApiKey(db: Db, key: string) {
@@ -31,10 +33,18 @@ export async function verifyApiKey(db: Db, key: string) {
   return { id: c.id, companyId: c.company_id, kind: c.kind, scopes: c.scopes as ApiScope[], name: c.name };
 }
 export async function listApiClients(db: Db, companyId: string) {
-  return db.withPublic((tx) => tx.selectFrom('public.api_client').select(['id', 'name', 'kind', 'key_prefix', 'scopes', 'created_at', 'last_used_at', 'revoked_at']).where('company_id', '=', companyId).orderBy('created_at').execute());
+  return db.withPublic((tx) => tx.selectFrom('public.api_client').select(['id', 'name', 'kind', 'key_prefix', 'scopes', 'created_by', 'created_at', 'last_used_at', 'revoked_at']).where('company_id', '=', companyId).orderBy('created_at').execute());
 }
-export async function revokeApiClient(db: Db, companyId: string, id: string) {
+export async function revokeApiClient(db: Db, companyId: string, id: string, actorId: string | null = null, reason = '') {
   await db.withPublic((tx) => tx.updateTable('public.api_client').set({ revoked_at: new Date() }).where('id', '=', id).where('company_id', '=', companyId).execute());
+  // ปิด webhook ของ client นี้ด้วย + บันทึก audit
+  await db.withCompany(companyId, async (tx) => {
+    await tx.updateTable('acct.webhook_endpoint').set({ active: false }).where('api_client_id', '=', id).execute();
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actorId, action: 'api_client.revoke', entity: 'api_client', entity_id: id, before: null, after: JSON.stringify({ reason }), prev_hash: null, hash: null }).execute();
+  });
+}
+export async function setWebhookActive(db: Db, companyId: string, id: string, active: boolean) {
+  await db.withCompany(companyId, (tx) => tx.updateTable('acct.webhook_endpoint').set({ active }).where('id', '=', id).execute());
 }
 
 // ---------- webhooks ----------
@@ -51,7 +61,10 @@ export async function addWebhook(db: Db, companyId: string, input: { url: string
 
 /** outbox: บันทึกใน transaction เดียวกับธุรกรรม — ส่งจริงโดย deliverDue (ธุรกรรม rollback = ไม่ส่ง) */
 export async function emitTx(tx: CompanyTx, companyId: string, event: WebhookEventName, data: Record<string, unknown>) {
-  const eps = await tx.selectFrom('acct.webhook_endpoint').select('id').where('active', '=', true).where(sql<boolean>`${event} = any(events)`).execute();
+  // ไม่ส่งให้ webhook ของ client ที่ถูกเพิกถอนแล้ว
+  const eps = await tx.selectFrom('acct.webhook_endpoint as e').select('e.id').where('e.active', '=', true).where(sql<boolean>`${event} = any(e.events)`)
+    .where(sql<boolean>`(e.api_client_id is null or not exists (select 1 from public.api_client c where c.id = e.api_client_id and c.revoked_at is not null))`)
+    .execute();
   if (!eps.length) return;
   const payload = { id: randomBytesUuid(), type: event, company_id: companyId, occurred_at: new Date().toISOString(), data };
   await tx.insertInto('acct.webhook_delivery').values(eps.map((e) => ({ company_id: companyId, endpoint_id: e.id, event, payload: JSON.stringify(payload) }))).execute();

@@ -88,3 +88,18 @@ describe('audit hash chain', () => {
     await expect(admin((c) => c.query("select set_config('app.company_id', $1, false); update acct.audit_log set action = 'x'", [A]))).rejects.toThrow();
   });
 });
+
+describe('เพิกถอน client', () => {
+  it('webhook ของ client ที่ถูกเพิกถอนไม่ได้รับ event อีก · มี audit', async () => {
+    const { revokeApiClient } = await import('../src/hub.ts');
+    const cl = await createApiClient(db, B, null, { name: 'TMS-B', kind: 'tms', scopes: ['webhooks:manage'] });
+    await addWebhook(db, B, { url: 'https://tms-b.example/hook', events: ['period.closed'], apiClientId: cl.id });
+    await revokeApiClient(db, B, cl.id, null, 'เลิกใช้');
+    await closePeriod(db, B, mgr, { fiscalYear: 2569, periodNo: 2, to: 'soft_closed' });
+    const rows = await db.withCompany(B, (tx) => tx.selectFrom('acct.webhook_delivery as d').innerJoin('acct.webhook_endpoint as e', (j) => j.onRef('e.id', '=', 'd.endpoint_id').onRef('e.company_id', '=', 'd.company_id'))
+      .select('d.id').where('e.url', '=', 'https://tms-b.example/hook').execute());
+    expect(rows).toEqual([]);
+    const audit = await db.withCompany(B, (tx) => tx.selectFrom('acct.audit_log').select('action').where('entity', '=', 'api_client').orderBy('id').execute());
+    expect(audit.map((a) => a.action)).toEqual(['api_client.create', 'api_client.revoke']);
+  });
+});
