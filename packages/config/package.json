@@ -1,0 +1,14 @@
+{
+  "name": "@innovera/config",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig.base.json": "./tsconfig.base.json",
+    "./tsconfig.nest.json": "./tsconfig.nest.json",
+    "./tsconfig.next.json": "./tsconfig.next.json",
+    "./eslint": "./eslint.config.js"
+  },
+  "scripts": { "lint": "eslint .", "typecheck": "echo ok", "test": "node --test test/" },
+  "peerDependencies": { "eslint": "10.14.0", "typescript-eslint": "8.72.1" }
+}

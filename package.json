@@ -1,0 +1,31 @@
+{
+  "name": "innovera-platform",
+  "private": true,
+  "packageManager": "pnpm@12.18.0",
+  "engines": {
+    "node": ">=26.13.0 <27",
+    "pnpm": "12.18.0"
+  },
+  "scripts": {
+    "dev": "docker compose -f docker/compose.yaml up -d && turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:golden": "pnpm --filter @innovera/ledger test",
+    "check:shared": "node scripts/check-shared-files.mjs",
+    "verify": "pnpm check:shared && pnpm lint && pnpm typecheck && pnpm test",
+    "db:up": "docker compose -f docker/compose.yaml up -d",
+    "db:down": "docker compose -f docker/compose.yaml down"
+  },
+  "devDependencies": {
+    "turbo": "2.11.10",
+    "typescript": "6.0.3",
+    "@types/node": "26.6.6",
+    "eslint": "10.14.0",
+    "typescript-eslint": "8.72.1",
+    "prettier": "3.9.10",
+    "@innovera/config": "workspace:*",
+    "ajv": "8.20.0"
+  }
+}

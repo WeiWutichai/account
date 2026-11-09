@@ -1,0 +1,1 @@
+{ "extends": "@innovera/config/tsconfig.nest.json", "compilerOptions": { "outDir": "dist", "rootDir": "." }, "include": ["src", "test"] }
