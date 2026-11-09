@@ -46,7 +46,8 @@ export interface PublicDB {
   'public.email_token': { id: Generated<string>; user_id: string; purpose: 'verify_email' | 'reset_password'; token_hash: string; attempts: Generated<number>; created_at: Ts; expires_at: Ts; used_at: Ts | null };
   'public.outbox_email': { id: Generated<string>; to_email: string; template: string; payload: Json; created_at: Ts; sent_at: Ts | null };
   'public.doc_share': { token_hash: string; company_id: string; document_id: string; created_at: Ts; expires_at: Ts | null; revoked_at: Ts | null };
-  'public.api_client': { id: Generated<string>; company_id: string; name: string; kind: 'tms' | 'mcp' | 'custom'; key_prefix: string; key_hash: string; scopes: string[]; created_by: string | null; created_at: Ts; last_used_at: Ts | null; revoked_at: Ts | null };
+  'public.api_client': { id: Generated<string>; company_id: string; name: string; kind: 'tms' | 'mcp' | 'custom'; key_prefix: string; key_hash: string; scopes: string[]; created_by: string | null; created_at: Ts; last_used_at: Ts | null; revoked_at: Ts | null;
+    status: Generated<'active' | 'suspended'>; suspended_until: Ts | null; revoked_by: Generated<string | null>; revoke_reason: Generated<string | null> };
   'public.innovera_staff': { user_id: string; role: 'support' | 'engineer' | 'billing' | 'ops' | 'admin'; active: Generated<boolean>; created_at: Ts };
   'public.support_ticket': { id: Generated<string>; number: Generated<number>; org_id: string; company_id: string | null; subject: string; status: Generated<'open' | 'in_progress' | 'waiting_consent' | 'waiting_billing' | 'closed'>;
     assignee: string | null; created_at: Ts; updated_at: Ts; closed_at: Ts | null };
@@ -68,7 +69,8 @@ export interface AcctDB {
     tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts;
     address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null;
     roles: Generated<string[]>; entity_type: Generated<'juristic' | 'individual' | 'foreign'>; ar_account: Generated<string | null>; ap_account: Generated<string | null>;
-    wht_received: Generated<string | null>; pnd_form: Generated<'3' | '53' | null>; price_level: Generated<number>; bank_account: Generated<string | null>; ship_address: Generated<string | null> };
+    wht_received: Generated<string | null>; pnd_form: Generated<'3' | '53' | null>; price_level: Generated<number>; bank_account: Generated<string | null>; ship_address: Generated<string | null>;
+    created_by_client: Generated<string | null> };
   'acct.product': { company_id: string; code: string; name: string; kind: Generated<'service' | 'goods' | 'expense' | 'kit'>; unit: string | null;
     price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null;
     price_3: Generated<string | null>; price_4: Generated<string | null>; price_5: Generated<string | null>; vat_code: Generated<'vat7' | 'exempt' | 'zero'>; default_wht: Generated<string | null>; sku: Generated<string | null> };
@@ -80,7 +82,8 @@ export interface AcctDB {
     rule_code: string | null; tax_mode: 'on_payment' | 'immediate' | null; ref_document_id: string | null; address: string | null; notes: string | null; reference: string | null;
     journal_id: string | null; created_by: string | null; approved_by: string | null; approved_at: Ts | null; voided_at: Ts | null; void_reason: string | null; void_journal_id: string | null;
     receive_account: string | null; fee: Money; fee_account: string | null; wht_cert_no: string | null; wht_rate: string | null; bill_discount: Money; credit_days: number | null; sent_at: Ts | null;
-    vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> ; party_tax_id: Generated<string | null>; vendor_invoice_date: ColumnType<string | null, string | null | undefined, string | null>; project_code: Generated<string | null> };
+    vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> ; party_tax_id: Generated<string | null>; vendor_invoice_date: ColumnType<string | null, string | null | undefined, string | null>; project_code: Generated<string | null>;
+    created_by_client: Generated<string | null> };
   'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
     pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
   'acct.bank_statement_line': { company_id: string; id: Generated<string>; bank_account: string; line_date: DateCol; description: string; amount: string; balance: string | null; ref: string | null;
@@ -114,5 +117,8 @@ export interface AcctDB {
   'acct.posting_rule': { company_id: string; id: Generated<string>; code: string; doc_type: string; name: string; active: Generated<boolean> };
   'acct.posting_rule_version': { company_id: string; id: Generated<string>; rule_id: string; version: number; definition: unknown; created_at: Ts };
   'acct.audit_log': { company_id: string; id: Generated<string>; at: Ts; actor_id: string | null; action: string; entity: string; entity_id: string;
-    before: unknown; after: unknown; prev_hash: Buffer | null; hash: Buffer | null };
+    before: unknown; after: unknown; prev_hash: Buffer | null; hash: Buffer | null;
+    // 0016: ค่าตั้งต้นจาก set_config('app.audit_*') ของ withCompany (AuditContext)
+    channel: Generated<'web' | 'api' | 'mcp' | 'system' | null>; ip: Generated<string | null>; api_client_id: Generated<string | null> };
+  'acct.api_call': { company_id: string; id: Generated<string>; client_id: string; at: Ts; kind: 'api' | 'mcp'; tool: string; status: 'ok' | 'denied' | 'error'; document_id: string | null; detail: string | null };
 }

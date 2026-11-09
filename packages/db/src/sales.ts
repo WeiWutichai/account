@@ -6,7 +6,7 @@ import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
-import { emitTx } from './hub.ts';
+import { emitTx, userNames } from './hub.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -64,8 +64,19 @@ export function totalsOf(input: Pick<SalesDraftInput, 'lines' | 'priceInclVat' |
   return { ...t, vat: vat.toString(), grandTotal: Money.of(t.net).plus(vat).toString(), deposit: deposit.toString(), receivable: receivable.toString() };
 }
 
+/** เหตุการณ์ของเอกสารที่บันทึกลง audit log ด้วย (ScreenAudit: สร้าง/แก้ไขร่าง/ส่งอนุมัติ/อนุมัติ/ผ่านรายการ/ยกเลิก) · reference_edited บันทึกแยกใน auditEdit */
+const AUDITED_EVENTS: Record<string, string> = {
+  created: 'document.create', edited: 'document.edit_draft', submitted: 'document.submit', rejected: 'document.reject',
+  approved: 'document.approve', posted: 'document.post', voided: 'document.void',
+};
 export async function event(tx: CompanyTx, companyId: string, documentId: string, actor: string | null, ev: string, detail: unknown = {}) {
   await tx.insertInto('acct.document_event').values({ company_id: companyId, document_id: documentId, actor, event: ev, detail: JSON.stringify(detail) }).execute();
+  const action = AUDITED_EVENTS[ev];
+  if (action) {
+    const d = await tx.selectFrom('acct.document').select(['doc_type', 'doc_no', 'status', 'grand_total']).where('id', '=', documentId).executeTakeFirst();
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor, action, entity: 'document', entity_id: documentId, before: null,
+      after: JSON.stringify({ ...(detail && typeof detail === 'object' ? detail : {}), doc_type: d?.doc_type ?? null, status: d?.status ?? null, grand_total: d?.grand_total ?? null }), prev_hash: null, hash: null }).execute();
+  }
 }
 export async function docOrThrow(tx: CompanyTx, id: string) {
   const d = await tx.selectFrom('acct.document').selectAll().where('id', '=', id).executeTakeFirst();
@@ -435,7 +446,19 @@ export async function convertDocument(db: Db, companyId: string, actor: Actor, i
 
 // ---------- อ่าน ----------
 
+/** เอกสาร + ประวัติ (events[].actor_name = ชื่อจาก Innovera ID · created_by_client_name = API client ที่สร้าง) */
 export async function getDocument(db: Db, companyId: string, id: string) {
+  const r = await loadDocument(db, companyId, id);
+  if (!r) return null;
+  const names = await userNames(db, [...r.events.map((e) => e.actor), r.doc.created_by, r.doc.approved_by]);
+  const client = r.doc.created_by_client
+    ? await db.withPublic((tx) => tx.selectFrom('public.api_client').select('name').where('id', '=', r.doc.created_by_client!).executeTakeFirst())
+    : undefined;
+  return { ...r, events: r.events.map((e) => ({ ...e, actor_name: e.actor ? names[e.actor] ?? null : null })),
+    created_by_name: r.doc.created_by ? names[r.doc.created_by] ?? null : null, approved_by_name: r.doc.approved_by ? names[r.doc.approved_by] ?? null : null,
+    created_by_client_name: client?.name ?? null };
+}
+async function loadDocument(db: Db, companyId: string, id: string) {
   return db.withCompany(companyId, async (tx) => {
     const doc = await tx.selectFrom('acct.document').selectAll().where('id', '=', id).executeTakeFirst();
     if (!doc) return null;
