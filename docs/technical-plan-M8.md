@@ -1,6 +1,6 @@
 # Technical Plan — M8 Console + Ops
 
-> สถานะ: **อนุมัติล่วงหน้า** (Wei 2026-11-09/10) · อ้างอิง `PLAN.md` §6 (M8) · CLAUDE.md "การเข้าดูข้อมูลลูกค้าโดยทีม Innovera ต้องมี consent (Console X4)" · แบบร่าง ConsoleOverview (X1) · ConsoleTenants (X2) · ConsoleSupport (X4) · ConsoleFlags (X5) · ConsoleReference (X6) · ConsoleOps (X7) · ConsoleTeam (X8) · ConsoleBilling (Phase 2) · ConsoleNav
+> สถานะ: **เสร็จ 2026-11-10** (รายการค้างอยู่ท้ายไฟล์) · **อนุมัติล่วงหน้า** (Wei 2026-11-09/10) · อ้างอิง `PLAN.md` §6 (M8) · CLAUDE.md "การเข้าดูข้อมูลลูกค้าโดยทีม Innovera ต้องมี consent (Console X4)" · แบบร่าง ConsoleOverview (X1) · ConsoleTenants (X2) · ConsoleSupport (X4) · ConsoleFlags (X5) · ConsoleReference (X6) · ConsoleOps (X7) · ConsoleTeam (X8) · ConsoleBilling (Phase 2) · ConsoleNav
 
 ## Gate
 impersonate ต้อง consent (e2e)

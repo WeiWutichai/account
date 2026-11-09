@@ -5,8 +5,12 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { call } from './client.ts';
 
+/** คำขอเข้าดูข้อมูลของทีม Innovera (GET /v1/support-access · M8 consent) */
+export interface SupportRequest { id: string; reason: string; scope: string; minutes: number; write_access: boolean; status: 'pending' | 'approved' | 'active'; created_at: string; started_at: string | null; ends_at: string | null; number: string | number; staff_name: string }
+
 export interface HomeData {
   topLine: string;
+  support: (SupportRequest & { when: string; until: string | null })[];
   pending: { count: number; iv: number };
   arDue: { total: string; count: number; overdue: number };
   queue: { id: string; no: string; href: string; contact: string; sent: string; total: string; sender: string; approvable: boolean }[];
@@ -28,6 +32,12 @@ export function Home({ data }: { data: HomeData }) {
   async function approve(id: string) {
     const r = await call<{ docNo: string; journalNo?: string }>(`documents/${id}/approve`, 'POST');
     setMsg(r.ok ? { ok: true, text: `อนุมัติแล้ว ${r.data.docNo}${r.data.journalNo ? ` · ลงบัญชี ${r.data.journalNo}` : ''}` } : { ok: false, text: r.error });
+    if (r.ok) router.refresh();
+  }
+  // consent ของ Owner — ไม่ใช่ Owner → API ปฏิเสธ แสดงข้อความ error
+  async function decide(id: string, approve: boolean) {
+    const r = await call<{ ok: boolean }>(`support-access/${id}/decide`, 'POST', { approve });
+    setMsg(r.ok ? { ok: true, text: approve ? 'อนุญาตให้ Innovera Support เข้าดูแล้ว' : 'ปฏิเสธคำขอเข้าดูแล้ว' } : { ok: false, text: r.error });
     if (r.ok) router.refresh();
   }
 
@@ -63,6 +73,25 @@ export function Home({ data }: { data: HomeData }) {
               <table style={css('width: 100%; min-width: 640px; border-collapse: collapse; font-size: 14px; line-height: 20px')}>
                 <thead><tr style={css('background: #f4f4f4; color: #525252; font-size: 13px; text-align: left')}><th style={css('height: 40px; padding: 0 12px; font-weight: 400')}>เลขที่</th><th style={css('padding: 0 12px; font-weight: 400')}>คู่ค้า</th><th style={css('padding: 0 12px; font-weight: 400')}>ส่งเมื่อ</th><th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>ยอดรวม</th><th style={css('padding: 0 12px; font-weight: 400')}>ผู้ส่ง</th><th style={css('padding: 0 12px')}></th></tr></thead>
                 <tbody>
+                  {/* TODO(Wei): แถวคำขอเข้าดู (consent) ไม่มีใน Main.dc.html — ConsoleSupport.dc.html บอกให้ "แจ้งในคิวหน้าแรก" ของ Owner → ใช้สไตล์แถวคิวเดิม + ป้ายแบบ TMS · ข้อความในแถวยังไม่มีในแบบร่าง */}
+                  {data.support.map((r) => (
+                    <tr key={r.id} data-testid="consent-request" style={css('border-top: 1px solid #e0e0e0')}>
+                      <td style={css('height: 40px; padding: 0 12px; white-space: nowrap')}><span style={css('font-weight: 500')}>คำขอเข้าดู #{r.number}</span> <span style={css('font-size: 11px; padding: 1px 6px; background: #393939; color: #ffffff; border-radius: 4px')}>Innovera</span></td>
+                      <td style={css('padding: 0 12px')}>{r.reason} · {r.scope} · {r.minutes} นาที · {r.write_access ? 'ขอสิทธิ์แก้ไขข้อมูล' : 'อ่านอย่างเดียว'}</td>
+                      <td style={css('padding: 0 12px')}>{r.when}</td>
+                      <td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums')}></td>
+                      <td style={css('padding: 0 12px; color: #525252')}>{r.staff_name}</td>
+                      <td style={css('padding: 0 12px; text-align: right; white-space: nowrap')}>
+                        {r.status === 'pending' ? (
+                          <span style={css('display: inline-flex; gap: 8px')}><Button kind="secondary" size={32} onClick={() => void decide(r.id, false)}>ปฏิเสธ</Button><Button kind="primary" size={32} onClick={() => void decide(r.id, true)}>อนุมัติ</Button></span>
+                        ) : r.status === 'active' ? (
+                          <span style={css('font-size: 13px; color: #a2191f')}>กำลังดูในฐานะ Innovera Support{r.until ? ` · ถึง ${r.until}` : ''}</span>
+                        ) : (
+                          <span style={css('font-size: 13px; color: #0e6027')}>อนุมัติแล้ว</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
                   {data.queue.map((q) => (
                     <tr key={q.id} style={css('border-top: 1px solid #e0e0e0')}>
                       <td style={css('height: 40px; padding: 0 12px')}><a href={q.href} style={css('font-weight: 500; text-decoration: none')}>{q.no}</a></td>
@@ -73,7 +102,7 @@ export function Home({ data }: { data: HomeData }) {
                       <td style={css('padding: 0 12px; text-align: right')}><Button kind="primary" size={32} disabled={!q.approvable} onClick={() => void approve(q.id)}>อนุมัติ</Button></td>
                     </tr>
                   ))}
-                  {!data.queue.length && <tr style={css('border-top: 1px solid #e0e0e0')}><td colSpan={6} style={css('height: 40px; padding: 0 12px; color: #525252')}>—</td></tr>}
+                  {!data.queue.length && !data.support.length && <tr style={css('border-top: 1px solid #e0e0e0')}><td colSpan={6} style={css('height: 40px; padding: 0 12px; color: #525252')}>—</td></tr>}
                 </tbody>
               </table>
             </div>

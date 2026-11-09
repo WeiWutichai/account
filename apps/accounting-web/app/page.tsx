@@ -4,7 +4,7 @@ import { thaiMonth } from '@innovera/ui';
 import { api, type Context } from './lib/api';
 import { Shell } from './lib/shell';
 import { addDays, docHref, docNo, type Account, type DocDetail, type DocRow, whenText } from './sales/_lib/doc';
-import { Home, type HomeData } from './sales/_lib/Home';
+import { Home, type HomeData, type SupportRequest } from './sales/_lib/Home';
 import { fromCents, toCents } from './sales/_lib/num';
 import { appToday } from './sales/_lib/server';
 
@@ -19,6 +19,11 @@ export default async function HomePage() {
   const year = p?.fiscal_year ?? Number(today.slice(0, 4)) + 543;
   const period = p?.period_no ?? Number(today.slice(5, 7));
   const [docs, accounts] = await Promise.all([api<DocRow[]>('/v1/documents'), api<Account[]>(`/v1/accounts?year=${year}&period=${period}`)]);
+  // M8 consent: คำขอเข้าดูข้อมูลของทีม Innovera (ConsoleSupport.dc.html "แจ้งในคิวหน้าแรก") — ทุกบทบาทเห็น · อนุมัติได้เฉพาะ Owner (API ตรวจ)
+  const support = await api<SupportRequest[]>('/v1/support-access').catch((e: unknown) => {
+    if (e && typeof e === 'object' && 'digest' in e) throw e;
+    return [] as SupportRequest[];
+  });
 
   const pending = docs.filter((d) => d.status === 'pending_approval');
   const details = await Promise.all(pending.slice(0, 10).map((d) => api<DocDetail>(`/v1/documents/${d.id}`)));
@@ -38,6 +43,7 @@ export default async function HomePage() {
     pending: { count: pending.length, iv: pending.filter((x) => x.doc_type === 'IV').length },
     arDue: { total: fromCents(dueSoon.reduce((s, x) => s + toCents(x.outstanding), 0n)), count: dueSoon.length, overdue: open.filter((x) => x.due_date && x.due_date < today).length },
     // TODO(M5/backend): AP/EXP/JV รออนุมัติ · ชื่อผู้ส่ง (document_event.actor → ชื่อจาก Innovera ID)
+    support: support.map((r) => ({ ...r, when: whenText(r.created_at, today), until: r.ends_at ? whenText(r.ends_at, today) : null })),
     queue: details.map((x) => {
       const sent = [...x.events].reverse().find((e) => e.event === 'submitted');
       return { id: x.doc.id, no: docNo(x.doc), href: docHref(x.doc), contact: x.contact?.name ?? '—', sent: sent ? whenText(sent.at, today) : '—', total: x.doc.grand_total, sender: '—', approvable: true };

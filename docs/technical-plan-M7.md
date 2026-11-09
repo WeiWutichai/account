@@ -1,6 +1,6 @@
 # Technical Plan — M7 Hub
 
-> สถานะ: **อนุมัติล่วงหน้า** (Wei 2026-11-09/10) · อ้างอิง `PLAN.md` §5, §6 (M7) · แบบร่าง ScreenApps (G3) · ScreenMcp (G6) · ScreenAudit · ScreenRevoke
+> สถานะ: **เสร็จ 2026-11-10** (ยกเว้น OAuth — T14) · **อนุมัติล่วงหน้า** (Wei 2026-11-09/10) · อ้างอิง `PLAN.md` §5, §6 (M7) · แบบร่าง ScreenApps (G3) · ScreenMcp (G6) · ScreenAudit · ScreenRevoke
 
 ## Gate
 contract tests กับ mock TMS · webhook retry/dead-letter test · MCP ปฏิเสธ post_document
@@ -17,4 +17,5 @@ contract tests กับ mock TMS · webhook retry/dead-letter test · MCP ป�
 ## ต่างจากแผน / ค้าง
 - **OAuth 2.1 + PKCE (PLAN: "OAuth connect สำหรับ TMS")** ยังไม่ได้ทำ — v1 ใช้ API key ต่อบริษัทที่ผู้มีสิทธิ์ออกให้ · TODO(Wei): ยืนยันว่า API key พอสำหรับนำร่องหรือต้องทำ OAuth ก่อนเปิด TMS
 - contract test กับ mock TMS แบบเต็ม (ตอนนี้ทดสอบระดับ service + smoke HTTP)
-- ยอดตามมิติ (project/vehicle/trip) ใน `ledger/balances` · UI 4 หน้า (ScreenApps, ScreenMcp, ScreenAudit, ScreenRevoke)
+- ยอดตามมิติ (project/vehicle/trip) ใน `ledger/balances` · สถิติการเรียก API/MCP · audit IP/ช่องทาง (FR-PF-03) · ผูกร่างกับ client ที่สร้าง
+- UI ทำแล้ว: ScreenApps · ScreenMcp · ScreenAudit · ScreenRevoke (`/settings/revoke?client=|user=`) · การ์ด consent ในหน้าแรก

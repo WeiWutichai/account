@@ -1,7 +1,7 @@
 // หน้าจอ M7 ในระบบ: แอปที่เชื่อมต่อ (G3) · MCP (G6) · Audit log · เพิกถอนสิทธิ์ — ตั้งค่าได้เฉพาะผู้มีสิทธิ์ settings
 import { Body, Controller, Delete, Get, Inject, Param, Post, Query, Req } from '@nestjs/common';
 import type { Db } from '@innovera/db';
-import { addWebhook, auditLog, createApiClient, listApiClients, redeliver, revokeApiClient, verifyAuditChain, webhookStatus, type ApiScope, type WebhookEventName } from '@innovera/db/hub';
+import { addWebhook, setWebhookActive, auditLog, createApiClient, listApiClients, redeliver, revokeApiClient, verifyAuditChain, webhookStatus, type ApiScope, type WebhookEventName } from '@innovera/db/hub';
 import type { Request } from 'express';
 import { companyOf, Need, userOf } from './context.js';
 import { DB } from './db.js';
@@ -19,7 +19,13 @@ export class HubController {
     return createApiClient(this.db, companyOf(req), u === 'dev' ? null : u, b);
   }
   @Need('settings', 'write') @Delete('api-clients/:id')
-  async revoke(@Req() req: Request, @Param('id') id: string) { await revokeApiClient(this.db, companyOf(req), id); return { ok: true }; }
+  async revoke(@Req() req: Request, @Param('id') id: string, @Body() b?: { reason?: string }) {
+    const u = userOf(req).userId;
+    await revokeApiClient(this.db, companyOf(req), id, u === 'dev' ? null : u, b?.reason ?? '');
+    return { ok: true };
+  }
+  @Need('settings', 'write') @Post('webhooks/:id/active')
+  async active(@Req() req: Request, @Param('id') id: string, @Body() b: { active: boolean }) { await setWebhookActive(this.db, companyOf(req), id, b.active === true); return { ok: true }; }
   @Need('settings', 'read') @Get('webhooks')
   webhooks(@Req() req: Request) { return webhookStatus(this.db, companyOf(req)); }
   @Need('settings', 'write') @Post('webhooks')
