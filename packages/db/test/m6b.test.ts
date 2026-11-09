@@ -160,6 +160,10 @@ describe('บันทึกว่ายื่นแล้ว ภ.พ.30 / ภ.�
     const v = await vatReports(db, A, '2026-11');
     expect(v.pp30.status).toBe('draft');
     expect(v.pp30.carriedForward).toBe('0.00');
+    expect(v.onlineExtension).toBe(true); // รอผู้สอบบัญชี: ค่าตั้งต้นชั่วคราว (CLAUDE.md)
+    // IV บริการที่ออก พ.ย. ยังรับเงินไม่ครบ (IV2611-0053 ค้าง 1,200.00) → จุดภาษียังไม่เกิด · IV ต.ค. ไม่อยู่ในรายการของ พ.ย.
+    expect(v.deferredService).toHaveLength(1);
+    expect(v.deferredService[0]).toMatchObject({ docType: 'IV', date: ce(D('IV2611-0053').date!) });
     expect(v.pp30.postOnFiled.map(([s, a]) => `${s} ${a}`)).toEqual(['Dr 2150100', 'Cr 1170100', 'Cr 2150200']);
   });
   it('ต.ค. ภาษีซื้อ > ภาษีขาย: ยังไม่กำหนดบัญชีภาษีชำระเกิน → ปฏิเสธ · กำหนดแล้ว → Dr บัญชีชำระเกิน ยกไป 700.00', async () => {

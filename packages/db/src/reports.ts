@@ -147,12 +147,14 @@ async function vatMonth(tx: CompanyTx, ym: string) {
   const prev = (await filingsOf(tx, 'pp30', addMonths(ym, -1))).at(-1);
   const carried = Money.parse(prev?.carry_forward ?? '0');
   const excessAccount = await setting<string | null>(tx, VAT_EXCESS_ACCOUNT_KEY, null);
+  // รอผู้สอบบัญชี (CLAUDE.md): ขยายกำหนดยื่นออนไลน์ — ค่าตั้งต้นชั่วคราว true
+  const onlineExtension = (await setting<unknown>(tx, 'tax.filing.online_extension', true)) !== false;
   const filed = await filingsOf(tx, 'pp30', ym);
   const prior = purchases.filter((r) => r.priorMonth);
   const { lines } = pp30Journal(outputVat, inputVat, carried, excessAccount);
   const net = outputVat.minus(inputVat);
   return {
-    month: ym, sales: { rows: sales, base: taxable.toString(), vat: outputVat.toString() }, purchases: { rows: purchases, base: vsum(purchases, 'base'), vat: inputVat.toString() },
+    month: ym, onlineExtension, sales: { rows: sales, base: taxable.toString(), vat: outputVat.toString() }, purchases: { rows: purchases, base: vsum(purchases, 'base'), vat: inputVat.toString() },
     pp30: { salesTotal: taxable.plus(exemptSales).toString(), exemptSales: exemptSales.toString(), taxableSales: taxable.toString(), outputVat: outputVat.toString(),
       purchasesCreditable: vsum(purchases, 'base'), inputVat: inputVat.toString(), netPayable: net.toString(),
       /** ข้อ 10 */ carriedForward: carried.toString(),
