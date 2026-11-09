@@ -4,7 +4,8 @@
 // TODO(Wei) ScreenPayment.dc.html: แบบร่างมีแต่สถานะ "จ่ายแล้ว" — สถานะรอบจ่ายใหม่ (ปุ่ม "ส่งอนุมัติ") · รออนุมัติ (ป้าย "รออนุมัติ" + ปุ่ม "อนุมัติ" ในสายอนุมัติ)
 //   และช่องข้อมูลเช็ค (ชื่อช่องยืมจาก ScreenCheque.dc.html) ไม่มีในไฟล์
 // TODO(Wei) ScreenPayment.dc.html: "+ จ่ายรายการเดียว" — ตีความเป็นโหมดเลือกบิลได้ใบเดียว → POST /v1/payments (รองรับเช็ค) · รอบจ่าย → POST /v1/payment-runs
-// TODO(backend): บัญชีรับโอนของผู้ขาย (ทะเบียนบัญชีธนาคารผู้ติดต่อ) ยังไม่มีใน API → แสดง "ยังไม่มีบัญชีธนาคาร" ตามข้อความแบบร่าง (ยังไม่บังคับห้ามเลือก)
+// บัญชีรับโอนของผู้ขาย = contact.bank_account · ไม่มี → "ยังไม่มีบัญชีธนาคาร" ตามแบบร่าง (ยังไม่บังคับห้ามเลือก)
+// TODO(Wei) ScreenPayment.dc.html: แบบร่างแสดง "[ธนาคาร] xxx-x-x1234-x" แต่ fixtures contacts.bank มีแค่เลขที่บัญชี (ไม่มีชื่อธนาคาร) → แสดงตามที่บันทึกในทะเบียน
 // TODO(backend): วิธีจ่าย PromptPay ยังไม่มีใน API (method: transfer | bulk_transfer | cheque | cash) → ส่งเป็น transfer
 import { Button, ButtonLink, buttonStyle, css, href, money, parseThaiDate, S, Tag, thaiDate, thaiMonth, TopBar } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
@@ -15,7 +16,7 @@ import { docVoidHref } from '../_shared/types';
 export interface BillRow {
   id: string; docNo: string; contactId: string; contact: string; due: string;
   outstanding: string; wht: string; pct: string | null; paid: string; pendingAuditor: boolean; whtError: string | null;
-  tms: boolean; cnr: string | null; exempt: boolean; desc: string | null;
+  tms: boolean; cnr: string | null; exempt: boolean; desc: string | null; bankAccount: string | null;
   paidOn: string | null; pvId: string | null;
 }
 export interface Cert { id: string; certNo: string; pnd: string; pendingAuditor: boolean; paymentId: string }
@@ -235,7 +236,7 @@ export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) 
                       {r.cnr && <> <span style={css('color: #525252')}>{`หลัง ${r.cnr}`}</span></>}
                       {r.exempt && <>{r.desc ? ` ${r.desc}` : ''} <span style={css('color: #525252')}>ยกเว้น VAT</span></>}</td>
                     <td style={css(late ? 'padding: 0 12px; color: #a2191f' : TD)}>{thaiDate(r.due)}{r.paidOn && late ? ` · จ่ายแล้ว ${ddmm(r.paidOn)}` : ''}</td>
-                    <td style={css(firstOfVendor.has(r.id) ? 'padding: 0 12px; color: #a2191f' : 'padding: 0 12px; color: #525252')}>{firstOfVendor.has(r.id) ? 'ยังไม่มีบัญชีธนาคาร' : 'รวมโอนครั้งเดียว'}</td>
+                    <td style={css(firstOfVendor.has(r.id) && !r.bankAccount ? 'padding: 0 12px; color: #a2191f' : firstOfVendor.has(r.id) ? TD : 'padding: 0 12px; color: #525252')}>{firstOfVendor.has(r.id) ? r.bankAccount ?? 'ยังไม่มีบัญชีธนาคาร' : 'รวมโอนครั้งเดียว'}</td>
                     <td style={css(NUM)}>{money(r.outstanding)}</td>
                     <td style={css(`${NUM}; white-space: nowrap`)}>{r.whtError ? <span style={css('color: #a2191f')}>{r.whtError}</span> : <>{money(r.wht)}{r.pct && cents(r.wht) > 0n && <> <span style={css('color: #525252')}>{r.pct}</span></>}{r.pendingAuditor && <> <span style={css('color: #684e00')}>รอยืนยัน</span></>}</>}</td>
                     <td style={css(NUM)}>{money(r.paid)}</td>

@@ -14,7 +14,7 @@ export interface Doc {
   sent_at: string | null; external_source: string | null; external_ref: string | null; approved_at: string | null; branch_code: string;
 }
 export interface DocLine { line_no: number; description: string | null; line_type: string }
-export interface Contact { id: string; code: string; name: string; kind: string }
+export interface Contact { id: string; code: string; name: string; kind: string; bank_account?: string | null }
 export interface DocEvent { at: string; actor: string | null; event: string; detail: Record<string, unknown> | null }
 export interface SettlementIn { id: string; doc_no: string; doc_type: string; issue_date: string; applied: string; wht: string; vat_due: string; voided: boolean }
 export interface SettlementOut { id: string; doc_no: string; doc_type: string; issue_date: string; due_date: string | null; grand_total: string; vat: string; applied: string; wht: string; wht_base: string | null; vat_due: string; voided: boolean }

@@ -7,7 +7,7 @@ import { useState } from 'react';
 import { Msg } from '../../sales/_lib/ui';
 import { blankPLine, netLines, pLinePayload, type PLineRow, pRowFromLine, usePTotals, validP } from './lines.ts';
 import { docAction, P, PHeader, Pending, Seg } from './ui';
-import { type Account, pct, pDocNo, type PContact, type PDetail, pndOf, pStatusTag, type WhtTypeDef } from './types.ts';
+import { type Account, defaultWhtKeys, pct, pDocNo, type PContact, type PDetail, pndOf, pStatusTag, type WhtTypeDef } from './types.ts';
 import { expectedWht, sumWht } from './wht.ts';
 import { call } from '../../sales/_lib/client.ts';
 import { toCents } from '../../sales/_lib/num.ts';
@@ -45,7 +45,9 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
   const vendor = vendors.find((c) => vendorText === label(c) || vendorText.startsWith(`${c.code} `)) ?? null;
   const vendorInfo = vendor && src?.contact?.id === vendor.id ? src.contact : vendor;
   const expense = accounts.filter((a) => a.type === 'expense' && a.active);
-  const wht = expectedWht(netLines(rows, totals, idx), whtTypes);
+  // บรรทัดที่ไม่ระบุประเภทเงินได้ → ใช้ WHT ตั้งต้นของผู้ขาย (contact.default_wht · ประเภทแรกถ้ามีหลายประเภท)
+  const vendorWht = defaultWhtKeys(vendors.find((c) => c.id === vendor?.id))[0] ?? null;
+  const wht = expectedWht(netLines(rows, totals, idx).map((l) => ({ ...l, whtType: l.whtType ?? vendorWht })), whtTypes);
   const rates = [...new Set(wht.map((w) => `${pct(w.rate)}%`))];
 
   const payload = () => ({
@@ -106,7 +108,6 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
 
         <section style={css('display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px')}>
           <datalist id="po-vendors">{vendors.map((c) => <option key={c.id} value={label(c)} />)}</datalist>
-          {/* TODO(backend): ผู้ติดต่อ/อีเมล/เลขผู้เสียภาษีของผู้ขายที่เพิ่งเลือก — GET /v1/contacts ส่งแค่ id/code/name/kind */}
           <label style={css(LABEL2)}>ผู้ขาย<input list="po-vendors" readOnly={!editable} value={vendorText} onChange={(e) => setVendorText(e.target.value)} style={IN} />
             <span style={css('font-size: 13px; color: #525252')}>เครดิต {vendorInfo?.credit_days ?? '—'} วัน · ภ.ง.ด.{vendorInfo?.tax_id ? pndOf(vendorInfo.tax_id) : '—'} · ผู้ติดต่อ {[vendorInfo?.contact_person ?? '—', vendorInfo?.email].filter(Boolean).join(' ')}</span></label>
           <label style={css(LABEL)}>วันที่สั่งซื้อ<input readOnly={!editable} value={date} onChange={(e) => setDate(e.target.value)} style={css(P.inputNum)} /></label>
@@ -162,7 +163,7 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
             <tr><td style={css(P.sumTd)}>รวมก่อนภาษี</td><td style={css(P.sumNum)}>{money(totals?.net ?? d?.subtotal)}</td></tr>
             <tr><td style={css(P.sumTd)}>ภาษีมูลค่าเพิ่ม 7%</td><td style={css(P.sumNum)}>{money(totals?.vat ?? d?.vat)}</td></tr>
             <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css(P.sumTotal)}>มูลค่าสั่งซื้อ</td><td style={css(P.sumTotalNum)}>{money(grand)}</td></tr>
-            {/* TODO(backend): PO ไม่มีคอลัมน์ประเภทเงินได้ในแบบร่าง และผู้ขายยังไม่มีประเภทเงินได้ตั้งต้น → ยอดคาดไว้คิดจาก wht_type ของบรรทัดเท่านั้น (PO2611-0018 ใน dev seed ไม่มี → 0.00 ไม่ใช่ 6,300.00 ตาม fixtures) */}
+            {/* PO ไม่มีคอลัมน์ประเภทเงินได้ในแบบร่าง → ยอดคาดไว้คิดจาก wht_type ของบรรทัด หรือ WHT ตั้งต้นของผู้ขาย */}
             <tr style={css('color: #525252; font-size: 13px')}><td style={css('height: 28px')}>หัก ณ ที่จ่ายที่คาดไว้ ({rates.join(' + ') || '—'}){wht.some((w) => w.pendingAuditor) ? <> <Pending /></> : null} — รับรู้ตอนจ่ายจริง</td><td style={css(P.sumNum)}>{money(sumWht(wht))}</td></tr>
           </tbody></table>
         </div>

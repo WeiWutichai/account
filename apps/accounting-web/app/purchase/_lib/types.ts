@@ -22,7 +22,11 @@ export interface PLine {
   id: string; line_no: number; line_type: 'item' | 'heading' | 'note'; product_code: string | null; description: string;
   qty: string | null; unit_price: string | null; discount: string; amount: string; vat_rate: string | null; account_code: string | null; wht_type: string | null;
 }
-export interface PContact { id: string; code: string; name: string; kind: string; tax_id?: string | null; branch_code?: string | null; credit_days?: number | null; email?: string | null; contact_person?: string | null }
+/** GET /v1/contacts (listContacts) · GET /v1/documents/:id contact */
+export interface PContact {
+  id: string; code: string; name: string; kind: string; tax_id?: string | null; branch_code?: string | null; credit_days?: number | null; email?: string | null; contact_person?: string | null;
+  phone?: string | null; address?: string | null; bank_account?: string | null; default_wht?: string | null; external_source?: string | null;
+}
 export interface JournalRow { journal_no: string; line_no: number; account_code: string; name: string; debit: string; credit: string }
 /** GET /v1/documents/:id (เอกสารซื้อ) */
 export interface PDetail {
@@ -32,7 +36,8 @@ export interface PDetail {
 /** แถวจาก GET /v1/documents?type=… */
 export interface PRow {
   id: string; doc_type: PType; doc_no: string | null; status: PStatus; issue_date: string; due_date: string | null; grand_total: string; subtotal: string; vat: string; wht: string;
-  created_at: string; ref_document_id: string | null; contact_id: string | null; contact_code: string | null; contact_name: string | null; settled: string;
+  created_at: string; ref_document_id: string | null; contact_id: string | null; contact_code: string | null; contact_name: string | null; contact_tax_id: string | null; settled: string;
+  vendor_ref: string | null; external_source: string | null; pay_now: boolean; outstanding: string | null;
 }
 /** GET /v1/wht-types (WHT_TYPES ใน @innovera/tax-th) */
 export interface WhtTypeDef { key: string; rate: string; pnd: string; label: string; section?: string; method?: string; status?: 'CONFIRMED' | 'PENDING_AUDITOR' }
@@ -76,6 +81,13 @@ export function pct(rate: string): string {
 /** ข้อความประเภทเงินได้ในตัวเลือก: "3% ม.40(2) ค่าจ้างพัฒนาซอฟต์แวร์ (ฟรีแลนซ์)" */
 export const whtOptionText = (t: WhtTypeDef): string => `${pct(t.rate)}% ${t.section ? `ม.${t.section} ` : ''}${t.label}`;
 export const isPending = (t: WhtTypeDef | undefined): boolean => t?.status === 'PENDING_AUDITOR';
+/** ประเภทเงินได้ตั้งต้นของผู้ขาย (contact.default_wht · คั่นหลายประเภทด้วย "+") */
+export const defaultWhtKeys = (c: { default_wht?: string | null } | null | undefined): string[] => (c?.default_wht ?? '').split('+').map((k) => k.trim()).filter(Boolean);
+/** "WHT ตั้งต้น 1% ค่าขนส่ง / 3% ค่าบริการ" (ScreenPurchaseBill.dc.html) */
+export function defaultWhtText(c: { default_wht?: string | null } | null | undefined, types: Record<string, WhtTypeDef>): string | null {
+  const ts = defaultWhtKeys(c).map((k) => types[k]).filter((t): t is WhtTypeDef => !!t);
+  return ts.length ? `WHT ตั้งต้น ${ts.map((t) => `${pct(t.rate)}% ${t.label}`).join(' / ')}` : null;
+}
 
 /** ยอดค้างจ่ายของบิล: ยอดรวม − (จ่ายแล้ว + ภาษีหัก) − ใบลดหนี้ซื้อ — ตรงกับ outstandingTx (ไม่นับใบสำคัญจ่ายที่ยังรออนุมัติ) */
 export function outstandingOf(detail: { doc: PDoc; settlementsIn: Settlement[] }): string | null {
