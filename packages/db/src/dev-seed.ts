@@ -4,6 +4,7 @@ import { fromTuples, type JournalLineTuple } from '@innovera/ledger';
 import { createDb } from './index.ts';
 import { postJournal } from './ledger-service.ts';
 import { loadFixtures, seedCompany } from './seed.ts';
+import { SEEDED_SALES_TYPES, seedSalesDocuments } from './dev-seed-sales.ts';
 
 const COMPANY_ID = process.env.DEV_COMPANY_ID ?? '00000000-0000-4000-8000-000000000001';
 const ORG_ID = '00000000-0000-4000-8000-0000000000aa';
@@ -20,10 +21,12 @@ if (exists) {
   });
   const r = await seedCompany(db, COMPANY_ID);
   console.log('seed:', r);
-  const fx = loadFixtures() as unknown as { documents: Record<string, { date?: string; expected_journal?: JournalLineTuple[] }> };
+  const fx = loadFixtures() as unknown as { documents: Record<string, { type: string; date?: string; expected_journal?: JournalLineTuple[] }> };
+  // เอกสารขาย/รับเงิน: สร้างเป็นเอกสารจริงผ่าน sales service (M4) · ประเภทอื่นยังลง journal ตาม expected_journal จนกว่าจะมีโมดูล (M5+)
+  for (const l of await seedSalesDocuments(db, COMPANY_ID, fx.documents as never)) console.log(l);
   let n = 0;
   for (const [no, d] of Object.entries(fx.documents)) {
-    if (!d.expected_journal || !d.date) continue;
+    if (!d.expected_journal || !d.date || SEEDED_SALES_TYPES.includes(d.type)) continue;
     const ce = `${Number(d.date.slice(0, 4)) - 543}${d.date.slice(4)}`;
     const book = no.startsWith('IV') || no.startsWith('CN') ? 'SJ' : no.startsWith('RV') ? 'RJ' : no.startsWith('PV') || no.startsWith('EXP') ? 'PV' : no.startsWith('AP') || no.startsWith('CNR') ? 'PJ' : 'GJ';
     try {

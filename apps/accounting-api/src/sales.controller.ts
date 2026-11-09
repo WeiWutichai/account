@@ -3,12 +3,12 @@ import { Body, Controller, Get, Inject, NotFoundException, Param, Post, Put, Que
 import type { Db } from '@innovera/db';
 import {
   approveDocument, convertDocument, createBilling, docSettings, editReference, getDocument, listDocuments, openItems, receivePayment, rejectDocument, saveDocSetting,
-  saveSalesDraft, shareDocument, submitDocument, voidDocument, type ReceiptInput, type SalesDraftInput,
+  saveSalesDraft, shareDocument, sharedDocument, submitDocument, voidDocument, type ReceiptInput, type SalesDraftInput,
 } from '@innovera/db/sales';
 import { docTotals, receiptTotals } from '@innovera/ledger';
 import { bahtText } from '@innovera/tax-th';
 import type { Request } from 'express';
-import { companyOf, Need, roleOf, userOf } from './context.js';
+import { companyOf, Need, Public, roleOf, userOf } from './context.js';
 import { DB } from './db.js';
 
 const actor = (req: Request) => ({ userId: userOf(req).userId === 'dev' ? null : userOf(req).userId, role: roleOf(req) });
@@ -55,6 +55,14 @@ export class SalesController {
   }
   @Need('sales', 'write') @Post('documents/:id/share')
   async share(@Req() req: Request, @Param('id') id: string) { return { token: await shareDocument(this.db, companyOf(req), actor(req), id) }; }
+
+  /** S6 หน้าเอกสารสำหรับลูกค้า (ScreenSendDoc) — ไม่ต้องเข้าสู่ระบบ · token สุ่ม หมดอายุได้ · อ่านอย่างเดียว */
+  @Public() @Get('shared/:token')
+  async shared(@Param('token') token: string) {
+    const d = await sharedDocument(this.db, token);
+    if (!d) throw new NotFoundException('ลิงก์หมดอายุหรือไม่ถูกต้อง');
+    return d;
+  }
 
   // ---------- รับชำระ / วางบิล ----------
   @Need('finance', 'read') @Get('contacts/:id/open-items')

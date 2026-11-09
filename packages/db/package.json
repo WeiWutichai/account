@@ -19,11 +19,13 @@
     "test": "vitest run",
     "migrate": "tsx src/migrate-cli.ts up",
     "migrate:down": "tsx src/migrate-cli.ts down",
-    "seed:dev": "tsx src/dev-seed.ts"
+    "seed:dev": "tsx src/dev-seed.ts",
+    "reset:dev": "tsx src/migrate-cli.ts reset"
   },
   "dependencies": {
     "@innovera/ledger": "workspace:*",
     "@innovera/tax-th": "workspace:*",
+    "decimal.js": "10.6.0",
     "exceljs": "4.4.0",
     "kysely": "0.29.8",
     "pg": "8.23.1"
