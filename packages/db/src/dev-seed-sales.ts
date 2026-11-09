@@ -3,6 +3,7 @@
 import { docTotals, Money } from '@innovera/ledger';
 import { Decimal } from 'decimal.js';
 import type { Db } from './index.ts';
+import { importCheque } from './master.ts';
 import { approveDocument, createBilling, receivePayment, saveSalesDraft, submitDocument, voidDocument, type Actor, type SalesDraftInput } from './sales.ts';
 
 type Fx = Record<string, unknown> & { type: string; date?: string; due?: string; contact?: string; status?: string; desc?: string; subtotal?: string; vat?: string; grand_total?: string; total?: string;
@@ -11,7 +12,29 @@ export const SEEDED_SALES_TYPES = ['IV', 'CN', 'DN', 'QO', 'DP', 'BN', 'RV'];
 const ce = (be: string) => `${Number(be.slice(0, 4)) - 543}${be.slice(4)}`;
 const actor: Actor = { userId: null, role: 'owner' };
 
-export async function seedSalesDocuments(db: Db, companyId: string, docs: Record<string, Fx>): Promise<string[]> {
+type ChequeFx = { number: string; bank: string; date: string; payer: string; ref: string; amount: string; status: string; deposited_on?: string; cleared_on?: string; reason?: string };
+let chequesFx: ChequeFx[] = [];
+const chequeFx = (no: string) => chequesFx.find((c) => c.number === no);
+
+/** เช็ครับใน fixtures ที่ใบรับชำระไม่อยู่ในชุดตัวอย่าง (RV2611-0018/0019/0009 · RV2610-0017) → ทะเบียนเช็คยกมา ไม่ผูกเอกสาร
+ *  TODO(Wei): fixtures ไม่มีใบรับชำระ/ใบแจ้งหนี้ของเช็คเหล่านี้ → GL 1150100+1150200 ใน dev ไม่เท่า control_accounts 654,626.00 */
+export async function seedCheques(db: Db, companyId: string): Promise<string[]> {
+  const contacts = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code']).execute());
+  let n = 0;
+  for (const c of chequesFx) {
+    if (c.ref === 'RV2611-0025') continue; // สร้างจากใบรับชำระจริงแล้ว
+    const contactId = contacts.find((k) => k.code === c.payer)?.id ?? null;
+    const status = c.status === 'on_hand_postdated' ? 'on_hand' : (c.status as 'on_hand' | 'deposited' | 'cleared' | 'bounced');
+    await importCheque(db, companyId, { direction: 'received', chequeNo: c.number, bank: c.bank, chequeDate: ce(c.date), amount: c.amount as never, status, contactId,
+      payerName: contactId ? null : c.payer, refNo: c.ref, depositedOn: c.deposited_on ? ce(c.deposited_on) : null, clearedOn: c.cleared_on ? ce(c.cleared_on) : null,
+      bouncedOn: status === 'bounced' ? ce(c.date) : null, bounceReason: c.reason ?? null });
+    n++;
+  }
+  return [`ทะเบียนเช็คยกมา ${n} ฉบับ`];
+}
+
+export async function seedSalesDocuments(db: Db, companyId: string, docs: Record<string, Fx>, cheques: ChequeFx[] = []): Promise<string[]> {
+  chequesFx = cheques;
   const log: string[] = [];
   const ids: Record<string, string> = {};
   const contacts = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code']).execute());
@@ -85,7 +108,7 @@ export async function seedSalesDocuments(db: Db, companyId: string, docs: Record
     applications: [{ documentId: ids['IV2610-0047']!, applied: String(rv22.cash_in), wht: String(rv22.wht), whtBase: '10000.00' }] });
   const rv25 = docs['RV2611-0025']!;
   await receivePayment(db, companyId, actor, { docNo: 'RV2611-0025', contactId: cid(rv25.contact)!, date: ce(rv25.date!), receiveAccount: '1150100',
-    cheque: { chequeNo: String(rv25.cheque), bank: '[ธนาคาร]', chequeDate: ce(rv25.date!) }, applications: [{ documentId: ids['IV2611-0059']!, applied: String(rv25.amount) }] });
+    cheque: { chequeNo: String(rv25.cheque), bank: chequeFx(String(rv25.cheque))?.bank ?? '[ธนาคาร]', chequeDate: ce(rv25.date!) }, applications: [{ documentId: ids['IV2611-0059']!, applied: String(rv25.amount) }] });
   // TODO(Wei): IV2611-0051 สถานะ "paid" แต่ fixtures ไม่มีใบรับชำระ · RV2611-0024 อ้าง IV2611-0063 ที่ไม่มีใน fixtures → ไม่สร้าง
   log.push(`เอกสารขาย ${Object.keys(ids).length} ใบ + RV 3 ใบ + BN 2 ใบ`);
   return log;

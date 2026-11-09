@@ -302,8 +302,13 @@ export async function createBilling(db: Db, companyId: string, actor: Actor, inp
 // ---------- ยกเลิก (ScreenDocVoid) / แก้ข้อมูลอ้างอิง (ScreenDocEdit) ----------
 
 export async function voidDocument(db: Db, companyId: string, actor: Actor, id: string, p: { reason: string; date?: string }) {
+  return db.withCompany(companyId, (tx) => voidDocumentTx(tx, companyId, actor, id, p));
+}
+
+/** ยกเลิกเอกสารภายใน transaction ที่มีอยู่ (เช่น เช็คคืน = ยกเลิกใบรับชำระ + กลับรายการนำฝาก ใน transaction เดียว) */
+export async function voidDocumentTx(tx: CompanyTx, companyId: string, actor: Actor, id: string, p: { reason: string; date?: string }) {
   if (!p.reason.trim()) throw new LedgerError('ต้องระบุเหตุผลการยกเลิก');
-  return db.withCompany(companyId, async (tx) => {
+  {
     const d = await docOrThrow(tx, id);
     if (d.status === 'voided') throw new LedgerError('เอกสารถูกยกเลิกแล้ว');
     const active = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
@@ -325,7 +330,7 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
     await event(tx, companyId, id, actor.userId, 'voided', { reason: p.reason, reversal });
     await emitTx(tx, companyId, 'document.voided', { id, doc_type: d.doc_type, doc_no: d.doc_no, external_source: d.external_source, external_ref: d.external_ref, reason: p.reason, reversal });
     return { reversal };
-  });
+  }
 }
 
 /** หลังผ่านรายการแก้ได้เฉพาะข้อมูลอ้างอิง (CLAUDE.md) — ยอด/ภาษี/บัญชีแก้ไม่ได้ */

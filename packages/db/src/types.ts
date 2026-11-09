@@ -66,9 +66,12 @@ export interface AcctDB {
     status: Generated<'open' | 'soft_closed' | 'hard_closed'>; closed_at: Date | null; closed_by: string | null };
   'acct.contact': { company_id: string; id: Generated<string>; code: string; name: string; kind: 'customer' | 'vendor' | 'both' | 'contractor' | 'employee';
     tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts;
-    address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null };
+    address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null;
+    roles: Generated<string[]>; entity_type: Generated<'juristic' | 'individual' | 'foreign'>; ar_account: Generated<string | null>; ap_account: Generated<string | null>;
+    wht_received: Generated<string | null>; pnd_form: Generated<'3' | '53' | null>; price_level: Generated<number>; bank_account: Generated<string | null>; ship_address: Generated<string | null> };
   'acct.product': { company_id: string; code: string; name: string; kind: Generated<'service' | 'goods' | 'expense' | 'kit'>; unit: string | null;
-    price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null };
+    price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null;
+    price_3: Generated<string | null>; price_4: Generated<string | null>; price_5: Generated<string | null>; vat_code: Generated<'vat7' | 'exempt' | 'zero'>; default_wht: Generated<string | null>; sku: Generated<string | null> };
   'acct.document': { company_id: string; id: Generated<string>; doc_type: string; doc_no: string | null;
     status: Generated<'draft' | 'pending_approval' | 'approved' | 'posted' | 'voided'>; issue_date: DateCol; due_date: string | null; contact_id: string | null;
     currency: Generated<string>; price_incl_vat: Generated<boolean>; subtotal: Money; discount: Money; vat: Money; wht: Money; grand_total: Money;
@@ -94,7 +97,8 @@ export interface AcctDB {
   'acct.settlement': { company_id: string; id: Generated<string>; payment_id: string; document_id: string; applied: string; wht: Money; wht_base: string | null; vat_due: Money; voided: Generated<boolean>; created_at: Ts };
   'acct.billing_item': { company_id: string; billing_id: string; document_id: string; line_no: number };
   'acct.cheque': { company_id: string; id: Generated<string>; direction: 'received' | 'issued'; cheque_no: string; bank: string; branch: string | null; cheque_date: DateCol; amount: string;
-    status: Generated<'on_hand' | 'deposited' | 'cleared' | 'bounced' | 'cancelled' | 'issued' | 'presented'>; document_id: string | null; contact_id: string | null; deposited_on: DateCol | null; cleared_on: DateCol | null; created_at: Ts };
+    status: Generated<'on_hand' | 'deposited' | 'cleared' | 'bounced' | 'cancelled' | 'issued' | 'presented'>; document_id: string | null; contact_id: string | null; deposited_on: DateCol | null; cleared_on: DateCol | null; created_at: Ts;
+    payer_name: Generated<string | null>; ref_no: Generated<string | null>; bounced_on: ColumnType<string | null, string | null | undefined, string | null>; bounce_reason: Generated<string | null>; journal_ids: Generated<string[]> };
   'acct.document_event': { company_id: string; id: Generated<string>; document_id: string; at: Ts; actor: string | null; event: string; detail: ColumnType<unknown, string | undefined, string> };
   'acct.doc_setting': { company_id: string; doc_type: string; prefix: string; pattern: Generated<string>; reset: Generated<'monthly' | 'yearly' | 'never'>; settings: ColumnType<Record<string, unknown>, string | undefined, string>; updated_at: Ts };
   'acct.document_line': { company_id: string; id: Generated<string>; document_id: string; line_no: number; line_type: Generated<'item' | 'heading' | 'note'>;

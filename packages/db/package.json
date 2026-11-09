@@ -17,7 +17,8 @@
     "./reports": "./src/reports.ts",
     "./close-ops": "./src/close-ops.ts",
     "./hub": "./src/hub.ts",
-    "./console": "./src/console.ts"
+    "./console": "./src/console.ts",
+    "./master": "./src/master.ts"
   },
   "scripts": {
     "lint": "eslint src test",

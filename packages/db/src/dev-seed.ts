@@ -4,7 +4,7 @@ import { fromTuples, type JournalLineTuple } from '@innovera/ledger';
 import { createDb } from './index.ts';
 import { postJournal } from './ledger-service.ts';
 import { loadFixtures, seedCompany } from './seed.ts';
-import { SEEDED_SALES_TYPES, seedSalesDocuments } from './dev-seed-sales.ts';
+import { SEEDED_SALES_TYPES, seedCheques, seedSalesDocuments } from './dev-seed-sales.ts';
 import { SEEDED_PURCHASE_TYPES, seedPurchaseDocuments } from './dev-seed-purchase.ts';
 import { seedM6 } from './dev-seed-m6.ts';
 
@@ -19,13 +19,14 @@ if (exists) {
 } else {
   await db.withPublic(async (tx) => {
     await tx.insertInto('public.organization').values({ id: ORG_ID, name: 'Innovera Group' } as never).onConflict((oc) => oc.column('id').doNothing()).execute();
-    await tx.insertInto('public.company').values({ id: COMPANY_ID, org_id: ORG_ID, name_th: 'บจก. [ชื่อบริษัท]', name_en: null, tax_id: '0105xxxxxxxxx', db_dsn: null } as never).execute();
+    await tx.insertInto('public.company').values({ id: COMPANY_ID, org_id: ORG_ID, name_th: 'บจก. [ชื่อบริษัท]', name_en: '[Company Name] Co., Ltd.', tax_id: '0105xxxxxxxxx', db_dsn: null } as never).execute();
   });
   const r = await seedCompany(db, COMPANY_ID);
   console.log('seed:', r);
   const fx = loadFixtures() as unknown as { documents: Record<string, { type: string; date?: string; expected_journal?: JournalLineTuple[] }> };
   // เอกสารขาย/รับเงิน: สร้างเป็นเอกสารจริงผ่าน sales service (M4) · ประเภทอื่นยังลง journal ตาม expected_journal จนกว่าจะมีโมดูล (M5+)
-  for (const l of await seedSalesDocuments(db, COMPANY_ID, fx.documents as never)) console.log(l);
+  for (const l of await seedSalesDocuments(db, COMPANY_ID, fx.documents as never, (fx as unknown as { cheques_received: never }).cheques_received)) console.log(l);
+  for (const l of await seedCheques(db, COMPANY_ID)) console.log(l);
   for (const l of await seedPurchaseDocuments(db, COMPANY_ID, { ...fx.documents, __petty: (fx as unknown as { petty_cash: unknown }).petty_cash } as never)) console.log(l);
   let n = 0;
   for (const [no, d] of Object.entries(fx.documents)) {
