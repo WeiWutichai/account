@@ -1,10 +1,12 @@
 // API ฝั่งซื้อ + จ่ายเงิน (M5 · docs/technical-plan-M5.md) — logic อยู่ใน @innovera/db/purchase
-import { Body, Controller, Get, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
+import { Body, Controller, Get, Inject, Param, Post, Put, Query, Req, Res } from '@nestjs/common';
 import type { Db } from '@innovera/db';
-import { approvePayment, approvePurchase, createPayment, createPaymentRun, payables, pettyCashSummary, reimbursePettyCash, savePettyCash, savePurchaseDraft, setCompanySetting, whtCertificates, type PaymentInput, type PettyCashInput, type PurchaseDraftInput } from '@innovera/db/purchase';
+import { APPROVAL_KEYS, approvalSettings, approvePayment, approvePurchase, bulkPaymentFile, countPettyCash, createPayment, createPaymentRun, createPettyCashFund, payables, pettyCashSummary, reimbursePettyCash, savePettyCash, savePurchaseDraft, setCompanySetting, validApprovalSetting, vendorCredits, whtCertificates,
+  type PaymentInput, type PettyCashFundInput, type PettyCashInput, type PurchaseDraftInput } from '@innovera/db/purchase';
 import { editPurchaseDoc, type PurchaseEditInput } from '@innovera/db/sales';
 import { WHT_TYPES } from '@innovera/tax-th';
-import type { Request } from 'express';
+import type { MoneyString } from '@innovera/ledger';
+import type { Request, Response } from 'express';
 import { companyOf, Need, roleOf, userOf } from './context.js';
 import { DB } from './db.js';
 
@@ -24,8 +26,12 @@ export class PurchaseController {
   async create(@Req() req: Request, @Body() b: PurchaseDraftInput) { return { id: await savePurchaseDraft(this.db, companyOf(req), actor(req), b) }; }
   @Need('purchase', 'write') @Put('purchases/:id')
   async update(@Req() req: Request, @Param('id') id: string, @Body() b: PurchaseDraftInput) { return { id: await savePurchaseDraft(this.db, companyOf(req), actor(req), b, id) }; }
+  /** confirmOverPo: ผู้อนุมัติ PO/กรรมการยืนยันบิลซื้อที่ยอดรวมเกิน PO มากกว่าเกณฑ์ (ScreenPurchaseOrder) */
   @Need('purchase', 'post') @Post('purchases/:id/approve')
-  approve(@Req() req: Request, @Param('id') id: string) { return approvePurchase(this.db, companyOf(req), actor(req), id); }
+  approve(@Req() req: Request, @Param('id') id: string, @Body() b?: { confirmOverPo?: boolean }) { return approvePurchase(this.db, companyOf(req), actor(req), id, { confirmOverPo: b?.confirmOverPo === true }); }
+  /** วงเงินสายอนุมัติจ่าย/ใบสั่งซื้อ (ค่าตั้งบริษัท · ค่าตั้งต้นตามแบบร่าง) */
+  @Need('purchase', 'read') @Get('approval-settings')
+  approvals(@Req() req: Request) { return approvalSettings(this.db, companyOf(req)); }
 
   @Need('finance', 'read') @Get('payables')
   payables(@Req() req: Request, @Query('contact') contact?: string) { return payables(this.db, companyOf(req), contact); }
@@ -33,15 +39,34 @@ export class PurchaseController {
   pay(@Req() req: Request, @Body() b: PaymentInput) { return createPayment(this.db, companyOf(req), actor(req), b); }
   @Need('finance', 'write') @Post('payment-runs')
   run(@Req() req: Request, @Body() b: { date: string; payFrom: string; billIds: string[]; batchRef: string; method?: PaymentInput['method'] }) { return createPaymentRun(this.db, companyOf(req), actor(req), b); }
+  /** ScreenPayment: ไฟล์โอนชุด (Bulk Payment) ของรอบจ่าย — TODO(Wei): รูปแบบตาม spec ธนาคารจริง */
+  @Need('finance', 'read') @Get('payment-runs/:batchRef/bulk-file')
+  async bulkFile(@Req() req: Request, @Res() res: Response, @Param('batchRef') batchRef: string) {
+    const f = await bulkPaymentFile(this.db, companyOf(req), batchRef);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${f.filename.replace(/[^\w.-]/gu, '_')}"`);
+    res.send(`\uFEFF${f.content}`);
+  }
+  /** เครดิตคงเหลือกับผู้ขาย (ใบลดหนี้ซื้อที่เกินยอดค้าง) — ใช้หักใน POST payments (credits) */
+  @Need('finance', 'read') @Get('vendor-credits')
+  credits(@Req() req: Request, @Query('contact') contact?: string) { return vendorCredits(this.db, companyOf(req), contact); }
   @Need('approve_pay', 'post') @Post('payments/:id/approve')
   approvePay(@Req() req: Request, @Param('id') id: string) { return approvePayment(this.db, companyOf(req), { ...actor(req), approvalLimit: userOf(req).approvalLimit }, id); }
 
   @Need('finance', 'read') @Get('petty-cash')
-  petty(@Req() req: Request) { return pettyCashSummary(this.db, companyOf(req)); }
+  petty(@Req() req: Request, @Query('fund') fund?: string) { return pettyCashSummary(this.db, companyOf(req), fund || null); }
+  /** "+ ตั้งกองใหม่" */
+  @Need('finance', 'post') @Post('petty-cash/funds')
+  pettyFund(@Req() req: Request, @Body() b: PettyCashFundInput) { return createPettyCashFund(this.db, companyOf(req), b); }
+  /** "นับเงิน / ตรวจกอง" */
+  @Need('finance', 'write') @Post('petty-cash/count')
+  pettyCount(@Req() req: Request, @Body() b: { fundId?: string | null; date?: string; cashCounted: MoneyString; countedByName?: string | null; note?: string | null }) {
+    return countPettyCash(this.db, companyOf(req), actor(req), { ...b, date: b.date ?? (process.env.APP_TODAY ?? new Date().toISOString().slice(0, 10)) });
+  }
   @Need('finance', 'write') @Post('petty-cash')
   pettyAdd(@Req() req: Request, @Body() b: PettyCashInput) { return savePettyCash(this.db, companyOf(req), actor(req), b); }
   @Need('approve_pay', 'post') @Post('petty-cash/reimburse')
-  reimburse(@Req() req: Request, @Body() b: { date: string; payFrom: string }) { return reimbursePettyCash(this.db, companyOf(req), actor(req), b); }
+  reimburse(@Req() req: Request, @Body() b: { date: string; payFrom: string; fundId?: string | null }) { return reimbursePettyCash(this.db, companyOf(req), actor(req), b); }
 
   @Need('reports', 'read') @Get('wht-certificates')
   certs(@Req() req: Request, @Query() q: { from?: string; to?: string; pnd?: '3' | '53' }) { return whtCertificates(this.db, companyOf(req), q); }
@@ -50,7 +75,9 @@ export class PurchaseController {
   /** ค่าตั้งที่รอผู้สอบบัญชี (CLAUDE.md) — เปลี่ยนได้เฉพาะผู้มีสิทธิ์ตั้งค่า */
   @Need('settings', 'write') @Put('company-settings/:key')
   async setting(@Req() req: Request, @Param('key') key: string, @Body() b: { value: unknown }) {
-    if (!['tax.wht.freelance_software_dev', 'tax.filing.online_extension'].includes(key)) return { ok: false, error: 'ไม่รู้จักค่าตั้งนี้' };
+    const approval = (Object.values(APPROVAL_KEYS) as string[]).includes(key);
+    if (!approval && !['tax.wht.freelance_software_dev', 'tax.filing.online_extension'].includes(key)) return { ok: false, error: 'ไม่รู้จักค่าตั้งนี้' };
+    if (approval && !validApprovalSetting(key, b.value)) return { ok: false, error: 'รูปแบบวงเงินไม่ถูกต้อง' };
     await setCompanySetting(this.db, companyOf(req), key, b.value);
     return { ok: true };
   }

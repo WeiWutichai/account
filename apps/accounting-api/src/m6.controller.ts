@@ -1,7 +1,7 @@
 // API ของธนาคาร + ภาษี + ปิดงวด + ทรัพย์สิน + รายงาน (M6 · docs/technical-plan-M6.md)
 import { Body, Controller, Get, Header, Inject, Param, Post, Put, Query, Req, Res, UnprocessableEntityException } from '@nestjs/common';
 import type { Db } from '@innovera/db';
-import { autoMatch, closePeriod, depreciationFor, importStatement, matchManually, parseStatementCsv, periodStatus, reconciliation, reopenPeriod, runDepreciation, saveAsset, yearEnd, type AssetInput } from '@innovera/db/close-ops';
+import { autoMatch, closePeriod, closeReconciliation, depreciationFor, importStatement, matchManually, parseStatement, periodStatus, reconciliation, reopenPeriod, runDepreciation, saveAsset, yearEnd, type AssetInput } from '@innovera/db/close-ops';
 import { aging, financialStatements, pndReport, rdPrepTxt, reconChecks, vatReports } from '@innovera/db/reports';
 import type { Request, Response } from 'express';
 import { companyOf, Need, roleOf, userOf } from './context.js';
@@ -61,14 +61,21 @@ export class M6Controller {
   // ---------- ธนาคาร ----------
   @Need('finance', 'write') @Post('bank/:account/statement') @Header('Cache-Control', 'no-store')
   async importCsv(@Req() req: Request, @Param('account') account: string, @Body() b: { csv: string; batch?: string }) {
-    const rows = parseStatementCsv(b.csv);
+    const rows = parseStatement(b.csv); // CSV หรือ OFX (ตรวจจากเนื้อไฟล์)
     const r = await importStatement(this.db, companyOf(req), account, rows, b.batch ?? new Date().toISOString());
     return { ...r, ...(await autoMatch(this.db, companyOf(req), account)) };
   }
   @Need('finance', 'write') @Post('bank/:account/auto-match')
   match(@Req() req: Request, @Param('account') account: string) { return autoMatch(this.db, companyOf(req), account); }
+  /** journalIds = จับคู่ 1 ต่อหลาย ([] = ยกเลิกจับคู่) · journalId = 1 ใบ · journalId null = พักไว้ */
   @Need('finance', 'write') @Put('bank/lines/:id')
-  async manual(@Req() req: Request, @Param('id') id: string, @Body() b: { journalId: string | null }) { await matchManually(this.db, companyOf(req), id, b.journalId); return { ok: true }; }
+  async manual(@Req() req: Request, @Param('id') id: string, @Body() b: { journalId?: string | null; journalIds?: string[] }) {
+    await matchManually(this.db, companyOf(req), id, Array.isArray(b.journalIds) ? b.journalIds : b.journalId ? [b.journalId] : null);
+    return { ok: true };
+  }
+  /** "ปิดกระทบยอดเดือนนี้" — ผลต่างต้องเป็น 0.00 · ล็อกรายการธนาคารของเดือน */
+  @Need('period', 'post') @Post('bank/:account/close')
+  closeRecon(@Req() req: Request, @Param('account') account: string, @Body() b: { month: string }) { return closeReconciliation(this.db, companyOf(req), actor(req), account, ym(b.month)); }
   @Need('finance', 'read') @Get('bank/:account/reconciliation')
   rec(@Req() req: Request, @Param('account') account: string, @Query('asOf') asOf: string) { return reconciliation(this.db, companyOf(req), account, asOf); }
 }
