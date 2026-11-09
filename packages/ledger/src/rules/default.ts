@@ -22,6 +22,7 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     code: 'Credit[IV]', docType: 'IV', name: 'ขายเชื่อ', book: 'SJ', settlement: 'open',
     lines: [
       { side: 'Dr', account: AR, amount: 'grand_total' },
+      { side: 'Dr', account: { default: '2140100' }, amount: 'deposit', memo: 'หักเงินมัดจำรับ (ScreenDeposit)' },
       { side: 'Dr', account: { default: '1160100' }, amount: 'wht' },
       { side: 'Cr', account: { from: ['line', 'product'], default: '4100100' }, amount: 'line.amount', perLine: true },
       { side: 'Dr', account: { default: '4190100' }, amount: 'discount' },
@@ -54,11 +55,29 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     ],
   },
   {
+    // ใบเพิ่มหนี้ (ม.86/9) — ภาษีขายรวมในเดือนที่ออกใบเพิ่มหนี้ (ม.82/9) · fixtures DN2612-0001
+    code: 'DN[ref IV]', docType: 'DN', name: 'เพิ่มหนี้อ้างใบกำกับ (ม.86/9)', book: 'SJ', settlement: 'open',
+    lines: [
+      { side: 'Dr', account: AR, amount: 'grand_total' },
+      { side: 'Cr', account: { from: ['line', 'product'], default: '4100100' }, amount: 'line.amount', perLine: true },
+      { side: 'Cr', account: { default: '2150100' }, amount: 'vat' },
+    ],
+  },
+  {
+    // รับเงินมัดจำ: จุดภาษีเกิดเมื่อรับเงิน · fixtures DP2610-0006 receive_journal
+    code: 'Deposit[DP]', docType: 'DP', name: 'รับเงินมัดจำ', book: 'RJ', settlement: 'paid',
+    lines: [
+      { side: 'Dr', account: CASH, amount: 'grand_total' },
+      { side: 'Cr', account: { default: '2140100' }, amount: 'net' },
+      { side: 'Cr', account: { default: '2150100' }, amount: 'vat' },
+    ],
+  },
+  {
     code: 'Receive[RV]', docType: 'RV', name: 'รับชำระ (โอนภาษีขายที่ถึงกำหนด)', book: 'RJ',
     lines: [
       { side: 'Dr', account: CASH, amount: 'cash_in' },
       { side: 'Dr', account: { default: '1160100' }, amount: 'wht', memo: 'ตามหนังสือรับรอง 50 ทวิ ของลูกค้า' },
-      { side: 'Dr', account: { default: '5401100' }, amount: 'fee' },
+      { side: 'Dr', account: { from: ['input.fee'], default: '5401100' }, amount: 'fee', memo: 'ค่าธรรมเนียม/ส่วนต่าง (ScreenReceipt เลือกบัญชีได้)' },
       { side: 'Dr', account: { default: '2150400' }, amount: 'vat_due' },
       { side: 'Cr', account: AR, amount: 'settled' },
       { side: 'Cr', account: { default: '2150100' }, amount: 'vat_due' },
