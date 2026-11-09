@@ -22,7 +22,7 @@ export const rdPrepUrl = (ym: string, form: '3' | '53'): string => `/api/proxy/t
 /**
  * กำหนดยื่นแบบของเดือนภาษี (วันที่ในเดือนถัดไป)
  * CLAUDE.md "รอผู้สอบบัญชี": ขยายกำหนดยื่นออนไลน์ (ภ.ง.ด. วันที่ 15 · ภ.พ.30 วันที่ 23) — config `tax.filing.online_extension` ค่าตั้งต้น true
- * TODO(backend): ยังไม่มี GET company-settings/tax.filing.online_extension → ใช้ค่าตั้งต้น true เสมอ (ป้าย "รอยืนยัน" บนหน้าจอ)
+ * ค่า config มากับ GET /v1/tax/vat (onlineExtension) · ป้าย "รอยืนยัน" บนหน้าจอ
  */
 export interface Deadlines { online: boolean; pnd: string; pp30: string; sso: string }
 export function deadlines(ym: string, online = true): Deadlines {

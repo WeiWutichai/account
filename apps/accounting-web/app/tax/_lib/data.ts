@@ -7,24 +7,38 @@ import { YM } from './fmt';
 
 export * from './fmt';
 
-export interface VatRow { date: string; docId: string; docNo: string; docType: string; partner: string; taxId: string | null; branch: string | null; base: string; vat: string; vendorRef?: string | null }
+export interface VatRow { date: string; docId: string; docNo: string; docType: string; partner: string; taxId: string | null; branch: string | null; base: string; vat: string; vendorRef?: string | null; claimMonth?: string; priorMonth?: boolean }
+/** การยื่นแบบ (acct.tax_filing) · seq 0 = ยื่นปกติ · 1.. = ยื่นเพิ่มเติม ครั้งที่ */
+export interface Filing { seq: number; filed_at: string | null; reference_no: string | null; amount: string; journal_no: string | null }
 export interface Pp30 {
   salesTotal: string; exemptSales: string; taxableSales: string; outputVat: string; purchasesCreditable: string; inputVat: string; netPayable: string;
-  postOnFiled: [string, string, string][];
+  /** ข้อ 10 ภาษีที่ชำระเกินยกมา · ข้อ 11 ภาษีสุทธิ (ติดลบ = ชำระเกิน) */
+  carriedForward: string; netAfterCarry: string;
+  priorMonthClaims: { count: number; vat: string; rows: { docId: string; docNo: string; vendorRef: string | null; issueMonth: string; vat: string }[] };
+  /** [Dr/Cr, บัญชี (null = ยังไม่ได้กำหนดบัญชีภาษีชำระเกิน), ยอด] */
+  postOnFiled: [string, string | null, string][]; excessAccount: string | null;
+  status: 'draft' | 'filed'; filings: Filing[];
 }
-export interface VatReport { month: string; sales: { rows: VatRow[]; base: string; vat: string }; purchases: { rows: VatRow[]; base: string; vat: string }; pp30: Pp30 }
+export interface VatReport {
+  month: string; onlineExtension: boolean; sales: { rows: VatRow[]; base: string; vat: string }; purchases: { rows: VatRow[]; base: string; vat: string }; pp30: Pp30;
+  disallowed: { items: number; amount: string; rows: VatRow[] };
+  deferredService: { docId: string; docNo: string; docType: string; date: string; partner: string; vatPending: string }[];
+}
 export interface PndRow {
   cert_no: string; pay_date: string; income_type: string; income_section: string | null; base: string; rate: string; amount: string; pending_auditor: boolean;
   name: string; tax_id: string | null; branch_code: string | null; address: string | null; doc_no: string | null;
 }
-export interface PndReport { month: string; pnd: '3' | '53'; rows: PndRow[]; certs: number; base: string; tax: string; pendingAuditor: boolean }
-export interface ReconCheck { key: string; section?: 1 | 2 | 3; label: string; byDocs: string; byGl: string; diff: string; ok: boolean; count?: string; note?: string }
-export interface ReconReport { month: string; checks: ReconCheck[]; passed: number; toReview: number }
+export interface PndReport { month: string; pnd: '3' | '53'; rows: PndRow[]; certs: number; base: string; tax: string; pendingAuditor: boolean; status: 'draft' | 'filed'; filings: Filing[] }
+export interface ReconCheck { key: string; section?: 1 | 2 | 3; label: string; byDocs: string; byGl: string; diff: string; ok: boolean; count?: string; note?: string; crossMonth?: number }
+export interface ReconReport { month: string; from: string; to: string; checks: ReconCheck[]; passed: number; toReview: number }
+export interface FilingRow extends Filing { form: 'pp30' | 'pnd3' | 'pnd53'; month: string; status: 'draft' | 'filed'; carry_forward: string }
 export interface WhtType { key: string; label: string; section?: string; status?: string }
 
 export const vatReport = (ym: string): Promise<VatReport> => api<VatReport>(`/v1/tax/vat?month=${ym}`);
 export const pndReport = (ym: string, form: '3' | '53'): Promise<PndReport> => api<PndReport>(`/v1/tax/pnd?month=${ym}&form=${form}`);
-export const reconReport = (ym: string): Promise<ReconReport> => api<ReconReport>(`/v1/reports/recon?month=${ym}`);
+/** period = 'YYYY-MM' หรือปีบัญชี พ.ศ. 'YYYY' ("ปีบัญชี 2569 สะสม") */
+export const reconReport = (period: string): Promise<ReconReport> => api<ReconReport>(`/v1/reports/recon?${/^\d{4}$/u.test(period) ? 'year' : 'month'}=${period}`);
+export const taxFilings = (from: string, to: string): Promise<FilingRow[]> => api<FilingRow[]>(`/v1/tax/filings?from=${from}&to=${to}`);
 export const whtTypes = (): Promise<Record<string, WhtType>> => api<Record<string, WhtType>>('/v1/wht-types');
 
 // ---------- เดือนภาษี (ตัวช่วยแสดงผลอยู่ใน fmt.ts) ----------
