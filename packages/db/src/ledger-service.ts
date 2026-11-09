@@ -26,6 +26,20 @@ export async function nextNumber(tx: CompanyTx, companyId: string, prefix: strin
   return `${prefix}${key}-${String(r.rows[0]!.n).padStart(4, '0')}`;
 }
 
+/**
+ * เลขที่ที่ระบุเอง (นำเข้าเอกสารเดิม / seed) ต้องเลื่อนตัวนับให้เกินเลขนั้น — กันเลขย้อน/ซ้ำ (ใบกำกับภาษีต้องเรียงต่อเนื่อง ม.86/4)
+ * รูปแบบที่ไม่ใช่ {PREFIX}{YYMM}-{SEQ} ไม่แตะตัวนับ
+ */
+export async function reserveNumber(tx: CompanyTx, companyId: string, docNo: string): Promise<void> {
+  const m = /^([A-Z]+)(\d{4})-(\d+)$/u.exec(docNo);
+  if (!m) return;
+  const [, prefix, key, seq] = m as unknown as [string, string, string, string];
+  await sql`
+    insert into acct.number_series (company_id, doc_type, pattern, prefix, period_key, next_no)
+    values (${companyId}, ${prefix}, '{PREFIX}{YY}{MM}-{SEQ:4}', ${prefix}, ${key}, ${Number(seq) + 1})
+    on conflict (company_id, doc_type, period_key) do update set next_no = greatest(acct.number_series.next_no, excluded.next_no)`.execute(tx);
+}
+
 export interface PostJournalInput {
   date: string; // YYYY-MM-DD (ค.ศ.)
   lines: readonly JournalLine[];

@@ -79,7 +79,10 @@ export class SalesController {
 
   // ---------- ตั้งค่าเอกสาร ----------
   @Need('sales', 'read') @Get('doc-settings')
-  settings(@Req() req: Request) { return docSettings(this.db, companyOf(req)); }
+  async settings(@Req() req: Request) { return (await docSettings(this.db, companyOf(req), today())).settings; }
+  /** ลำดับถัดไปของเดือนนี้ต่อคำนำหน้า (acct.number_series) — ScreenDocSettings "ลำดับปัจจุบัน" */
+  @Need('sales', 'read') @Get('doc-settings/counters')
+  async counters(@Req() req: Request) { return (await docSettings(this.db, companyOf(req), today())).counters; }
   @Need('settings', 'write') @Put('doc-settings/:type')
   async saveSetting(@Req() req: Request, @Param('type') type: string, @Body() b: { prefix: string; pattern?: string; reset?: 'monthly' | 'yearly' | 'never'; settings?: Record<string, unknown> }) {
     await saveDocSetting(this.db, companyOf(req), { docType: type, ...b });

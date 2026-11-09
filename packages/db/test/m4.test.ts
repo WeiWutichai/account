@@ -149,3 +149,12 @@ describe('ลดหนี้ · ใบวางบิล · ใบเสนอ�
     expect(r.reversal).toMatch(/^JV2611-\d{4}R$/u);
   });
 });
+
+describe('เลขที่เอกสารเรียงต่อเนื่อง (ม.86/4)', () => {
+  it('ระบุเลขที่เอง (นำเข้า/seed) แล้วใบถัดไปต่อจากเลขนั้น ไม่ย้อน', async () => {
+    const c = (await db.withCompany(A, (tx) => tx.selectFrom('acct.contact').select('id').where('code', '=', 'C0063').executeTakeFirstOrThrow())).id;
+    const mk = async () => saveSalesDraft(db, A, mgr, { docType: 'IV', contactId: c, issueDate: '2026-12-03', lines: [{ description: 'x', qty: '1', unitPrice: '100.00', vat: true }] });
+    await approveDocument(db, A, mgr, await mk(), { docNo: 'IV2612-0041' });
+    expect((await approveDocument(db, A, mgr, await mk())).docNo).toBe('IV2612-0042');
+  });
+});

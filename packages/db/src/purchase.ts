@@ -3,7 +3,7 @@
 import { Money, post, type MoneyString } from '@innovera/ledger';
 import { bahtText, FREELANCE_DEFAULT, pndOf, whtOnPayment, whtTypeFor, type FreelanceWhtConfig } from '@innovera/tax-th';
 import type { CompanyTx, Db } from './index.ts';
-import { LedgerError, nextNumber, postJournalTx } from './ledger-service.ts';
+import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Actor } from './sales.ts';
 
 export const PURCHASE_TYPES = ['PR', 'PO', 'AP', 'CNR', 'DNR', 'EXP'] as const;
@@ -123,6 +123,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     const d = await docOrThrow(tx, id);
     if (d.status !== 'draft' && d.status !== 'pending_approval') throw new LedgerError(`เอกสารสถานะ ${d.status} อนุมัติไม่ได้`);
     const docNo = opts.docNo ?? d.doc_no ?? (await nextNumber(tx, companyId, await prefixOf(tx, d.doc_type), d.issue_date));
+    if (opts.docNo) await reserveNumber(tx, companyId, opts.docNo);
     if (NON_POSTING.includes(d.doc_type)) {
       await tx.updateTable('acct.document').set({ status: 'approved', doc_no: docNo, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
       await event(tx, companyId, id, actor.userId, 'approved', { docNo });
@@ -171,6 +172,7 @@ async function issueCertificates(tx: CompanyTx, companyId: string, paymentId: st
   const out = [];
   for (const [i, c] of certs.entries()) {
     const certNo = preset?.[i] ?? (await nextNumber(tx, companyId, 'WHT', date));
+    if (preset?.[i]) await reserveNumber(tx, companyId, certNo);
     await tx.insertInto('acct.wht_certificate').values({ company_id: companyId, cert_no: certNo, payment_id: paymentId, contact_id: contactId, pnd, income_type: c.type, income_section: c.section,
       pay_date: date, base: c.base, rate: c.rate, amount: c.amount, pending_auditor: c.pendingAuditor }).execute();
     out.push({ certNo, pnd, ...c });
@@ -240,6 +242,7 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
     if (actor.userId && d.created_by === actor.userId) throw new LedgerError('ผู้สร้างใบสำคัญจ่ายอนุมัติใบของตนเองไม่ได้ (แบ่งหน้าที่)');
     if (actor.approvalLimit !== null && Money.parse(d.grand_total).gt(Money.parse(actor.approvalLimit))) throw new LedgerError(`ยอดจ่ายเกินวงเงินอนุมัติของคุณ (${actor.approvalLimit})`);
     const docNo = opts.docNo ?? d.doc_no ?? (await nextNumber(tx, companyId, await prefixOf(tx, 'PV'), d.issue_date));
+    if (opts.docNo) await reserveNumber(tx, companyId, opts.docNo);
     const settlements = await tx.selectFrom('acct.settlement').selectAll().where('payment_id', '=', id).execute();
     const settled = Money.sum(settlements.map((s) => Money.parse(s.applied).plus(Money.parse(s.wht))));
     const { def, versionId } = await ruleFor(tx, 'Pay[PV]');

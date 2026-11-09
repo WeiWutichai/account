@@ -5,7 +5,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
-import { LedgerError, nextNumber, postJournalTx, voidJournalTx } from './ledger-service.ts';
+import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -170,6 +170,7 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
     const d = await docOrThrow(tx, id);
     if (d.status !== 'draft' && d.status !== 'pending_approval') throw new LedgerError(`เอกสารสถานะ ${d.status} อนุมัติไม่ได้`);
     const docNo = opts.docNo ?? d.doc_no ?? (await nextNumber(tx, companyId, await prefixOf(tx, d.doc_type), d.issue_date));
+    if (opts.docNo) await reserveNumber(tx, companyId, opts.docNo);
     if (NON_POSTING.includes(d.doc_type as SalesType)) {
       await tx.updateTable('acct.document').set({ status: 'approved', doc_no: docNo, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
       await event(tx, companyId, id, actor.userId, 'approved', { docNo });
@@ -244,6 +245,7 @@ export async function receivePayment(db: Db, companyId: string, actor: Actor, in
       vatDueBefore: o.vatDue.toString(), applied: a.applied, wht: a.wht,
     })), input.fee ?? '0.00');
     const docNo = input.docNo ?? (await nextNumber(tx, companyId, await prefixOf(tx, 'RV'), input.date));
+    if (input.docNo) await reserveNumber(tx, companyId, input.docNo);
     const rv = await tx.insertInto('acct.document').values({
       company_id: companyId, doc_type: 'RV', doc_no: docNo, status: 'posted', issue_date: input.date, due_date: null, contact_id: input.contactId, price_incl_vat: false,
       subtotal: totals.settled, discount: '0.00', vat: totals.vatDue, wht: totals.wht, grand_total: totals.cashIn, fee: totals.fee, fee_account: input.feeAccount ?? '5401100',
@@ -281,6 +283,7 @@ export async function createBilling(db: Db, companyId: string, actor: Actor, inp
       total = total.plus(o.outstanding);
     }
     const docNo = input.docNo ?? (await nextNumber(tx, companyId, await prefixOf(tx, 'BN'), input.date));
+    if (input.docNo) await reserveNumber(tx, companyId, input.docNo);
     const bn = await tx.insertInto('acct.document').values({
       company_id: companyId, doc_type: 'BN', doc_no: docNo, status: 'approved', issue_date: input.date, due_date: input.dueDate ?? null, contact_id: input.contactId, price_incl_vat: false,
       subtotal: total.toString(), discount: '0.00', vat: '0.00', wht: '0.00', grand_total: total.toString(), notes: input.notes ?? null, created_by: actor.userId, approved_by: actor.userId,
@@ -309,6 +312,8 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
     }
     await tx.updateTable('acct.settlement').set({ voided: true }).where('payment_id', '=', id).execute();
     await tx.updateTable('acct.cheque').set({ status: 'cancelled' }).where('document_id', '=', id).execute();
+    // ใบที่ยกเลิกถูกถอดออกจากใบวางบิล (ScreenDocVoid "จะถอดออกให้")
+    await tx.deleteFrom('acct.billing_item').where('document_id', '=', id).execute();
     await tx.updateTable('acct.document').set({ status: 'voided', voided_at: new Date(), void_reason: p.reason, updated_at: new Date(),
       ...(reversal ? { void_journal_id: (await tx.selectFrom('acct.journal').select('id').where('journal_no', '=', reversal).executeTakeFirstOrThrow()).id } : {}) }).where('id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'voided', { reason: p.reason, reversal });
@@ -318,7 +323,8 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
 
 /** หลังผ่านรายการแก้ได้เฉพาะข้อมูลอ้างอิง (CLAUDE.md) — ยอด/ภาษี/บัญชีแก้ไม่ได้ */
 export const REFERENCE_FIELDS = ['address', 'notes', 'reference', 'due_date'] as const;
-export async function editReference(db: Db, companyId: string, actor: Actor, id: string, patch: Partial<Record<(typeof REFERENCE_FIELDS)[number], string | null>> & Record<string, unknown>) {
+export async function editReference(db: Db, companyId: string, actor: Actor, id: string, input: Partial<Record<(typeof REFERENCE_FIELDS)[number], string | null>> & Record<string, unknown> & { reason?: string }) {
+  const { reason, ...patch } = input;
   const bad = Object.keys(patch).filter((k) => !(REFERENCE_FIELDS as readonly string[]).includes(k));
   if (bad.length) throw new LedgerError(`แก้ไม่ได้หลังผ่านรายการ: ${bad.join(', ')} — ต้องยกเลิกแล้วออกใหม่`);
   return db.withCompany(companyId, async (tx) => {
@@ -326,7 +332,7 @@ export async function editReference(db: Db, companyId: string, actor: Actor, id:
     if (d.status === 'voided') throw new LedgerError('เอกสารถูกยกเลิกแล้ว');
     const before = Object.fromEntries(Object.keys(patch).map((k) => [k, (d as Record<string, unknown>)[k] ?? null]));
     await tx.updateTable('acct.document').set({ ...(patch as Record<string, string | null>), updated_at: new Date() }).where('id', '=', id).execute();
-    await event(tx, companyId, id, actor.userId, 'reference_edited', { before, after: patch });
+    await event(tx, companyId, id, actor.userId, 'reference_edited', { before, after: patch, ...(reason ? { reason } : {}) });
   });
 }
 
@@ -399,8 +405,14 @@ export async function openItems(db: Db, companyId: string, contactId: string) {
 
 // ---------- ตั้งค่าเอกสาร (ScreenDocSettings / ScreenDocSeriesEdit) ----------
 
-export async function docSettings(db: Db, companyId: string) {
-  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.doc_setting').selectAll().orderBy('doc_type').execute());
+export async function docSettings(db: Db, companyId: string, today = new Date().toISOString().slice(0, 10)) {
+  return db.withCompany(companyId, async (tx) => {
+    const settings = await tx.selectFrom('acct.doc_setting').selectAll().orderBy('doc_type').execute();
+    // ลำดับถัดไปของเดือนนี้ต่อคำนำหน้า (ScreenDocSettings "ลำดับปัจจุบัน")
+    const key = `${today.slice(2, 4)}${today.slice(5, 7)}`;
+    const counters = await tx.selectFrom('acct.number_series').select(['doc_type', 'period_key', 'next_no']).where('period_key', '=', key).execute();
+    return { settings, counters };
+  });
 }
 export async function saveDocSetting(db: Db, companyId: string, s: { docType: string; prefix: string; pattern?: string; reset?: 'monthly' | 'yearly' | 'never'; settings?: Record<string, unknown> }) {
   if (!/^[A-Z]{1,6}$/u.test(s.prefix)) throw new LedgerError('คำนำหน้าเลขที่ต้องเป็นตัวอักษรภาษาอังกฤษพิมพ์ใหญ่ 1–6 ตัว');
