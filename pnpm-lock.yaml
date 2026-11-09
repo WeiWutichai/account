@@ -208,6 +208,9 @@ importers:
       '@innovera/ledger':
         specifier: workspace:*
         version: link:../../packages/ledger
+      '@innovera/tax-th':
+        specifier: workspace:*
+        version: link:../../packages/tax-th
       '@nestjs/common':
         specifier: 12.4.2
         version: 12.4.2(reflect-metadata@0.2.2)(rxjs@7.8.2)

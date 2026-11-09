@@ -11,7 +11,7 @@ export class AppErrorFilter implements ExceptionFilter {
     if (e instanceof HttpException) return res.status(e.getStatus()).json({ error: e.message });
     if (e instanceof LedgerError || e instanceof PostingError || e instanceof UnbalancedJournalError) return res.status(422).json({ error: e.message });
     const msg = (e as Error).message ?? '';
-    if (/ไม่ดุล|ปิดแข็ง|row-level security|ไม่ใช่ร่าง|violates/u.test(msg)) return res.status(422).json({ error: msg.split('\n')[0] });
+    if (/ไม่ดุล|ปิดแข็ง|row-level security|ไม่ใช่ร่าง|violates|ตัดยอดเกิน/u.test(msg)) return res.status(422).json({ error: msg.split('\n')[0] });
     console.error(e);
     return res.status(500).json({ error: 'เกิดข้อผิดพลาดในระบบ' });
   }

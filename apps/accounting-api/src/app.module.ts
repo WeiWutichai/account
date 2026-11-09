@@ -5,6 +5,7 @@ import { AuthGuard, Public } from './context.js';
 import { health, type Health } from './health.js';
 import { dbProvider } from './db.js';
 import { GlController } from './gl.controller.js';
+import { SalesController } from './sales.controller.js';
 
 @Controller()
 export class HealthController {
@@ -15,5 +16,5 @@ export class HealthController {
   }
 }
 
-@Module({ controllers: [HealthController, GlController], providers: [dbProvider, { provide: APP_GUARD, useClass: AuthGuard }] })
+@Module({ controllers: [HealthController, GlController, SalesController], providers: [dbProvider, { provide: APP_GUARD, useClass: AuthGuard }] })
 export class AppModule {}
