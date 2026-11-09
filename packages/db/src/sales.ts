@@ -388,7 +388,7 @@ export interface DocFilter { docType?: string | string[]; status?: string; from?
 export async function listDocuments(db: Db, companyId: string, f: DocFilter = {}) {
   return db.withCompany(companyId, async (tx) => {
     let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
-      .select(['d.id', 'd.doc_type', 'd.doc_no', 'd.status', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.subtotal', 'd.vat', 'd.wht', 'd.tax_mode', 'd.created_at', 'd.ref_document_id', 'd.sent_at',
+      .select(['d.id', 'd.doc_type', 'd.doc_no', 'd.status', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.subtotal', 'd.vat', 'd.wht', 'd.tax_mode', 'd.created_at', 'd.ref_document_id', 'd.sent_at', 'd.vendor_ref', 'd.external_source', 'd.external_ref', 'd.pay_now', 'd.batch_ref',
         'c.id as contact_id', 'c.code as contact_code', 'c.name as contact_name',
         sql<string>`coalesce((select sum(s.applied + s.wht) from acct.settlement s where s.document_id = d.id and s.company_id = d.company_id and not s.voided), 0)`.as('settled')])
       .orderBy('d.issue_date', 'desc').orderBy('d.doc_no', 'desc').limit(f.limit ?? 500);
@@ -399,7 +399,9 @@ export async function listDocuments(db: Db, companyId: string, f: DocFilter = {}
     if (f.contactId) q = q.where('d.contact_id', '=', f.contactId);
     if (f.q) q = q.where((eb) => eb.or([eb('d.doc_no', 'ilike', `%${f.q}%`), eb('c.name', 'ilike', `%${f.q}%`), eb('c.code', 'ilike', `%${f.q}%`)]));
     const rows = await q.execute();
-    return rows.map((r) => ({ ...r, outstanding: ['IV', 'DN'].includes(r.doc_type) && r.status === 'posted' ? Money.parse(r.grand_total).minus(Money.parse(r.settled)).toString() : null }));
+    // ยอดค้าง: ขาย IV/DN · ซื้อ AP/EXP(ไม่ได้จ่ายทันที)/DNR
+    const open = (r: (typeof rows)[number]) => r.status === 'posted' && (['IV', 'DN', 'AP', 'DNR'].includes(r.doc_type) || (r.doc_type === 'EXP' && !r.pay_now));
+    return rows.map((r) => ({ ...r, outstanding: open(r) ? Money.parse(r.grand_total).minus(Money.parse(r.settled)).toString() : null }));
   });
 }
 

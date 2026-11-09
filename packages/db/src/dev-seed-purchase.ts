@@ -40,7 +40,8 @@ export async function seedPurchaseDocuments(db: Db, companyId: string, docs: Rec
   }
   const post = async (no: string, id: string | null) => { if (id) await approvePurchase(db, companyId, { userId: null, role: 'owner' }, id, { docNo: no }); };
 
-  await post('PO2611-0018', await make('PO2611-0018', 'PO'));
+  // PO2611-0018: fixtures expected_wht_3pct → ประเภทเงินได้ค่าบริการ 3% (หักตอนจ่ายจริง)
+  await post('PO2611-0018', await make('PO2611-0018', 'PO', { lines: ((docs['PO2611-0018']?.lines ?? []) as NonNullable<Fx['lines']>).map((l) => ({ description: l.desc, qty: l.qty ?? '1', unitPrice: l.price ?? l.amount!, vat: l.vat ?? true, accountCode: l.account ?? '5301200', whtType: 'service' })) }));
   const exp = docs['EXP2611-0019']!;
   const expId = await make('EXP2611-0019', 'EXP', { payNow: true, payFrom: String(exp.pay_from) });
   if (expId) await approvePurchase(db, companyId, { userId: null, role: 'owner' }, expId, { docNo: 'EXP2611-0019', certNos: [String(exp.wht_cert)] });
