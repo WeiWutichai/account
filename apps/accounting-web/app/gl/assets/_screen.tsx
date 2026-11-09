@@ -2,10 +2,10 @@
 // B6 ทะเบียนทรัพย์สิน — design/project/ScreenAssets.dc.html
 // ค่าเสื่อมของเดือน/สะสม/มูลค่าสุทธิ จาก GET /v1/assets?month= (ตารางเส้นตรงรายเดือน golden 6) · บันทึก JV = POST /v1/assets/depreciation/:year/:no (รันได้ครั้งเดียวต่องวด)
 // "สะสม" และ "มูลค่าสุทธิ" ในตาราง = ก่อนค่าเสื่อมเดือนนี้ (แบบร่าง FA-0017: สะสม 0.00 · สุทธิ 78,000.00 · ค่าเสื่อม พ.ย. 1,353.41)
-// TODO(backend) ScreenAssets.dc.html: GET /v1/assets ยังไม่คืน ราคาทุน/ซาก/วันที่เริ่มใช้/อายุ/บัญชีสินทรัพย์/สถานะ (ขายแล้ว/ตัดจำหน่าย) และคืนเฉพาะสถานะ active
-//   — ราคาทุนคำนวณจาก สะสม + มูลค่าสุทธิ · ช่องที่ไม่มีข้อมูลแสดง "—" · หน้านี้อ่าน cost/salvage/startDate/lifeYears/assetAccount ถ้า API เพิ่มฟิลด์ (ชื่อเดียวกับ PUT assets/:code)
+// GET /v1/assets คืนทุกสถานะ (ใช้งาน · เสื่อมครบ · ขายแล้วในปี) พร้อม ราคาทุน/ซาก/วันที่เริ่มใช้/อายุ/บัญชีสินทรัพย์ · ขายแล้ว: สะสม = ถึงวันที่ขาย · สุทธิ 0.00
 // TODO(Wei) ScreenAssets.dc.html: ไม่มีแบบร่างฟอร์ม "+ เพิ่มทรัพย์สิน" / แก้ทรัพย์สิน (backend PUT assets/:code พร้อม) · "ส่งออกทะเบียน (ภ.ง.ด.50)" / "ดูรายละเอียดรายตัว" ยังไม่มี API · ตัวกรองหมวด/สถานะ/ซื้อขายในเดือน รอข้อมูลจาก API
-// TODO(backend) ScreenAssets.dc.html: การขายทรัพย์สิน (ตัวอย่าง "ขาย FA-0003") ยังไม่มีใน backend จึงไม่แสดงบรรทัดตัวอย่างการขาย
+// การขายทรัพย์สิน = POST /v1/assets/:code/dispose · บรรทัด "ขาย FA-xxxx: Dr … / Cr …" แสดงเมื่อมีการขายในเดือนนี้ (จาก JV ขายจริง)
+// TODO(Wei) ScreenAssets.dc.html: ไม่มีแบบร่างฟอร์ม/ปุ่ม "ขายทรัพย์สิน" — API พร้อม แต่ยังไม่มีจุดเรียกบนหน้าจอ
 import { buttonStyle, css, href, money, Tag, thaiDate, thaiMonth } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
@@ -16,6 +16,8 @@ import { Msg } from '../../sales/_lib/ui';
 export interface AssetRow {
   code: string; name: string; expense: string; accum: string; amount: string; accumulated: string | null; nbv: string | null;
   cost?: string; salvage?: string; startDate?: string; lifeYears?: string; assetAccount?: string;
+  status?: 'active' | 'disposed' | 'fully_depreciated'; sourceDocNo?: string | null;
+  disposal?: { date: string; saleAmount: string | null; saleVat: string | null; ref: string | null; journalNo: string | null; lines: [string, string, string][] } | null;
 }
 interface Props { year: number; period: number; monthEnd: string; assets: AssetRow[]; journalNo: string | null; names: Record<string, string> }
 
@@ -28,8 +30,10 @@ const FIELD = 'height: 40px; padding: 0 16px; border: 0; border-bottom: 1px soli
 /** ค่าก่อนค่าเสื่อมเดือนนี้ (สะสม/สุทธิ) · ราคาทุน */
 function view(a: AssetRow) {
   if (a.accumulated === null || a.nbv === null) return { before: null, nbvBefore: null, cost: a.cost ?? null, done: true };
+  // ขายแล้ว: สะสม ณ วันที่ขาย (รวมค่าเสื่อมเดือนสุดท้าย) · มูลค่าสุทธิ 0.00 (แบบร่าง FA-0003)
+  if (a.status === 'disposed') return { before: a.accumulated, nbvBefore: a.nbv, cost: a.cost ?? fromCents(toCents(a.accumulated) + toCents(a.nbv)), done: true };
   const before = fromCents(toCents(a.accumulated) - toCents(a.amount));
-  return { before, nbvBefore: fromCents(toCents(a.nbv) + toCents(a.amount)), cost: a.cost ?? fromCents(toCents(a.accumulated) + toCents(a.nbv)), done: false };
+  return { before, nbvBefore: fromCents(toCents(a.nbv) + toCents(a.amount)), cost: a.cost ?? fromCents(toCents(a.accumulated) + toCents(a.nbv)), done: a.status === 'fully_depreciated' };
 }
 
 export function AssetsScreen({ year, period, monthEnd, assets, journalNo, names }: Props) {
@@ -52,6 +56,16 @@ export function AssetsScreen({ year, period, monthEnd, assets, journalNo, names 
   const group = (key: 'expense' | 'accum') => [...new Set(assets.map((a) => a[key]))].map((acc) => ({ acc, amount: sumMoney(assets.filter((a) => a[key] === acc).map((a) => a.amount)) })).filter((g) => toCents(g.amount) > 0n);
   const dr = group('expense');
   const cr = group('accum');
+  // ขายในเดือนนี้ → บรรทัดตัวอย่าง "ขาย FA-0003: Dr 1100100 เงินฝาก … / Cr 2150100 ภาษีขาย …" (ชื่อย่อตามแบบร่าง)
+  const sold = assets.filter((a) => a.disposal && a.disposal.date.slice(0, 7) === monthEnd.slice(0, 7));
+  const saleLabel = (a: AssetRow, acc: string): string => {
+    if (acc === a.assetAccount) return 'ราคาทุน';
+    if (acc === a.accum) return 'สะสม';
+    if (acc === '5910100') return 'ขาดทุนจากการจำหน่าย';
+    if (acc === '2150100') return 'ภาษีขาย';
+    if (acc.startsWith('1100')) return 'เงินฝาก';
+    return names[acc] ?? '';
+  };
 
   async function run() {
     if (!window.confirm(`บันทึก JV ค่าเสื่อม ${month} ยอด ${money(total)}?`)) return;
@@ -64,7 +78,11 @@ export function AssetsScreen({ year, period, monthEnd, assets, journalNo, names 
   }
 
   function status(a: AssetRow, done: boolean) {
-    if (done) return <Tag kind="neutral">เสื่อมครบ</Tag>;
+    if (a.status === 'disposed' && a.disposal) {
+      const last = a.disposal.date.slice(0, 7) === monthEnd.slice(0, 7);
+      return <Tag kind="neutral">{last ? `ขายแล้ว · เดือนสุดท้าย ${Number(a.disposal.date.slice(8, 10))} วัน` : 'ขายแล้ว'}</Tag>;
+    }
+    if (done) return <Tag kind="neutral">{a.salvage && toCents(a.salvage) > 0n ? `เสื่อมครบ · คงซาก ${money(a.salvage).replace(/\.00$/u, '')} บาท` : 'เสื่อมครบ'}</Tag>;
     if (a.startDate && a.startDate.slice(0, 7) === monthEnd.slice(0, 7)) {
       const days = Number(monthEnd.slice(8, 10)) - Number(a.startDate.slice(8, 10)) + 1;
       return <Tag kind="info">{`ใหม่ · เดือนแรก ${days} วัน`}</Tag>;
@@ -103,9 +121,11 @@ export function AssetsScreen({ year, period, monthEnd, assets, journalNo, names 
             </tr></thead>
             <tbody>
               {shown.map(({ a, v }) => (
-                <tr key={a.code} style={css(`border-top: 1px solid #e0e0e0${v.done ? '; color: #525252' : ''}`)}>
+                <tr key={a.code} style={css(`border-top: 1px solid #e0e0e0${v.done && a.status !== 'disposed' ? '; color: #525252' : ''}`)}>
                   <td style={css('height: 40px; padding: 0 12px; font-variant-numeric: tabular-nums')}>{a.code}</td>
-                  <td style={css(TD)}><a href={href('assets')} style={css(`text-decoration: none; font-weight: 500${v.done ? '; color: #525252' : ''}`)}>{a.name}</a></td>
+                  <td style={css(TD)}><a href={href('assets')} style={css(`text-decoration: none; font-weight: 500${v.done && a.status !== 'disposed' ? '; color: #525252' : ''}`)}>{a.name}</a>
+                    {a.disposal ? <div style={css('font-size: 13px; color: #525252')}>ขาย {thaiDate(a.disposal.date)} ราคา {money(a.disposal.saleAmount ?? '0.00')}{a.disposal.ref ? ` (${a.disposal.ref})` : ''}</div>
+                      : a.sourceDocNo ? <div style={css('font-size: 13px; color: #525252')}>จาก {a.sourceDocNo}</div> : null}</td>
                   <td style={css(TD)}>{a.assetAccount ? `${names[a.assetAccount] ?? ''} · ${a.assetAccount}` : '—'}</td>
                   <td style={css(`${TD}; font-variant-numeric: tabular-nums`)}>{a.startDate ? thaiDate(a.startDate) : '—'}</td>
                   <td style={css(NUM)}>{a.lifeYears ? String(Number(a.lifeYears)) : '—'}</td>
@@ -147,7 +167,9 @@ export function AssetsScreen({ year, period, monthEnd, assets, journalNo, names 
               ))}
               <tr style={css('border-top: 1px solid #8d8d8d; font-weight: 600')}><td style={css('height: 32px; padding: 0 16px')}>รวม</td><td style={css('text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums')}>{money(total)}</td><td style={css('text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums')}>{money(total)}</td></tr>
             </tbody></table>
-            <div style={css('padding: 12px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252; display: flex; flex-direction: column; gap: 4px')}><span>ค่าเสื่อมบันทึกอัตโนมัติวันสิ้นเดือน (ตั้งค่าได้) · ย้อนคำนวณใหม่เมื่อแก้วันที่เริ่มใช้ / อายุ · ล็อกเมื่อปิดงวด</span></div>
+            <div style={css('padding: 12px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252; display: flex; flex-direction: column; gap: 4px')}>{sold.map((a) => (
+              <span key={a.code}><strong style={css('color: #161616')}>ขาย {a.code}:</strong> {a.disposal!.lines.map(([side, acc, amt], i) => `${i ? ' / ' : ''}${side} ${acc} ${saleLabel(a, acc)} ${money(amt)}`).join('')}</span>
+            ))}<span>ค่าเสื่อมบันทึกอัตโนมัติวันสิ้นเดือน (ตั้งค่าได้) · ย้อนคำนวณใหม่เมื่อแก้วันที่เริ่มใช้ / อายุ · ล็อกเมื่อปิดงวด</span></div>
           </section>
         </div>
       </div>
