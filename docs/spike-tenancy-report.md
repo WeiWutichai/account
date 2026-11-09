@@ -1,7 +1,7 @@
 # รายงาน Spike ORM / Tenancy (M0)
 
 > 2026-11-09 · Claude Code · โค้ดและผลดิบ: `spike/tenancy/` (`results/*.json`) · ตอบ PLAN §9 ข้อ 1
-> สรุป: **แนะนำทาง ค (ตารางรวม + `company_id` + Row-Level Security)** — รอ Wei ตัดสิน (ADR-001)
+> สรุป: **แนะนำทาง ค (ตารางรวม + `company_id` + Row-Level Security)** — **Wei อนุมัติทาง ค 2026-11-09** (ADR-001)
 
 ## 1. สิ่งที่ทดลอง
 

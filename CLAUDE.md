@@ -29,9 +29,9 @@
 
 ## สถาปัตยกรรม (ย่อ — รายละเอียดใน PLAN.md §2 และ docs/ADR-*)
 - Monorepo pnpm + turborepo · TypeScript strict · NestJS · PostgreSQL · Next.js (App Router) · Redis + BullMQ · Vitest · Playwright — ใช้รุ่นเสถียรล่าสุด ณ วันเริ่ม M0 ตรวจเลขรุ่นจริง ห้ามเดาจากความจำ
-- **ORM ยังไม่ตัดสินใจ** — Prisma น่าจะใช้กับ `search_path` ไม่ได้ ต้องทำ spike ใน M0 แล้วให้ Wei อนุมัติทางเลือก ก/ข/ค (PLAN.md §2, §9 ข้อ 1) ก่อนเริ่ม M1
+- **Tenancy (ADR-001, Wei อนุมัติ 2026-11-09): ตารางรวม + `company_id` + Row-Level Security** · data access ด้วย Kysely (ไม่ใช้ Prisma กับตารางบัญชี — พิสูจน์แล้วว่าสลับบริษัทไม่ได้)
 - `apps/`: accounting-api, accounting-web, id-api, id-web (Innovera ID), console-web (admin.*) · `packages/`: db, ledger, tax-th, ui, contracts, config
-- Multi-tenant: `public` (user/org/company/membership/invite/plan/subscription/entitlement) + **schema-per-company** `co_<ulid>` · ทุก request `SET LOCAL search_path TO co_x, public` ใน transaction (ถ้าเลือกทางเลือก ก/ข) · PgBouncer transaction mode → ห้าม session state · `company.db_dsn` nullable เผื่อ DB แยก
+- Multi-tenant: `public` (user/org/company/membership/invite/plan/subscription/entitlement) + **ตารางบัญชีรวม** ทุกตารางมี `company_id NOT NULL` + `ENABLE`/`FORCE ROW LEVEL SECURITY` · เข้าถึงได้ทางเดียวผ่าน `withCompany(companyId, tx => …)` (`set_config('app.company_id', …, true)` ใน transaction) · ห้าม query ตารางบัญชีนอก `withCompany` · แอปใช้ role ที่ไม่ใช่เจ้าของตาราง · ตารางบัญชีใหม่ทุกตารางต้องมี policy (มี test ตรวจ) · index ขึ้นต้นด้วย `company_id` · PgBouncer transaction mode → ห้าม session state · `company.db_dsn` nullable เผื่อ DB แยก
 - Posting Engine (`packages/ledger`) เป็น pure TS ไม่พึ่ง Nest · posting rules เป็นข้อมูล · Dr=Cr ตรวจทั้งใน engine และ DB
 - API/MCP ภายนอกสร้างได้แค่ `draft` · `external_source + external_ref` unique ต่อบริษัท · scopes ไม่มี post/pay/periods/users/settings
 - Audit log append-only + hash chain · การเข้าดูข้อมูลลูกค้าโดยทีม Innovera ต้องมี consent (Console X4)

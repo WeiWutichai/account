@@ -2,14 +2,14 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-09 23:55** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 00:10** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
-- **ขั้น:** กำลังทำ **M0** (Wei อนุมัติ TP แล้ว · build โดย Claude Code ในเครื่องนี้ · repo = โฟลเดอร์นี้ git local branch `m0`)
-- **M0 เสร็จงาน 1–8 แล้ว** — monorepo + CI (`pnpm verify` เขียว) + docker stack + spike tenancy + ADR-001/002 · **รอ Wei ตัดสินทางเลือก tenancy** (แนะนำ ค: ตารางรวม + company_id + RLS) → ถึงปิด M0 และเริ่ม M1 ได้
+- **ขั้น:** **M0 ปิดแล้ว** (merge `m0` → `main`) · Wei เลือก tenancy **ทาง ค: ตารางรวม + company_id + RLS** (ADR-001) · ถัดไป: **Technical Plan M1** (contracts + DB schema) → Wei อนุมัติ → build
+- repo = โฟลเดอร์นี้ (git local · ยังไม่มี remote) · build โดย Claude Code ในเครื่องนี้
 - **แบบร่าง UI:** เวอร์ชัน **26** · `design/` ตรง MANIFEST · fixtures ตรงแบบร่างทุกยอด
 - รัน dev: `nvm use` (Node 26.13) → `pnpm install` → `pnpm db:up` → `pnpm verify` · spike: `cd spike/tenancy && pnpm setup && pnpm leak && pnpm bench && pnpm ops`
 
@@ -22,7 +22,7 @@
 | ความคืบหน้า | `PROGRESS.md` (ไฟล์นี้) | |
 | Technical Plan M0 | `docs/technical-plan-M0.md` | Wei อนุมัติ 2026-11-09 |
 | ผล spike tenancy | `docs/spike-tenancy-report.md` · `spike/tenancy/results/` | แนะนำทาง ค |
-| ADR | `docs/ADR-001-tenancy.md` (รอตัดสิน) · `docs/ADR-002-posting-engine.md` | |
+| ADR | `docs/ADR-001-tenancy.md` (อนุมัติ ทาง ค) · `docs/ADR-002-posting-engine.md` | |
 | แบบร่าง (สำเนา) | `design/project/*.dc.html` + `design/MANIFEST.json` + `design/README.md` | อ่านอย่างเดียว · เปิดดู `cd design/project && python3 -m http.server 8080` |
 | แบบร่าง (ต้นฉบับ) | https://claude.ai/artifact/LQTTxmYPCna8EntkntYCCQ | แก้ที่นี่แล้วส่งออกทับ `design/` |
 | รหัสหน้าจอ ↔ ไฟล์ ↔ milestone | `docs/page-map.md` | Wei อนุมัติครบ |
@@ -51,7 +51,8 @@
 | 2026-11-09 | วันนี้ในแบบร่าง | มุมมองสิ้นเดือน จันทร์ 30 พ.ย. 2569 |
 | 2026-11-09 | ยอดขัดกัน 11 ข้อ | ตาม `fixtures.decisions_wei_2026_11_09` (IV2611-0056 = 281,200 · ลูกหนี้ 1,780,016 · กำไร ม.ค.–พ.ย. 2,872,880 · S-0001 1,500/ชม. · IV2611-0052 รออนุมัติ ฯลฯ) |
 | 2026-11-09 | ค่าเช่าอาคาร | ไม่มี VAT (ม.81(1)(ฑ)) · รอบจ่าย 28 พ.ย. = 909,100 / 13,600 / 895,500 |
-| 2026-11-09 | ORM / แยกฐานข้อมูลต่อบริษัท | **ยังไม่ตัดสิน** — ทำ spike ใน M0 (ทางเลือก ก/ข/ค ใน PLAN §2) แล้ว Wei อนุมัติก่อน M1 |
+| 2026-11-09 | Tenancy / ORM | **ทาง ค: ตารางรวม + company_id + RLS · Kysely** (ADR-001 · ผล spike 79 คะแนน) |
+| 2026-11-09 | repo / build | git local ในโฟลเดอร์นี้ · Claude Code เป็นผู้ build · Node 26.13 LTS |
 
 ## 4. เรื่องเปิดอยู่
 
@@ -61,7 +62,7 @@
 
 **รอ Wei**
 3. ~~อนุมัติ TP M0~~ (อนุมัติแล้ว · repo local · build ในเครื่องนี้)
-4. **เลือกทางเลือก tenancy จาก `docs/spike-tenancy-report.md`** (แนะนำ ค · ถ้าคง schema-per-company ให้เลือก ก + spike role ต่อบริษัทเพิ่ม 1 วัน)
+4. ~~เลือก tenancy~~ — ทาง ค (อนุมัติแล้ว)
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
 5. `ScreenReconReport` ยอด IV 61 ใบ (1,736,580) และ RV 42 ใบ (2,104,318.60) เป็นค่ากำหนดใหม่ ไม่ได้รวมจากรายใบ เพราะ fixtures มีเอกสารไม่ครบ — ถ้าจะทำ e2e ที่ต้องรวมจากรายใบ ต้องเพิ่มเอกสารใน fixtures
@@ -71,8 +72,8 @@
 
 ## 5. ขั้นถัดไป
 
-1. Wei ตัดสิน ADR-001 → แก้ PLAN §2 + CLAUDE.md ตามทางที่เลือก → ปิด M0 (merge `m0` → `main`)
-2. เขียน Technical Plan M1 (contracts + DB schema ตามทางที่อนุมัติ)
+1. เขียน Technical Plan M1: `packages/contracts` (OpenAPI + zod) · schema `public` + ตารางบัญชีรวม + RLS · `withCompany()` · Dr=Cr constraint trigger · seed ผังบัญชี 186 + 24 สูตร · leak tests ถาวร
+2. เตรียมเครื่องมือ export/import รายบริษัท ให้ทันก่อน M3.5 (เงื่อนไขของ ADR-001)
 3. Wei อนุมัติ TP M1 → build M1
 
 ## 6. วิธีทำงานร่วมกับ Cowork
@@ -84,6 +85,7 @@
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
 
+- **2026-11-10 00:10** · Wei + Claude Code · เลือก tenancy ทาง ค · แก้ PLAN §2 + CLAUDE.md · ปิด M0 (merge เข้า main)
 - **2026-11-09 23:55** · Claude Code · M0: spike tenancy ครบ (300 บริษัท · leak 17/17 · bench · ops) · รายงาน + ADR-001/002 · แนะนำทาง ค
 - **2026-11-09 23:15** · Claude Code · M0: monorepo scaffold (`e0b9d23`) · Node 26.13 · pnpm 12.18 · TS 6.0.3 · Nest 12 · Next 16 · PG 18.6/PgBouncer 1.26.1/Redis 8.10.3 · `pnpm verify` เขียว
 - **2026-11-09 23:00** · Claude Code · `git init` ในโฟลเดอร์นี้ (แทนการคัดลอกไป innovera-platform เพื่อไม่ให้มี 2 ชุดกับ Cowork) · commit `29a7c07`

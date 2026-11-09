@@ -1,6 +1,6 @@
 # ADR-001 — Tenancy และการเข้าถึงข้อมูล
 
-- สถานะ: **เสนอ — รอ Wei ตัดสิน** (ห้ามเริ่ม M1 จนกว่าอนุมัติ)
+- สถานะ: **อนุมัติ — Wei 2026-11-09** (ทาง ค)
 - อ้างอิง: `docs/spike-tenancy-report.md` · `spike/tenancy/` · `PLAN.md` §2, §9 ข้อ 1
 
 ## บริบท
@@ -11,7 +11,7 @@
 - ข: schema ต่อบริษัท + Prisma client ต่อบริษัท — 70 คะแนน
 - ค: ตารางรวม + `company_id` + Row-Level Security — **79 คะแนน**
 
-## ตัดสิน (เสนอ)
+## ตัดสิน
 **ค** — ตารางรวม + `company_id` + RLS (`ENABLE` + `FORCE`) · data access ด้วย **Kysely** เป็นหลัก (Prisma ไม่ใช้ ลดเครื่องมือให้เหลือชุดเดียว — ยืนยันใน TP M1) · context บริษัทตั้งด้วย `set_config('app.company_id', …, true)` ภายใน transaction เท่านั้น ผ่าน `withCompany()`
 
 เงื่อนไขบังคับ: ดูรายงาน §7 ข้อ 1–6 (role ไม่ใช่เจ้าของตาราง, test policy ทุกตาราง, index ขึ้นต้น company_id, ตารางยอดรายงวด, migration แบบ expand/contract, เครื่องมือ export/import รายบริษัทก่อน M3.5, role BYPASSRLS เฉพาะ Console + audit)
@@ -19,7 +19,7 @@
 ## ผลที่ตามมา
 - ✅ DB กันการรั่วทุกทาง รวม raw SQL และการปลอม company_id · สร้างบริษัทใหม่ทันที · catalog เล็ก · query ข้ามบริษัทของ Console ง่าย
 - ⚠️ ต้องสร้างเครื่องมือ backup/restore/ย้าย DB รายบริษัทเอง · migration กระทบทุกบริษัทพร้อมกัน · ต้องระวัง noisy neighbor (บริษัทใหญ่) → index/partition
-- 📝 ต้องแก้ `PLAN.md` §2 และ `CLAUDE.md` (สถาปัตยกรรม: schema-per-company → ตารางรวม + RLS) หลังอนุมัติ
+- 📝 แก้ `PLAN.md` §2 และ `CLAUDE.md` (schema-per-company → ตารางรวม + RLS) แล้ว 2026-11-09
 
 ## เวอร์ชันที่ pin (ตรวจจริง 2026-11-09)
 
