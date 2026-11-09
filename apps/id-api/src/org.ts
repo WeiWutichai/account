@@ -108,17 +108,43 @@ export class Orgs {
         .select(['u.id', 'u.email', 'u.display_name', 'u.mfa_enabled', 'u.last_login_at', 'm.org_role', 'm.expires_at']).where('m.org_id', '=', orgId).orderBy('m.created_at').execute();
       const cms = await tx.selectFrom('public.company_membership as cm').innerJoin('public.company as c', 'c.id', 'cm.company_id')
         .select(['cm.user_id', 'cm.company_id', 'cm.company_role']).where('c.org_id', '=', orgId).execute();
-      const invites = await tx.selectFrom('public.invite').select(['id', 'email', 'role', 'company_id', 'kind', 'org_role', 'created_at', 'expires_at'])
+      const invites = await tx.selectFrom('public.invite').select(['id', 'email', 'role', 'company_id', 'kind', 'org_role', 'created_at', 'expires_at', 'access_until'])
         .where('org_id', '=', orgId).where('accepted_at', 'is', null).where('revoked_at', 'is', null).where('declined_at', 'is', null).where('expires_at', '>', this.now()).execute();
       const seats = members.filter((m) => countsSeat(m.org_role)).length;
       return {
         org: { id: org.id, name: org.name, policy: org.security_policy }, myRole: role,
-        subscription: sub ? { plan: sub.plan_code, status: sub.status, renewsAt: sub.renews_at, companyLimit: sub.company_limit, seatLimit: sub.seat_limit } : null,
+        subscription: sub ? { plan: sub.plan_code, planName: (await tx.selectFrom('public.plan').select('name').where('code', '=', sub.plan_code).executeTakeFirst())?.name ?? sub.plan_code,
+          status: sub.status, renewsAt: sub.renews_at, trialEndsAt: sub.trial_ends_at, companyLimit: sub.company_limit, seatLimit: sub.seat_limit } : null,
         companies, seats: { used: seats, pending: invites.filter((i) => i.kind === 'member').length },
         members: members.map((m) => ({ ...m, companies: companies.map((c) => cms.find((x) => x.user_id === m.id && x.company_id === c.id)?.company_role ?? null) })),
         invites,
       };
     });
+  }
+
+  /** องค์กรของผู้ใช้ (ScreenProfile "องค์กรและบริษัทที่เข้าถึง") · บทบาทองค์กร · บริษัทที่เข้าถึงพร้อมบทบาท · วันหมดอายุ (Guest) */
+  async myOrgs(userId: string) {
+    return this.db.withPublic(async (tx) => {
+      const orgs = await tx.selectFrom('public.org_membership as m').innerJoin('public.organization as o', 'o.id', 'm.org_id')
+        .select(['o.id', 'o.name', 'm.org_role', 'm.expires_at']).where('m.user_id', '=', userId).orderBy('m.created_at').execute();
+      const cms = await tx.selectFrom('public.company_membership as cm').innerJoin('public.company as c', 'c.id', 'cm.company_id')
+        .select(['c.org_id', 'c.id', 'c.name_th', 'cm.company_role', 'cm.expires_at']).where('cm.user_id', '=', userId).where('c.status', '=', 'active').execute();
+      return orgs.map((o) => ({ ...o, companies: cms.filter((c) => c.org_id === o.id).map((c) => ({ id: c.id, name: c.name_th, role: c.company_role, expiresAt: c.expires_at })) }));
+    });
+  }
+
+  /** ชื่อแผนจากตาราง plan ("business" → "Business") */
+  async planName(code: string | null): Promise<string | null> {
+    if (!code) return null;
+    const p = await this.db.withPublic((tx) => tx.selectFrom('public.plan').select('name').where('code', '=', code).executeTakeFirst());
+    return p?.name ?? code;
+  }
+
+  /** บันทึกการเข้าสู่ระบบของสมาชิกองค์กร (ScreenOrgMembers แท็บ "บันทึกการเข้าสู่ระบบ") · เฉพาะ Owner/Admin · ล่าสุดก่อน */
+  async loginEvents(userId: string, orgId: string, limit = 100) {
+    await this.requireOrgAdmin(userId, orgId);
+    return this.db.withPublic((tx) => tx.selectFrom('public.login_event as e').innerJoin('public.org_membership as m', (j) => j.onRef('m.user_id', '=', 'e.user_id').on('m.org_id', '=', orgId))
+      .select(['e.id', 'e.at', 'e.email', 'e.event', 'e.user_agent']).orderBy('e.at', 'desc').orderBy('e.id', 'desc').limit(Math.min(Math.max(1, limit), 500)).execute());
   }
 
   // ---------- คำเชิญ ----------
@@ -159,14 +185,14 @@ export class Orgs {
     const r = await this.db.withPublic((tx) => tx.selectFrom('public.invite as i').innerJoin('public.organization as o', 'o.id', 'i.org_id').leftJoin('public.company as c', 'c.id', 'i.company_id')
       .leftJoin('public.app_user as by', 'by.id', 'i.invited_by').leftJoin('public.subscription as s', 's.org_id', 'o.id')
       .select(['i.id', 'i.email', 'i.role', 'i.kind', 'i.expires_at', 'i.accepted_at', 'i.revoked_at', 'i.declined_at', 'o.name as org_name', 'o.security_policy', 'c.name_th as company_name',
-        'by.display_name as by_name', 'by.email as by_email', 's.plan_code'])
+        'by.display_name as by_name', 'by.email as by_email', 's.plan_code', 'i.created_at'])
       .where('i.token_hash', '=', sha256(token)).executeTakeFirst());
     if (!r) throw new IdError(404, 'ไม่พบคำเชิญ');
     const status = r.accepted_at ? 'accepted' : r.declined_at ? 'declined' : r.revoked_at ? 'revoked' : r.expires_at.getTime() < this.now().getTime() ? 'expired' : 'ok';
     const hasAccount = !!(await this.db.withPublic((tx) => tx.selectFrom('public.app_user').select('id').where('email', '=', r.email).executeTakeFirst()));
     return {
       status, email: r.email, role: r.role as CompanyRole, roleLabel: COMPANY_ROLE_LABEL[r.role as CompanyRole] ?? r.role, kind: r.kind, orgName: r.org_name, companyName: r.company_name,
-      invitedBy: { name: r.by_name, email: r.by_email }, plan: r.plan_code, expiresAt: r.expires_at, policy: r.security_policy, hasAccount,
+      invitedBy: { name: r.by_name, email: r.by_email }, plan: r.plan_code, planName: await this.planName(r.plan_code), createdAt: r.created_at, expiresAt: r.expires_at, policy: r.security_policy, hasAccount,
       emailMatches: viewer ? viewer.email === r.email : null,
     };
   }
@@ -210,7 +236,7 @@ export class Orgs {
       const c = await tx.selectFrom('public.company').select(['org_id']).where('id', '=', companyId).executeTakeFirstOrThrow();
       const users = await tx.selectFrom('public.company_membership as m').innerJoin('public.app_user as u', 'u.id', 'm.user_id')
         .leftJoin('public.org_membership as om', (j) => j.onRef('om.user_id', '=', 'm.user_id').on('om.org_id', '=', c.org_id))
-        .select(['u.id', 'u.email', 'u.display_name', 'u.mfa_enabled', 'u.last_login_at', 'm.company_role', 'm.scope', 'm.approval_limit', 'm.expires_at', 'm.permissions', 'om.org_role'])
+        .select(['u.id', 'u.email', 'u.display_name', 'u.mfa_enabled', 'u.last_login_at', 'm.company_role', 'm.scope', 'm.approval_limit', 'm.expires_at', 'm.permissions', 'm.require_2fa', 'om.org_role'])
         .where('m.company_id', '=', companyId).orderBy('m.created_at').execute();
       const others = await tx.selectFrom('public.company_membership as m').innerJoin('public.company as c2', 'c2.id', 'm.company_id')
         .select(['m.user_id', 'c2.id', 'c2.name_th', 'm.company_role']).where('c2.org_id', '=', c.org_id).where('m.company_id', '<>', companyId).execute();
@@ -226,17 +252,19 @@ export class Orgs {
     });
   }
 
-  async updateCompanyUser(actorId: string, companyId: string, targetId: string, input: { role: CompanyRole; scope: string; approvalLimit: string; expiresAt: string | null; require2fa: boolean; permissions: Record<string, Record<string, boolean>> | null }) {
+  async updateCompanyUser(actorId: string, companyId: string, targetId: string, input: { role: CompanyRole; scope: string; approvalLimit: string | null; expiresAt: string | null; require2fa: boolean; permissions: Record<string, Record<string, boolean>> | null }) {
     const me = await this.membership(actorId, companyId);
     if (!me || !me.permissions.settings.write) throw new IdError(403, 'ไม่มีสิทธิ์แก้ผู้ใช้ของบริษัทนี้');
     if (!COMPANY_ROLES.includes(input.role)) throw new IdError(422, 'บทบาทไม่ถูกต้อง');
     if (input.role === 'owner' && me.role !== 'owner') throw new IdError(403, 'ตั้งเป็น Owner ได้เฉพาะ Owner');
-    if (!/^\d+(\.\d{1,2})?$/u.test(input.approvalLimit)) throw new IdError(422, 'วงเงินอนุมัติไม่ถูกต้อง');
+    // null หรือว่าง = ไม่จำกัด (ScreenUsers "ไม่จำกัด")
+    const limit = input.approvalLimit === null || input.approvalLimit.trim() === '' ? null : input.approvalLimit.trim();
+    if (limit !== null && !/^\d+(\.\d{1,2})?$/u.test(limit)) throw new IdError(422, 'วงเงินอนุมัติไม่ถูกต้อง');
     const target = await this.membership(targetId, companyId);
     if (!target) throw new IdError(404, 'ไม่พบผู้ใช้ในบริษัทนี้');
     if (target.role === 'owner' && me.role !== 'owner') throw new IdError(403, 'แก้สิทธิ์ของ Owner ได้เฉพาะ Owner');
     await this.db.withPublic((tx) => tx.updateTable('public.company_membership').set({
-      company_role: input.role, scope: input.scope, approval_limit: input.approvalLimit, expires_at: input.expiresAt, require_2fa: input.require2fa,
+      company_role: input.role, scope: input.scope, approval_limit: limit, expires_at: input.expiresAt, require_2fa: input.require2fa,
       permissions: input.permissions ? JSON.stringify(input.permissions) : null,
     }).where('company_id', '=', companyId).where('user_id', '=', targetId).execute());
     // TODO(M7): บันทึกการเปลี่ยนสิทธิ์ใน audit log (hash chain) ของบริษัท

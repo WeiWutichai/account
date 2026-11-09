@@ -8,7 +8,8 @@ export async function GET(req: Request) {
   const res = await fetch(`${ID_API}/v1/auth/refresh`, {
     method: 'POST', headers: { cookie: req.headers.get('cookie') ?? '', 'user-agent': req.headers.get('user-agent') ?? '', 'x-forwarded-for': req.headers.get('x-forwarded-for') ?? '127.0.0.1' },
   });
-  const target = res.ok ? next : new URL(`/login?next=${encodeURIComponent(next)}`, req.url).href;
+  // next อาจเป็น path ภายใน id-web (เช่น /me) → ทำเป็น URL เต็มก่อน redirect
+  const target = res.ok ? new URL(next, req.url).href : new URL(`/login?next=${encodeURIComponent(next)}`, req.url).href;
   const r = NextResponse.redirect(target);
   for (const c of res.headers.getSetCookie()) r.headers.append('set-cookie', c);
   return r;

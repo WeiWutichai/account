@@ -350,6 +350,72 @@ export class Identity {
     return (await this.userById(userId))?.email ?? '';
   }
 
+  /** ชื่อบริษัทที่บังคับ 2FA (หัวการ์ด "ตั้งค่า 2FA" ใน ScreenTwoFactor: "บริษัท [ชื่อบริษัท] บังคับใช้ 2FA ทุกผู้ใช้") · ไม่มี = null */
+  async requiringCompany(userId: string): Promise<string | null> {
+    const r = await this.db.withPublic((tx) => tx.selectFrom('public.company_membership as cm').innerJoin('public.company as c', 'c.id', 'cm.company_id').innerJoin('public.organization as o', 'o.id', 'c.org_id')
+      .select(['c.name_th', 'o.security_policy']).where('cm.user_id', '=', userId).where('c.status', '=', 'active').orderBy('c.created_at').execute());
+    return r.find((x) => x.security_policy.require_2fa)?.name_th ?? null;
+  }
+
+  // ---------- บัญชีของฉัน (ScreenProfile) ----------
+
+  /** ข้อมูลหน้าโปรไฟล์: ผู้ใช้ · เปลี่ยนรหัสผ่านล่าสุด · รหัสสำรองเหลือ · เซสชันที่ใช้อยู่ · อุปกรณ์ที่เชื่อถือ */
+  async profile(userId: string, currentSid: string) {
+    return this.db.withPublic(async (tx) => {
+      const user = await tx.selectFrom('public.app_user').select(['id', 'email', 'display_name', 'email_verified_at', 'mfa_enabled', 'phone_masked', 'locale', 'created_at'])
+        .where('id', '=', userId).executeTakeFirst();
+      if (!user) throw new IdError(401, 'ไม่พบบัญชี');
+      const pw = await tx.selectFrom('public.password_history').select('created_at').where('user_id', '=', userId).orderBy('created_at', 'desc').limit(1).executeTakeFirst();
+      const codes = await tx.selectFrom('public.backup_code').select(['code_hash']).where('user_id', '=', userId).execute();
+      const now = this.now();
+      const sessions = await tx.selectFrom('public.auth_session').select((eb) => ['family_id', eb.fn.max('user_agent').as('user_agent'), eb.fn.min('created_at').as('started_at'), eb.fn.max('created_at').as('last_used_at')])
+        .where('user_id', '=', userId).where('revoked_at', 'is', null).where('expires_at', '>', now).groupBy('family_id').execute();
+      const devices = await tx.selectFrom('public.trusted_device').select(['id', 'label', 'created_at', 'expires_at']).where('user_id', '=', userId).where('revoked_at', 'is', null)
+        .where('expires_at', '>', now).orderBy('created_at', 'desc').execute();
+      return {
+        user, passwordChangedAt: pw?.created_at ?? null,
+        backupCodes: { left: codes.filter((c) => c.code_hash !== null).length, issued: codes.length },
+        sessions: sessions.map((s) => ({ id: s.family_id, userAgent: s.user_agent, startedAt: s.started_at, lastUsedAt: s.last_used_at, current: s.family_id === currentSid,
+          trustedUntil: devices.find((d) => d.label && d.label === s.user_agent?.slice(0, 120))?.expires_at ?? null }))
+          .sort((a, b) => Number(b.current) - Number(a.current) || new Date(b.lastUsedAt as Date).getTime() - new Date(a.lastUsedAt as Date).getTime()),
+        trustedDevices: devices,
+      };
+    });
+  }
+
+  /** แก้ชื่อ/ภาษา (ปุ่ม "บันทึกโปรไฟล์") */
+  async updateProfile(userId: string, input: { displayName: string; locale: 'th' | 'en' }): Promise<void> {
+    const name = (input.displayName ?? '').trim();
+    if (!name) throw new IdError(422, 'กรุณากรอกชื่อ-นามสกุล');
+    if (name.length > 120) throw new IdError(422, 'ชื่อยาวเกินไป');
+    if (input.locale !== 'th' && input.locale !== 'en') throw new IdError(422, 'ภาษาไม่ถูกต้อง');
+    await this.db.withPublic((tx) => tx.updateTable('public.app_user').set({ display_name: name, locale: input.locale }).where('id', '=', userId).execute());
+  }
+
+  /** "รหัสสำรองใหม่" — ออกชุดใหม่ 10 ชุด ชุดเดิมใช้ไม่ได้ทันที (แสดงครั้งเดียว) */
+  async regenerateBackupCodes(userId: string): Promise<string[]> {
+    const u = await this.userById(userId);
+    if (!u?.mfa_enabled) throw new IdError(409, 'ยังไม่ได้เปิด 2FA');
+    const backupCodes = generateBackupCodes();
+    const hashes = await Promise.all(backupCodes.map(hashBackupCode));
+    await this.db.withPublic(async (tx) => {
+      await tx.deleteFrom('public.backup_code').where('user_id', '=', userId).execute();
+      await tx.insertInto('public.backup_code').values(hashes.map((h, idx) => ({ user_id: userId, idx, code_hash: h, used_at: null }))).execute();
+    });
+    return backupCodes;
+  }
+
+  /** ออกจากระบบอุปกรณ์หนึ่ง (เซสชัน = refresh family) · ต้องเป็นของตัวเอง */
+  async revokeSession(userId: string, familyId: string): Promise<void> {
+    const r = await this.db.withPublic((tx) => tx.updateTable('public.auth_session').set({ revoked_at: this.now(), revoke_reason: 'user_revoked' })
+      .where('user_id', '=', userId).where('family_id', '=', familyId).where('revoked_at', 'is', null).executeTakeFirst());
+    if (Number(r.numUpdatedRows) === 0) throw new IdError(404, 'ไม่พบเซสชัน');
+  }
+  /** "ออกจากระบบทุกอุปกรณ์อื่น" — เก็บเซสชันปัจจุบันไว้ */
+  async revokeOtherSessions(userId: string, currentSid: string): Promise<void> {
+    await this.revokeAllExcept(userId, currentSid, 'user_revoked_others');
+  }
+
   // ---------- ช่วย ----------
 
   userById(id: string) {

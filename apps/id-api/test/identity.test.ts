@@ -265,4 +265,63 @@ describe('บริษัท · คำเชิญ · สิทธิ์ (Screen
   });
 });
 
+describe('บัญชีของฉัน (ScreenProfile) · องค์กร (ScreenOrgMembers)', () => {
+  const sidOf = async (access: string) => (await verifyAccess(access, createLocalJWKSet({ keys: [cfg.signingKey.publicJwk] }), 'id', new Date(clock))).sid;
+
+  it('โปรไฟล์: รหัสสำรองเหลือ · เซสชัน (ปัจจุบันก่อน) · ออกจากระบบอุปกรณ์อื่น', async () => {
+    const o = await onboard('me@x.co');
+    const sid = await sidOf(o.tokens.access);
+    clock += 60_000;
+    const p = pendingOf(await id.login({ email: 'me@x.co', password: PW }, { ip: '198.51.100.9', ua: 'Mozilla/5.0 (Windows NT 10.0) Edg/140' }, null));
+    const other = sessionOf(await id.verifyMfa(p.pending, { code: totpAt(o.secret, clock) }, { ip: '198.51.100.9', ua: 'Mozilla/5.0 (Windows NT 10.0) Edg/140' }));
+    const otherSid = await sidOf(other.tokens.access);
+    const pr = await id.profile(o.userId, sid);
+    expect(pr.user.email).toBe('me@x.co');
+    expect(pr.backupCodes).toEqual({ left: 10, issued: 10 });
+    expect(pr.passwordChangedAt).not.toBeNull();
+    expect(pr.sessions.map((s) => s.current)).toEqual([true, false]);
+    await expect(id.revokeSession(o.userId, '00000000-0000-4000-8000-000000000000')).rejects.toMatchObject({ status: 404 });
+    await id.revokeSession(o.userId, otherSid);
+    expect(await id.isSessionActive(otherSid)).toBe(false);
+    expect((await id.profile(o.userId, sid)).sessions).toHaveLength(1);
+    const o2 = sessionOf(await id.verifyMfa(pendingOf(await id.login({ email: 'me@x.co', password: PW }, client, null)).pending, { backupCode: o.backupCodes[0]! }, client));
+    await id.revokeOtherSessions(o.userId, sid);
+    expect(await id.isSessionActive(await sidOf(o2.tokens.access))).toBe(false);
+    expect(await id.isSessionActive(sid)).toBe(true);
+    expect((await id.profile(o.userId, sid)).backupCodes.left).toBe(9);
+  });
+  it('รหัสสำรองใหม่: ชุดเดิมใช้ไม่ได้ · แก้ชื่อ/ภาษา', async () => {
+    const o = await onboard('codes@x.co');
+    const fresh = await id.regenerateBackupCodes(o.userId);
+    expect(fresh).toHaveLength(10);
+    const p = pendingOf(await id.login({ email: 'codes@x.co', password: PW }, client, null));
+    await expect(id.verifyMfa(p.pending, { backupCode: o.backupCodes[0]! }, client)).rejects.toMatchObject({ status: 401 });
+    sessionOf(await id.verifyMfa(p.pending, { backupCode: fresh[0]! }, client));
+    await expect(id.updateProfile(o.userId, { displayName: '  ', locale: 'th' })).rejects.toMatchObject({ status: 422 });
+    await id.updateProfile(o.userId, { displayName: 'ชื่อ ใหม่', locale: 'en' });
+    expect((await id.profile(o.userId, 'x')).user).toMatchObject({ display_name: 'ชื่อ ใหม่', locale: 'en' });
+    pendingOf(await id.signup({ name: 'ไม่มี 2FA', email: 'nomfa@x.co', password: PW, acceptTerms: true }, client));
+    const nomfa = (await sql<{ user_id: string }>("select id as user_id from public.app_user where email = 'nomfa@x.co'"))[0]!.user_id;
+    await expect(id.regenerateBackupCodes(nomfa)).rejects.toMatchObject({ status: 409 });
+  });
+  it('องค์กรของฉัน · บริษัทที่บังคับ 2FA · บันทึกการเข้าสู่ระบบเฉพาะ Owner/Admin', async () => {
+    const o = await onboard('org.owner@x.co');
+    expect(await id.requiringCompany(o.userId)).toBeNull();
+    const c = await orgs.createCompany(o.userId, { nameTh: 'บริษัท ทดสอบ จำกัด', goLive: '2027-01-01', template: 'service', modules: {} });
+    expect(await id.requiringCompany(o.userId)).toBe('บริษัท ทดสอบ จำกัด');
+    const mine = await orgs.myOrgs(o.userId);
+    expect(mine).toHaveLength(1);
+    expect(mine[0]).toMatchObject({ org_role: 'owner', companies: [{ id: c.id, name: 'บริษัท ทดสอบ จำกัด', role: 'owner' }] });
+    const ev = await orgs.loginEvents(o.userId, mine[0]!.id);
+    expect(ev.map((e) => e.event)).toContain('mfa_enabled');
+    expect(ev.every((e) => e.email === 'org.owner@x.co')).toBe(true);
+    const ov = await orgs.orgOverview(o.userId, mine[0]!.id);
+    expect(ov.subscription).toMatchObject({ plan: 'business', planName: 'Business', companyLimit: 3, seatLimit: 10 });
+    const stranger = await onboard('stranger@x.co');
+    await expect(orgs.loginEvents(stranger.userId, mine[0]!.id)).rejects.toMatchObject({ status: 403 });
+    const inv = await orgs.invite(o.userId, { orgId: mine[0]!.id, companyId: c.id, email: 'invitee@x.co', role: 'accountant' });
+    expect(await orgs.inviteInfo(inv.token, null)).toMatchObject({ planName: 'Business', companyName: 'บริษัท ทดสอบ จำกัด' });
+  });
+});
+
 it('ตั้ง 2FA ได้ด้วยคีย์ที่สร้างเอง (ตรวจ helper)', () => { expect(generateSecret()).toHaveLength(32); });

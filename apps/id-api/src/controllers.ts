@@ -47,7 +47,10 @@ export class AuthController {
   /** ข้อมูลของหน้า 2FA ระหว่างรอ (อีเมลแบบย่อ) */
   @Get('pending')
   async pending(@Req() req: Request, @Query('stage') stage: 'mfa' | 'setup' | 'verify') {
-    return { email: maskEmail(await this.id.pendingEmail(cookies(req)[COOKIE.pending], clientOf(req), stage)) };
+    const email = maskEmail(await this.id.pendingEmail(cookies(req)[COOKIE.pending], clientOf(req), stage));
+    if (stage !== 'setup') return { email };
+    // หัวการ์ด "ตั้งค่า 2FA": "บริษัท [ชื่อบริษัท] บังคับใช้ 2FA ทุกผู้ใช้"
+    return { email, company: await this.id.requiringCompany(this.id.readPending(cookies(req)[COOKIE.pending], clientOf(req), 'setup').userId) };
   }
   @Post('2fa/verify') @HttpCode(200)
   async verify2fa(@Req() req: Request, @Res({ passthrough: true }) res: Response, @Body() b: { code?: string; backupCode?: string; trust?: boolean }) {
@@ -103,6 +106,34 @@ export class MeController {
     const user = await this.id.userById(u.sub);
     return { user, companies: await this.orgs.companiesOf(u.sub), amr: u.amr };
   }
+  /** ScreenProfile: โปรไฟล์ · ความปลอดภัย · อุปกรณ์และเซสชัน · องค์กรที่เข้าถึง */
+  @Get('me/profile')
+  async profile(@Req() req: Request) {
+    const u = await userOf(req, this.cfg);
+    if (!(await this.id.isSessionActive(u.sid))) throw new IdError(401, 'session หมดอายุ — กรุณาเข้าสู่ระบบใหม่');
+    return { ...(await this.id.profile(u.sub, u.sid)), orgs: await this.orgs.myOrgs(u.sub) };
+  }
+  @Put('me/profile')
+  async updateProfile(@Req() req: Request, @Body() b: { displayName: string; locale: 'th' | 'en' }) {
+    await this.id.updateProfile((await userOf(req, this.cfg)).sub, b);
+    return { ok: true };
+  }
+  @Post('me/backup-codes') @HttpCode(200)
+  async backupCodes(@Req() req: Request) { return { backupCodes: await this.id.regenerateBackupCodes((await userOf(req, this.cfg)).sub) }; }
+  @Delete('me/sessions/:id')
+  async revokeSession(@Req() req: Request, @Param('id') id: string) {
+    const u = await userOf(req, this.cfg);
+    if (!/^[0-9a-f-]{36}$/u.test(id)) throw new IdError(404, 'ไม่พบเซสชัน');
+    await this.id.revokeSession(u.sub, id);
+    return { ok: true };
+  }
+  @Post('me/sessions/revoke-others') @HttpCode(200)
+  async revokeOthers(@Req() req: Request) { const u = await userOf(req, this.cfg); await this.id.revokeOtherSessions(u.sub, u.sid); return { ok: true }; }
+  /** องค์กรของฉัน (ScreenOrgMembers เลือกองค์กรเริ่มต้น · ScreenPlan) */
+  @Get('orgs')
+  async myOrgs(@Req() req: Request) { return this.orgs.myOrgs((await userOf(req, this.cfg)).sub); }
+  @Get('orgs/:id/login-events')
+  async loginEvents(@Req() req: Request, @Param('id') id: string) { return this.orgs.loginEvents((await userOf(req, this.cfg)).sub, id); }
   @Get('companies')
   async companies(@Req() req: Request) { return this.orgs.companiesOf((await userOf(req, this.cfg)).sub); }
   @Post('companies')
