@@ -63,7 +63,7 @@ export interface AcctDB {
   'acct.account': { company_id: string; code: string; name: string; type: AccountType; parent_code: string | null; is_control: Generated<boolean>;
     control_kind: 'ar' | 'ap' | 'deposit_in' | 'deposit_out' | null; requires_contact: Generated<boolean>; active: Generated<boolean>; created_at: Ts; category: string | null; binding: string | null };
   'acct.period': { company_id: string; fiscal_year: number; period_no: number; starts_on: DateCol; ends_on: DateCol;
-    status: Generated<'open' | 'soft_closed' | 'hard_closed'>; closed_at: Date | null; closed_by: string | null };
+    status: Generated<'open' | 'soft_closed' | 'hard_closed'>; closed_at: Date | null; closed_by: string | null; accrual_reviewed_at: Generated<Date | null>; accrual_reviewed_by: Generated<string | null> };
   'acct.contact': { company_id: string; id: Generated<string>; code: string; name: string; kind: 'customer' | 'vendor' | 'both' | 'contractor' | 'employee';
     tax_id: string | null; branch_code: string | null; external_source: string | null; external_ref: string | null; created_at: Ts;
     address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null;
@@ -82,7 +82,8 @@ export interface AcctDB {
     journal_id: string | null; created_by: string | null; approved_by: string | null; approved_at: Ts | null; voided_at: Ts | null; void_reason: string | null; void_journal_id: string | null;
     receive_account: string | null; fee: Money; fee_account: string | null; wht_cert_no: string | null; wht_rate: string | null; bill_discount: Money; credit_days: number | null; sent_at: Ts | null;
     vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> ; party_tax_id: Generated<string | null>; vendor_invoice_date: ColumnType<string | null, string | null | undefined, string | null>; project_code: Generated<string | null>;
-    salesperson: Generated<string | null>; payment_terms: Generated<string | null>; price_level: Generated<number | null>; print_count: Generated<number> };
+    salesperson: Generated<string | null>; payment_terms: Generated<string | null>; price_level: Generated<number | null>; print_count: Generated<number>;
+    vat_claim_month: Generated<string | null> };
   'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
     pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
   'acct.bank_account': { company_id: string; id: Generated<string>; gl_account: string; bank_name: string; branch: string | null; account_no: string; account_name: string | null;
@@ -91,7 +92,10 @@ export interface AcctDB {
     import_batch: string; fingerprint: string; matched_journal_id: string | null; match_status: Generated<'unmatched' | 'auto' | 'manual' | 'ignored'>; created_at: Ts };
   'acct.fixed_asset': { company_id: string; id: Generated<string>; code: string; name: string; asset_account: string; accum_account: string; expense_account: string; start_date: DateCol;
     life_years: string; cost: string; salvage: Money; opening_accum: Money; opening_accum_date: DateCol | null; status: Generated<'active' | 'disposed' | 'fully_depreciated'>; disposed_on: DateCol | null;
-    source_document_id: string | null; created_at: Ts };
+    source_document_id: string | null; created_at: Ts;
+    sale_amount: Generated<string | null>; sale_vat: Generated<string | null>; disposal_contact_id: Generated<string | null>; disposal_ref: Generated<string | null>; disposal_journal_id: Generated<string | null> };
+  'acct.tax_filing': { company_id: string; id: Generated<string>; form: 'pp30' | 'pnd3' | 'pnd53'; month: string; seq: Generated<number>; status: Generated<'draft' | 'filed'>;
+    filed_at: DateCol | null; filed_by: string | null; reference_no: string | null; amount: Money; output_vat: string | null; input_vat: string | null; carried_in: Money; carry_forward: Money; journal_id: string | null; created_at: Ts };
   'acct.depreciation_run': { company_id: string; fiscal_year: number; period_no: number; journal_id: string; total: string; detail: ColumnType<unknown, string, string>; created_at: Ts };
   'acct.report_format': { company_id: string; id: Generated<string>; name: string; definition: ColumnType<unknown, string, string>; updated_at: Ts };
   'acct.webhook_endpoint': { company_id: string; id: Generated<string>; url: string; secret: string; events: string[]; active: Generated<boolean>; api_client_id: string | null; created_at: Ts };

@@ -5,7 +5,9 @@
 // TODO(Wei) ScreenTax.dc.html: แท็บ ภ.ง.ด.1 — v1 ไม่มีเงินเดือนในระบบ (CLAUDE.md · flag ปิด) · แท็บ e-Tax Invoice — ยังไม่มีระบบ e-Tax (M7) → แสดง "หน้านี้ยังไม่เปิดใช้"
 import { buttonStyle, css, money, S, Tag, thaiDate } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
-import { Fragment } from 'react';
+import { Fragment, useState } from 'react';
+import { call } from '../sales/_lib/client';
+import { Msg } from '../sales/_lib/ui';
 import type { VatReport, VatRow } from './_lib/data';
 import { monthAbbr, monthShort, rdPrepName, rdPrepUrl, ratePct, type Deadlines } from './_lib/fmt';
 
@@ -15,7 +17,7 @@ export interface PndLine { certNo: string; payDate: string; name: string; taxId:
 export interface PndView { rows: PndLine[]; certs: number; base: string; tax: string; pendingAuditor: boolean }
 export interface CertRow { id: string; certNo: string; pnd: '3' | '53'; payDate: string; name: string; taxId: string | null; income: string; base: string; amount: string; paymentNo: string | null; voided: boolean; pending: boolean }
 interface Props {
-  ym: string; tab: TabId; months: string[]; vat: VatReport; pnd: Record<'3' | '53', PndView>; certs: CertRow[];
+  ym: string; tab: TabId; months: string[]; filedMonths: string[]; today: string; vat: VatReport; pnd: Record<'3' | '53', PndView>; certs: CertRow[];
   review: ReviewItem[]; missingPostcode: number; due: Deadlines;
 }
 
@@ -27,18 +29,33 @@ const LINK = 'text-decoration: none';
 const DOT = (c: string) => `display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: ${c}`;
 const mp = (v: string): string => money(v, { paren: true });
 
-export function TaxScreen({ ym, tab, months, vat, pnd, certs, review, missingPostcode, due }: Props) {
+export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs, review, missingPostcode, due }: Props) {
   const router = useRouter();
   const p = vat.pp30;
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const filed = p.status === 'filed';
+  const lastSeq = p.filings.at(-1)?.seq ?? 0;
+  /** POST /v1/tax/pp30/:month/filed — ลงบัญชีตาม postOnFiled (ยื่นเพิ่มเติม = ส่วนต่าง) · วันที่ยื่น = วันนี้
+   * TODO(Wei) ScreenTax.dc.html: ไม่มีช่องกรอกวันที่ยื่น/เลขอ้างอิงการชำระ — ใช้วันนี้ · "ตั้งงานจ่ายในคิว" ยังไม่มีระบบคิวงานจ่ายภาษี */
+  async function file(additional: boolean) {
+    if (!window.confirm(additional ? `ยื่นเพิ่มเติม ภ.พ.30 ${monthShort(ym)} (ฉบับที่ ${lastSeq + 2})?` : `บันทึกว่ายื่น ภ.พ.30 ${monthShort(ym)} แล้ว และลงบัญชีนำส่ง?`)) return;
+    setBusy(true); setMsg(null);
+    const r = await call<{ journalNo: string | null; amount: string }>(`tax/pp30/${ym}/filed`, 'POST', { filedAt: today, additional });
+    setBusy(false);
+    if (!r.ok) { setMsg({ kind: 'err', text: r.error }); return; }
+    setMsg({ kind: 'ok', text: `บันทึกว่ายื่นแล้ว${r.data.journalNo ? ` · ${r.data.journalNo}` : ''}` });
+    router.refresh();
+  }
   const go = (q: { month?: string; tab?: TabId }) => {
     const sp = new URLSearchParams({ month: q.month ?? ym, ...((q.tab ?? tab) === 'pp30' ? {} : { tab: q.tab ?? tab }) });
     router.push(`/tax?${sp.toString()}`);
   };
   // ยอดขายที่เสียภาษีอัตราร้อยละ 0 = ยอดขาย − ยกเว้น − ที่ต้องเสียภาษี (API ยังไม่แยกบรรทัด 0% · ธุรกิจบริการ v1 ไม่มียอด 0%)
   const zeroRated = sub(sub(p.salesTotal, p.exemptSales), p.taxableSales);
-  // TODO(backend) ScreenTax.dc.html ข้อ 10: ภาษีที่ชำระเกินยกมา — ยังไม่มีใน GET /v1/tax/vat (ภ.พ.30 เดือนก่อน) → 0.00
-  const carried = '0.00';
-  const net = sub(p.netPayable, carried);
+  // ข้อ 10 ภาษีที่ชำระเกินยกมา = ยอดยกไปของ ภ.พ.30 เดือนก่อนที่บันทึกว่ายื่นแล้ว · ข้อ 11 = 8–9 − 10
+  const carried = p.carriedForward;
+  const net = p.netAfterCarry;
   const download = (form: '3' | '53') => { const a = document.createElement('a'); a.href = rdPrepUrl(ym, form); a.download = rdPrepName(ym, form); a.click(); };
   const accName: Record<string, string> = { '2150100': 'ภาษีขาย', '1170100': 'ภาษีซื้อ', '2150200': 'ภาษีมูลค่าเพิ่มค้างจ่าย' };
 
@@ -47,7 +64,7 @@ export function TaxScreen({ ym, tab, months, vat, pnd, certs, review, missingPos
       <header style={css(S.topbar)}>
         <span style={css(S.crumb)}>ภาษี / เดือนภาษี {monthShort(ym)}</span>
         <select aria-label="เดือนภาษี" value={ym} onChange={(e) => go({ month: e.target.value })} style={css('height: 32px; padding: 0 12px; border: 1px solid #8d8d8d; background: #ffffff; font-family: inherit; font-size: 13px')}>
-          {months.map((m) => <option key={m} value={m}>{monthShort(m)}</option>)}
+          {months.map((m) => <option key={m} value={m}>{monthShort(m)}{filedMonths.includes(m) ? ' · ยื่นแล้ว' : ''}</option>)}
         </select>
       </header>
       <div style={css(S.content)}>
@@ -63,10 +80,10 @@ export function TaxScreen({ ym, tab, months, vat, pnd, certs, review, missingPos
               <>
                 <div style={css('border: 1px solid #e0e0e0')}>
                   <div style={css('display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; align-items: center')}>
-                    <strong style={css('font-weight: 600')}>แบบ ภ.พ.30 — ยื่นปกติ</strong>
-                    {/* TODO(backend): สถานะการยื่น (ร่าง/ยื่นแล้ว) ยังไม่มีใน API → ร่าง · กำหนดออนไลน์ = config tax.filing.online_extension (รอผู้สอบบัญชี) */}
+                    <strong style={css('font-weight: 600')}>แบบ ภ.พ.30 — {lastSeq > 0 ? `ยื่นเพิ่มเติม (ฉบับที่ ${lastSeq + 1})` : 'ยื่นปกติ'}</strong>
+                    {/* สถานะการยื่นจาก acct.tax_filing · กำหนดออนไลน์ = config tax.filing.online_extension (รอผู้สอบบัญชี) */}
                     <span style={css('display: inline-flex; gap: 8px; align-items: center; flex-wrap: wrap')}>
-                      <Tag kind="warning">{`ร่าง · ครบกำหนด ${due.pp30}${due.online ? ' (ออนไลน์)' : ''}`}</Tag>
+                      {filed ? <Tag kind="success">ยื่นแล้ว</Tag> : <Tag kind="warning">{`ร่าง · ครบกำหนด ${due.pp30}${due.online ? ' (ออนไลน์)' : ''}`}</Tag>}
                       <Tag kind="neutral">รอยืนยัน</Tag>
                     </span>
                   </div>
@@ -77,22 +94,22 @@ export function TaxScreen({ ym, tab, months, vat, pnd, certs, review, missingPos
                     <tr style={css('border-top: 1px solid #e0e0e0; font-weight: 500')}><td style={css(NO)}>4</td><td style={css('padding: 0 16px')}>ยอดขายที่ต้องเสียภาษี</td><td style={css(NUM)}>{mp(p.taxableSales)}</td></tr>
                     <tr style={css('border-top: 1px solid #e0e0e0; font-weight: 500')}><td style={css(NO)}>5</td><td style={css('padding: 0 16px')}>ภาษีขายเดือนนี้</td><td style={css(NUM)}>{mp(p.outputVat)}</td></tr>
                     <tr style={css('border-top: 1px solid #e0e0e0')}><td style={css(NO)}>6</td><td style={css('padding: 0 16px')}>ยอดซื้อที่มีสิทธิ์นำภาษีซื้อมาหัก</td><td style={css(NUM)}>{mp(p.purchasesCreditable)}</td></tr>
-                    {/* TODO(backend): "(รวมใบกำกับเดือนก่อนที่ขอใช้สิทธิ์ N ใบ)" — ภาษีซื้อข้ามเดือน (ม.82/3) ยังไม่มีใน API จึงไม่แสดงวงเล็บ */}
-                    <tr style={css('border-top: 1px solid #e0e0e0; font-weight: 500')}><td style={css(NO)}>7</td><td style={css('padding: 0 16px')}>ภาษีซื้อเดือนนี้</td><td style={css(NUM)}>{mp(p.inputVat)}</td></tr>
+                    <tr style={css('border-top: 1px solid #e0e0e0; font-weight: 500')}><td style={css(NO)}>7</td><td style={css('padding: 0 16px')}>ภาษีซื้อเดือนนี้{p.priorMonthClaims.count > 0 && <> <span style={css('font-weight: 400; color: #525252; font-size: 13px')}>(รวมใบกำกับเดือนก่อนที่ขอใช้สิทธิ์ {p.priorMonthClaims.count} ใบ)</span></>}</td><td style={css(NUM)}>{mp(p.inputVat)}</td></tr>
                     <tr style={css('border-top: 1px solid #e0e0e0')}><td style={css(NO)}>8–9</td><td style={css('padding: 0 16px')}>ภาษีที่ต้องชำระ (5 − 7) / ภาษีชำระเกิน</td><td style={css(NUM)}>{mp(p.netPayable)}</td></tr>
                     <tr style={css('border-top: 1px solid #e0e0e0')}><td style={css(NO)}>10</td><td style={css('padding: 0 16px')}>ภาษีที่ชำระเกินยกมา</td><td style={css(NUM)}>{mp(carried)}</td></tr>
                     <tr style={css('border-top: 1px solid #8d8d8d; font-weight: 600; font-size: 15px')}><td style={css('height: 44px; padding: 0 16px; color: #525252; font-variant-numeric: tabular-nums')}>11</td><td style={css('padding: 0 16px')}>ภาษีสุทธิที่ต้องชำระ</td><td style={css(NUM)}>{mp(net)}</td></tr>
                   </tbody></table>
                   <div style={css('display: flex; gap: 8px; padding: 12px 16px; border-top: 1px solid #e0e0e0; flex-wrap: wrap')}>
-                    {/* TODO(Wei) ScreenTax.dc.html: "พิมพ์แบบ ภ.พ.30" — ไม่มีแบบร่างแบบพิมพ์ ภ.พ.30 · "ส่งออกไฟล์ยื่นออนไลน์" (ภ.พ.30) / "ยื่นเพิ่มเติม (ฉบับที่ 2)" / "บันทึกว่ายื่นแล้ว + ลงบัญชีนำส่ง"
-                        — ยังไม่มี API (TODO(backend): POST /v1/tax/pp30/:month/filed ลงบัญชีตาม postOnFiled + ตั้งงานจ่าย) จึงแสดงตามแบบร่างแต่ยังไม่ทำงาน */}
+                    {/* TODO(Wei) ScreenTax.dc.html: "พิมพ์แบบ ภ.พ.30" — ไม่มีแบบร่างแบบพิมพ์ ภ.พ.30 · "ส่งออกไฟล์ยื่นออนไลน์" (ภ.พ.30) — ยังไม่มีรูปแบบไฟล์ จึงแสดงตามแบบร่างแต่ยังไม่ทำงาน
+                        "ยื่นเพิ่มเติม" ใช้ได้หลังยื่นปกติแล้ว · "บันทึกว่ายื่นแล้ว + ลงบัญชีนำส่ง" = POST /v1/tax/pp30/:month/filed */}
                     <button type="button" style={buttonStyle('secondary', 36)}>พิมพ์แบบ ภ.พ.30</button>
                     <a href={`/print/vat-sales/${ym}`} style={buttonStyle('secondary', 40, false, 'text-decoration: none')}>พิมพ์รายงานภาษีขาย</a>
                     <a href={`/print/vat-purchase/${ym}`} style={buttonStyle('secondary', 40, false, 'text-decoration: none')}>พิมพ์รายงานภาษีซื้อ</a>
                     <button type="button" style={buttonStyle('secondary', 36)}>ส่งออกไฟล์ยื่นออนไลน์</button>
-                    <button type="button" style={buttonStyle('secondary', 36)}>ยื่นเพิ่มเติม (ฉบับที่ 2)</button>
-                    <button type="button" style={buttonStyle('primary', 36, false, 'margin-left: auto')}>บันทึกว่ายื่นแล้ว + ลงบัญชีนำส่ง</button>
+                    <button type="button" disabled={busy || !filed} onClick={() => void file(true)} style={buttonStyle('secondary', 36, busy || !filed)}>ยื่นเพิ่มเติม (ฉบับที่ {lastSeq + 2})</button>
+                    <button type="button" disabled={busy || filed} onClick={() => void file(false)} style={buttonStyle('primary', 36, busy || filed, 'margin-left: auto')}>บันทึกว่ายื่นแล้ว + ลงบัญชีนำส่ง</button>
                   </div>
+                  {msg && <div style={css('padding: 0 16px 12px')}><Msg msg={msg} /></div>}
                 </div>
                 <div style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
                   <div style={css('padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between')}><strong style={css('font-weight: 600')}>รายการที่ควรตรวจก่อนยื่น ({review.length})</strong><a href={`/tax?month=${ym}&tab=purchases`} style={css('font-size: 14px; text-decoration: none')}>ดูรายงานภาษีซื้อเต็ม</a></div>
@@ -145,13 +162,14 @@ export function TaxScreen({ ym, tab, months, vat, pnd, certs, review, missingPos
                 <button type="button" onClick={() => { download('3'); download('53'); }} style={buttonStyle('secondary', 32)}>ส่งออก RD Prep ทั้ง 2 แบบ</button>
                 <a href={`/print/pnd3/${ym}`} style={buttonStyle('secondary', 32, false, 'text-decoration: none')}>พิมพ์ใบแนบ ภ.ง.ด.3</a>
                 <a href={`/print/pnd53/${ym}`} style={buttonStyle('secondary', 32, false, 'text-decoration: none')}>พิมพ์ใบแนบ ภ.ง.ด.53</a>
-                {/* TODO(backend): ส่ง 50 ทวิ ทางอีเมล — ยังไม่มีระบบส่งอีเมล จึงยังไม่ทำงาน */}
+                {/* TODO(backend): ส่ง 50 ทวิ ทางอีเมล — ยังไม่มีระบบส่งอีเมล จึงยังไม่ทำงาน
+                    TODO(Wei) ScreenTax.dc.html: ไม่มีปุ่ม "บันทึกว่ายื่นแล้ว" ของ ภ.ง.ด.3/53 — API พร้อม (POST /v1/tax/pnd/:form/:month/filed · ไม่มี JV) ต้องกำหนดตำแหน่งปุ่ม */}
                 <button type="button" style={buttonStyle('secondary', 32)}>ส่ง 50 ทวิ ทางอีเมลทั้งหมด</button>
               </div>
               <span style={css('font-size: 13px; color: #525252')}>หัก ณ ที่จ่ายรับรู้เมื่อจ่ายเงินจริง — ฉบับที่ออกจากบิลซื้อที่ยังไม่จ่ายจะไม่ถูกนับในเดือนนี้</span>
             </section>
             <section style={css('background: #f4f4f4; border: 1px solid #e0e0e0; padding: 12px 16px; font-size: 13px; color: #525252')}>
-              เมื่อกด &quot;ยื่นแล้ว&quot; ระบบบันทึก {p.postOnFiled.map(([side, acct, amt], i) => <Fragment key={acct}>{i ? ' / ' : ''}{side} {acct} {accName[acct] ?? ''} {money(amt)}</Fragment>)} และตั้งงานจ่ายในคิว
+              เมื่อกด &quot;ยื่นแล้ว&quot; ระบบบันทึก {p.postOnFiled.map(([side, acct, amt], i) => <Fragment key={`${side}${acct ?? i}`}>{i ? ' / ' : ''}{side} {acct ?? '—'} {acct ? accName[acct] ?? '' : ''} {money(amt)}</Fragment>)} และตั้งงานจ่ายในคิว
             </section>
           </aside>
         </div>

@@ -38,6 +38,8 @@ export interface PurchaseDraftInput {
   payFrom?: string | null;        // บัญชีที่จ่ายเงินออก (EXP จ่ายทันที)
   notes?: string | null;
   reference?: string | null;
+  /** ม.82/3 เดือนที่ใช้ภาษีซื้อ YYYY-MM (เดือนตามบิล ถึง +6 เดือน) · ว่าง = เดือนตามบิล */
+  vatClaimMonth?: string | null;
   lines: PurchaseLineInput[];
 }
 
@@ -54,12 +56,20 @@ export async function savePurchaseDraft(db: Db, companyId: string, actor: Actor,
   if ((input.docType === 'CNR' || input.docType === 'DNR') && !input.refDocumentId) throw new LedgerError('ใบลดหนี้/เพิ่มหนี้ซื้อต้องอ้างบิลซื้อ');
   if (input.docType === 'EXP' && input.payNow && !input.payFrom) throw new LedgerError('จ่ายทันทีต้องเลือกบัญชีที่จ่ายเงินออก');
   for (const l of items) if (l.whtType) whtTypeFor(l.whtType);
+  const claim = input.vatClaimMonth && input.vatClaimMonth !== input.issueDate.slice(0, 7) ? input.vatClaimMonth : null;
+  if (claim) {
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/u.test(claim)) throw new LedgerError('เดือนที่ใช้ภาษีซื้อต้องเป็น YYYY-MM');
+    const [y, m] = input.issueDate.split('-').map(Number) as [number, number];
+    const max = `${Math.floor((y * 12 + m + 5) / 12)}-${String(((m + 5) % 12) + 1).padStart(2, '0')}`;
+    if (claim < input.issueDate.slice(0, 7) || claim > max) throw new LedgerError('เดือนที่ใช้ภาษีซื้อเลื่อนได้ไม่เกิน 6 เดือนนับจากเดือนตามบิล (ม.82/3)');
+  }
   const t = totalsOf({ lines: input.lines.map((l) => ({ ...l, vat: l.vat ?? true })), priceInclVat: input.priceInclVat ?? false, billDiscount: input.billDiscount ?? '0.00' });
   return db.withCompany(companyId, async (tx) => {
     const values = {
       doc_type: input.docType, issue_date: input.issueDate, due_date: input.dueDate ?? null, contact_id: input.contactId, price_incl_vat: input.priceInclVat ?? false,
       subtotal: t.subtotal, discount: t.discount, vat: t.vat, wht: '0.00', grand_total: t.grandTotal, bill_discount: input.billDiscount ?? '0.00', vendor_ref: input.vendorRef ?? null,
       ref_document_id: input.refDocumentId ?? null, pay_now: input.payNow ?? false, receive_account: input.payFrom ?? null, notes: input.notes ?? null, reference: input.reference ?? null,
+      vat_claim_month: claim,
       rule_code: input.docType === 'AP' ? 'Credit[AP]' : input.docType === 'EXP' ? (input.payNow ? 'Cash[EXP]' : 'Credit[EXP]') : input.docType === 'CNR' ? 'CNR' : input.docType === 'DNR' ? 'DNR' : null,
       updated_at: new Date(),
     };

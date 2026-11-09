@@ -44,7 +44,8 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   const [date, setDate] = useState(thaiDate(d?.issue_date ?? today));
   const [due, setDue] = useState(d?.due_date ? thaiDate(d.due_date) : po?.contact?.credit_days ? thaiDate(addDays(today, po.contact.credit_days)) : '');
   const [vendorRef, setVendorRef] = useState(d?.vendor_ref ?? '');
-  const [claimMonth, setClaimMonth] = useState(0);
+  // เดือนที่ใช้ภาษีซื้อ = จำนวนเดือนที่เลื่อนจากเดือนตามบิล (0–6)
+  const [claimMonth, setClaimMonth] = useState(d?.vat_claim_month ? (Number(d.vat_claim_month.slice(0, 4)) * 12 + Number(d.vat_claim_month.slice(5, 7))) - (Number(d.issue_date.slice(0, 4)) * 12 + Number(d.issue_date.slice(5, 7))) : 0);
   const [rows, setRows] = useState<PLineRow[]>(detail ? detail.lines.filter((l) => l.line_type === 'item').map(pRowFromLine) : po ? poRows() : [blankPLine()]);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -81,6 +82,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   const payload = () => ({
     docType: 'AP' as const, contactId: vendor?.id ?? '', issueDate: iso ?? '', dueDate: due ? parseThaiDate(due) : null, vendorRef: vendorRef.trim() || null,
     priceInclVat: d?.price_incl_vat ?? false, refDocumentId: d?.ref_document_id ?? po?.doc.id ?? null, notes: d?.notes ?? null, reference: d?.reference ?? null,
+    vatClaimMonth: iso && claimMonth > 0 ? (() => { const t = Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1 + claimMonth; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; })() : null,
     lines: rows.filter(validP).map(pLinePayload),
   });
   async function save(quiet = false): Promise<string | null> {
@@ -153,7 +155,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
               {vendorRef.trim() && refs && (dup
                 ? <span style={css('font-size: 13px; color: #a2191f')}>เลขใบกำกับซ้ำ · <a href={pHref({ id: dup.id, doc_type: 'AP' })}>{pDocNo({ doc_no: dup.docNo })}</a></span>
                 : <span style={css('font-size: 13px; color: #0e6027')}>ไม่ซ้ำกับบิลเดิมของผู้ขายรายนี้</span>)}</label>
-            {/* TODO(backend): เดือนที่ใช้ภาษีซื้อ (เลื่อนได้ ≤ 6 เดือน) ยังไม่มีฟิลด์ใน PurchaseDraftInput — ตอนนี้ใช้เดือนตามบิลเสมอ */}
+            {/* เดือนที่ใช้ภาษีซื้อ (ม.82/3 เลื่อนได้ ≤ 6 เดือน) → PurchaseDraftInput.vatClaimMonth */}
             <label style={css(LABEL)}>เดือนที่ใช้ภาษีซื้อ<select disabled={!editable} value={claimMonth} onChange={(e) => setClaimMonth(Number(e.target.value))} style={IN}>{months.map((m, k) => <option key={m} value={k}>{m}{k === 0 ? ' (ตามบิล)' : ''}</option>)}</select><span style={css('font-size: 13px; color: #525252')}>เลื่อนได้ไม่เกิน 6 เดือน</span></label>
             {/* TODO(backend): สูตร Cash[AP] ซื้อสด ยังไม่มี — savePurchaseDraft ใช้ Credit[AP] กับ AP เสมอ */}
             <label style={css(LABEL)}>สูตรลงบัญชี<select disabled={!editable} value="Credit[AP]" onChange={() => undefined} style={IN}><option value="Credit[AP]">Credit[AP] ซื้อเชื่อ</option><option value="Cash[AP]" disabled>Cash[AP] ซื้อสด</option></select></label>

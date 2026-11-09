@@ -13,7 +13,7 @@ const NUM = 'padding: 0 12px; text-align: right; font-variant-numeric: tabular-n
 const TH = 'padding: 0 12px; font-weight: 400';
 const mp = (v: string): string => money(v, { paren: true });
 
-interface RowSpec { key: string; label: (m: string) => string; account: string; gl: string; okNote?: string }
+interface RowSpec { key: string; label: (m: string, c: ReconCheck) => string; account: string; gl: string; okNote?: string }
 // ข้อ 1: บัญชีที่ตรวจตามข้อความแบบร่าง
 const DOC_ROWS: RowSpec[] = [
   { key: 'doc_iv', label: () => 'ใบกำกับภาษี IV (ขาย)', account: '4100100 + 4101100 รายได้', gl: '4100100' },
@@ -24,8 +24,7 @@ const DOC_ROWS: RowSpec[] = [
 ];
 const TAX_ROWS: RowSpec[] = [
   { key: 'vat_output', label: (m) => `รายงานภาษีขาย ${m}`, account: '2150100 ภาษีขาย (เครดิตในงวด)', gl: '2150100' },
-  // TODO(backend): "(รวมใช้สิทธิ์ข้ามเดือน N ใบ)" — ภาษีซื้อข้ามเดือนยังไม่มีใน API
-  { key: 'vat_input', label: (m) => `รายงานภาษีซื้อ ${m}`, account: '1170100 ภาษีซื้อ (เดบิตในงวด)', gl: '1170100' },
+  { key: 'vat_input', label: (m, c) => `รายงานภาษีซื้อ ${m}${c.crossMonth ? ` (รวมใช้สิทธิ์ข้ามเดือน ${c.crossMonth} ใบ)` : ''}`, account: '1170100 ภาษีซื้อ (เดบิตในงวด)', gl: '1170100' },
   { key: 'vat_deferred', label: () => 'ภาษีขายที่ยังไม่ถึงกำหนด (บริการยังไม่รับเงิน)', account: '2150400 ภาษีขายยังไม่ถึงกำหนด', gl: '2150400' },
   { key: 'wht_payable', label: (m) => `ภ.ง.ด.3 + ภ.ง.ด.53 ${m} (หนังสือรับรองที่ออก)`, account: '2150300 ภาษีหัก ณ ที่จ่ายค้างนำส่ง', gl: '2150300', okNote: ' · รับรู้ตอนจ่ายเงินทุกฉบับ' },
   { key: 'wht_received', label: () => 'ภาษีถูกหัก ณ ที่จ่าย (50 ทวิ ที่ได้รับ)', account: '1160100 ภาษีถูกหัก ณ ที่จ่าย', gl: '1160100' },
@@ -41,27 +40,34 @@ const CONTROL_ROWS: RowSpec[] = [
 /** ผลต่างตามแบบร่าง = เอกสาร − GL (ค่าลบในวงเล็บ) */
 const diffOf = (c: ReconCheck): string => fromCents(cents(c.byDocs) - cents(c.byGl));
 
-function Result({ c, spec, ym }: { c: ReconCheck; spec: RowSpec; ym: string }): ReactNode {
+function Result({ c, spec, from, to }: { c: ReconCheck; spec: RowSpec; from: string; to: string }): ReactNode {
   if (c.ok) return <td style={css('padding: 0 12px; color: #0e6027')}>✓ ผ่าน{spec.okNote ?? ''}</td>;
   if (c.note) return <td style={css('padding: 0 12px')}><a href={href('journal')} style={css('text-decoration: none; color: #a2191f')}>✕ {c.note}</a></td>;
-  const last = new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate();
-  return <td style={css('padding: 0 12px')}><a href={`${href('ledger')}?account=${spec.gl}&from=${ym}-01&to=${ym}-${String(last).padStart(2, '0')}`} style={css('text-decoration: none; color: #a2191f')}>✕ มีผลต่าง — ดูบัญชีแยกประเภท {spec.gl}</a></td>;
+  return <td style={css('padding: 0 12px')}><a href={`${href('ledger')}?account=${spec.gl}&from=${from}&to=${to}`} style={css('text-decoration: none; color: #a2191f')}>✕ มีผลต่าง — ดูบัญชีแยกประเภท {spec.gl}</a></td>;
 }
 
 export default async function ReconPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
-  const ym = monthParam((await searchParams).month);
+  const sp = await searchParams;
+  // ?year=2569 = "ปีบัญชี 2569 สะสม" · ไม่งั้นเดือน
+  const year = typeof sp.year === 'string' && /^\d{4}$/u.test(sp.year) ? sp.year : null;
+  const ym = monthParam(sp.month);
+  const period = year ?? ym;
   const t0 = Date.now();
-  const [rep, ctx] = await Promise.all([reconReport(ym), api<Context>('/v1/context')]);
+  const [rep, ctx] = await Promise.all([reconReport(period), api<Context>('/v1/context')]);
   const secs = Math.max(1, Math.ceil((Date.now() - t0) / 1000));
   const at = new Intl.DateTimeFormat('th-TH', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'Asia/Bangkok' }).format(new Date());
   const cur = appToday().slice(0, 7);
   const openYm = ctx.period ? `${ctx.period.fiscal_year - 543}-${String(ctx.period.period_no).padStart(2, '0')}` : null;
-  const options = [...new Set([cur, shiftMonth(cur, -1), ym])].sort().reverse()
-    .map((m) => ({ value: m, label: `${monthShort(m)}${m === openYm && ctx.period?.status === 'open' ? ' (เปิด)' : ''}` }));
+  const fy = String(ctx.period?.fiscal_year ?? Number(cur.slice(0, 4)) + 543);
+  const options = [...[...new Set([cur, shiftMonth(cur, -1), ym])].sort().reverse()
+    .map((m) => ({ value: m, label: `${monthShort(m)}${m === openYm && ctx.period?.status === 'open' ? ' (เปิด)' : ''}` })),
+    ...[...new Set([fy, ...(year ? [year] : [])])].map((y) => ({ value: y, label: `ปีบัญชี ${y} สะสม` }))];
+  const title = year ? `ปีบัญชี ${year} สะสม` : monthShort(ym);
   const byKey = new Map(rep.checks.map((c) => [c.key, c]));
   const failing = rep.checks.filter((c) => !c.ok);
   const failSum = fromCents(failing.reduce((s, c) => { const d = cents(diffOf(c)); return s + (d < 0n ? -d : d); }, 0n));
-  const m = monthAbbr(ym);
+  const m = year ? `ปีบัญชี ${year}` : monthAbbr(ym);
+  const exportUrl = `/api/proxy/reports/recon/export?${year ? `year=${year}` : `month=${ym}`}`;
 
   const row = (spec: RowSpec, cols: 'doc' | 'tax' | 'control') => {
     const c = byKey.get(spec.key);
@@ -69,12 +75,12 @@ export default async function ReconPage({ searchParams }: { searchParams: Promis
     const d = diffOf(c);
     return (
       <tr key={spec.key} style={css(S.tr)}>
-        <td style={css('height: 40px; padding: 0 12px')}>{spec.label(m)}</td>
+        <td style={css('height: 40px; padding: 0 12px')}>{spec.label(m, c)}</td>
         {cols === 'doc' && <td style={css(NUM)}>{c.count ?? ''}</td>}
         <td style={css(cols === 'control' ? NUM : 'padding: 0 12px')}>{cols === 'control' ? (c.count ?? '') : spec.account}</td>
         <td style={css(NUM)}>{mp(c.byDocs)}</td><td style={css(NUM)}>{mp(c.byGl)}</td>
         <td style={css(`${NUM}; color: ${c.ok ? '#525252' : '#a2191f'}`)}>{mp(d)}</td>
-        <Result c={c} spec={spec} ym={ym} />
+        <Result c={c} spec={spec} from={rep.from} to={rep.to} />
       </tr>
     );
   };
@@ -82,18 +88,18 @@ export default async function ReconPage({ searchParams }: { searchParams: Promis
   return (
     <Shell active="recon">
       <header style={css(S.topbar)}>
-        <span style={css(S.crumb)}>รายงาน / ตรวจความถูกต้อง / {monthShort(ym)}</span>
-        <ReconControls ym={ym} options={options} />
+        <span style={css(S.crumb)}>รายงาน / ตรวจความถูกต้อง / {title}</span>
+        <ReconControls ym={period} options={options} />
       </header>
       <div style={css(S.content)}>
-        <div><h1 style={css(S.h1)}>รายงานตรวจความถูกต้อง — {monthShort(ym)}</h1><span style={css(S.sub)}>ระบบกระทบยอด 3 ด้านอัตโนมัติทุกคืนและก่อนปิดงวด: เอกสาร ↔ GL · รายงานภาษี ↔ GL · ลูกหนี้/เจ้าหนี้รายตัว ↔ บัญชีคุม · ผลต่างทุกบรรทัดคลิกดูต้นเหตุได้</span></div>
+        <div><h1 style={css(S.h1)}>รายงานตรวจความถูกต้อง — {title}</h1><span style={css(S.sub)}>ระบบกระทบยอด 3 ด้านอัตโนมัติทุกคืนและก่อนปิดงวด: เอกสาร ↔ GL · รายงานภาษี ↔ GL · ลูกหนี้/เจ้าหนี้รายตัว ↔ บัญชีคุม · ผลต่างทุกบรรทัดคลิกดูต้นเหตุได้</span></div>
         <div style={css('display: flex; gap: 32px; padding: 16px 0; border-top: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; font-size: 14px; flex-wrap: wrap')}>
           <div><span style={css('color: #525252; font-size: 13px')}>ตรวจล่าสุด</span><div style={css('font-size: 16px; font-weight: 600')}>วันนี้ {at}</div><span style={css('color: #525252')}>ใช้เวลา {secs} วินาที</span></div>
           <div><span style={css('color: #525252; font-size: 13px')}>จุดตรวจ</span><div style={css('font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums')}>{rep.checks.length}</div></div>
           <div><span style={css('color: #525252; font-size: 13px')}>ผ่าน</span><div style={css('font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; color: #0e6027')}>{rep.passed}</div></div>
           <div><span style={css('color: #525252; font-size: 13px')}>ผลต่างต้องดู</span><div style={css('font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; color: #a2191f')}>{rep.toReview}</div><span style={css('color: #525252')}>รวม {money(failSum)}</span></div>
-          {/* TODO(backend): ส่งออกรายงาน (PDF/Excel) — ยังไม่มี API/แบบพิมพ์ จึงยังไม่ทำงาน */}
-          <div style={css('margin-left: auto; align-self: center')}><button type="button" style={css('display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d')}>ส่งออกรายงาน (PDF/Excel)</button></div>
+          {/* ส่งออกรายงาน = Excel (GET /v1/reports/recon/export) · TODO(Wei): PDF ยังไม่มีแบบร่างแบบพิมพ์รายงานตรวจ */}
+          <div style={css('margin-left: auto; align-self: center')}><a href={exportUrl} download={`recon-${period}.xlsx`} style={css('display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d; text-decoration: none')}>ส่งออกรายงาน (PDF/Excel)</a></div>
         </div>
 
         <section style={css(S.tableBox)}>

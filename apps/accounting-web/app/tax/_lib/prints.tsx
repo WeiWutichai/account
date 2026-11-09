@@ -16,6 +16,8 @@ const fill = (designH: number, designRows: number, rows: number, rowH: number): 
 
 /** ชื่อคู่ค้า + "(ลดหนี้ อ้างอิง …)" ของใบลดหนี้ — ฝั่งขายอ้างใบกำกับเดิม (RV ของบริการ ม.78/1) · ฝั่งซื้ออ้างเลขใบกำกับของผู้ขาย */
 async function partnerText(r: VatRow, all: VatRow[]): Promise<string> {
+  // PrintVatPurchase.dc.html: ใบกำกับเดือนก่อนที่ขอใช้สิทธิ์เดือนนี้ (ม.82/3) — "… — ใช้สิทธิ์ข้ามเดือน (ภายใน 6 เดือน)"
+  if (r.priorMonth) return `${r.partner} — ใช้สิทธิ์ข้ามเดือน (ภายใน 6 เดือน)`;
   if (r.docType !== 'CN' && r.docType !== 'CNR') return r.partner;
   // TODO(backend): เลขที่ใบกำกับเดิมของใบลดหนี้ควรมากับ GET /v1/tax/vat — ตอนนี้อ่านจากเอกสารทีละใบ
   const d = await getDoc(r.docId);
@@ -77,6 +79,7 @@ export async function PndPrint({ ym, form }: { ym: string; form: '3' | '53' }) {
   const [ctx, rep, types] = await Promise.all([context(), pndReport(ym, form), whtTypes()]);
   const p3 = form === '3';
   const pending = rep.pendingAuditor;
+  const seq = rep.filings.at(-1)?.seq ?? 0;
   return (
     <>
       <Sheet>
@@ -88,8 +91,8 @@ export async function PndPrint({ ym, form }: { ym: string; form: '3' | '53' }) {
         </div>
         <table className="nb" style={css('width: 100%; font-size: 13px')}><tbody>
           <tr><td style={css('width: 55%')}><strong>ผู้มีหน้าที่หักภาษี ณ ที่จ่าย</strong> {ctx.name} ({ctx.branch})</td><td><strong>เลขประจำตัวผู้เสียภาษีอากร</strong> {ctx.profile?.taxId ?? ''}</td></tr>
-          {/* TODO(backend): ยื่นเพิ่มเติม (ครั้งที่) ยังไม่มีในระบบ → ยื่นปกติเสมอ · TODO(Wei) T11: ไฟล์ RD Prep รูปแบบยังไม่ผ่าน validator */}
-          <tr><td colSpan={2}><span className="box">✓</span>ยื่นปกติ <span className="box"></span>ยื่นเพิ่มเติม ครั้งที่ ___ · <span className="box">✓</span>ยื่นผ่านอินเทอร์เน็ต (ไฟล์ RD Prep {rdPrepName(ym, form)})</td></tr>
+          {/* ยื่นปกติ/ยื่นเพิ่มเติม ครั้งที่ = การยื่นครั้งล่าสุดที่บันทึกไว้ (acct.tax_filing) · TODO(Wei) T11: ไฟล์ RD Prep รูปแบบยังไม่ผ่าน validator */}
+          <tr><td colSpan={2}><span className="box">{seq ? '' : '✓'}</span>ยื่นปกติ <span className="box">{seq ? '✓' : ''}</span>ยื่นเพิ่มเติม ครั้งที่ {seq ? seq : '___'} · <span className="box">✓</span>ยื่นผ่านอินเทอร์เน็ต (ไฟล์ RD Prep {rdPrepName(ym, form)})</td></tr>
         </tbody></table>
         <table style={css('width: 100%; font-size: 12px')}>
           <thead><tr style={css('background: #f4f4f4')}><th className="c" style={css('width: 28px')}>ลำดับ</th><th style={css('text-align: left')}>{p3 ? 'ชื่อและที่อยู่ผู้มีเงินได้' : 'ชื่อและที่อยู่ผู้มีเงินได้ (นิติบุคคล)'}</th><th style={css('width: 104px')}>{p3 ? 'เลขประจำตัวประชาชน / เลขประจำตัวผู้เสียภาษีอากร' : 'เลขประจำตัวผู้เสียภาษีอากร'}</th><th style={css('width: 72px')}>วัน เดือน ปี ที่จ่าย</th><th style={css('width: 110px; text-align: left')}>ประเภทเงินได้พึงประเมินที่จ่าย</th><th style={css('width: 40px')}>อัตราภาษี ร้อยละ</th><th className="n" style={css('width: 88px')}>จำนวนเงินที่จ่าย</th><th className="n" style={css('width: 76px')}>ภาษีที่หักและนำส่ง</th><th style={css('width: 36px')}>เงื่อนไข</th></tr></thead>
