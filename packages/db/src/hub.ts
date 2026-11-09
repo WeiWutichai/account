@@ -119,3 +119,42 @@ export async function verifyAuditChain(db: Db, companyId: string): Promise<{ ok:
     return { ok: !bad, rows: r.rows.length, brokenAt: bad?.id ?? null };
   });
 }
+
+/** PUT /ext/v1/contacts — sync คู่ค้าจากแอปภายนอกด้วยเลขผู้เสียภาษี (หรือ external_ref) · สร้างใหม่ได้รหัส EXT-#### */
+export async function syncContacts(db: Db, companyId: string, rows: { tax_id?: string | null; external_source?: string | null; external_ref?: string | null; name: string; kind: 'customer' | 'vendor' | 'both'; branch_code?: string | null; address?: string | null }[]) {
+  return db.withCompany(companyId, async (tx) => {
+    const out = [];
+    for (const r of rows) {
+      if (!r.tax_id && !r.external_ref) throw new LedgerError('ต้องมี tax_id หรือ external_ref');
+      let q = tx.selectFrom('acct.contact').select(['id', 'code']);
+      q = r.tax_id ? q.where('tax_id', '=', r.tax_id).where('branch_code', 'is not distinct from', r.branch_code ?? null) : q.where('external_source', '=', r.external_source ?? null).where('external_ref', '=', r.external_ref!);
+      const hit = await q.executeTakeFirst();
+      if (hit) {
+        await tx.updateTable('acct.contact').set({ name: r.name, ...(r.address !== undefined ? { address: r.address } : {}) }).where('id', '=', hit.id).execute();
+        out.push({ id: hit.id, code: hit.code, created: false });
+      } else {
+        const n = await tx.selectFrom('acct.contact').select(sql<string>`count(*)`.as('n')).where('code', 'like', 'EXT-%').executeTakeFirstOrThrow();
+        const code = `EXT-${String(Number(n.n) + 1).padStart(4, '0')}`;
+        const ins = await tx.insertInto('acct.contact').values({ company_id: companyId, code, name: r.name, kind: r.kind, tax_id: r.tax_id ?? null, branch_code: r.branch_code ?? null,
+          external_source: r.external_source ?? null, external_ref: r.external_ref ?? null, address: r.address ?? null, contact_person: null, phone: null, email: null, credit_days: null, credit_limit: null })
+          .returning('id').executeTakeFirstOrThrow();
+        out.push({ id: ins.id, code, created: true });
+      }
+    }
+    return out;
+  });
+}
+
+export async function webhookStatus(db: Db, companyId: string) {
+  return db.withCompany(companyId, async (tx) => ({
+    endpoints: await tx.selectFrom('acct.webhook_endpoint').select(['id', 'url', 'events', 'active', 'api_client_id', 'created_at']).orderBy('created_at').execute(),
+    deliveries: await tx.selectFrom('acct.webhook_delivery').select(['id', 'endpoint_id', 'event', 'status', 'attempts', 'last_error', 'created_at', 'sent_at', 'next_attempt_at']).orderBy('created_at', 'desc').limit(200).execute(),
+  }));
+}
+export async function auditLog(db: Db, companyId: string, f: { limit?: number; entity?: string } = {}) {
+  return db.withCompany(companyId, async (tx) => {
+    let q = tx.selectFrom('acct.audit_log').select(['id', 'at', 'actor_id', 'action', 'entity', 'entity_id', 'before', 'after', sql<string>`encode(hash, 'hex')`.as('hash'), sql<string>`encode(prev_hash, 'hex')`.as('prev_hash')]).orderBy('id', 'desc').limit(f.limit ?? 200);
+    if (f.entity) q = q.where('entity', '=', f.entity);
+    return q.execute();
+  });
+}
