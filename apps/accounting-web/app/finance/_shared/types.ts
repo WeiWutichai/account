@@ -39,6 +39,13 @@ export function docTypeName(d: Pick<Doc, 'doc_type' | 'tax_mode'>): string {
     case 'BN': return 'ใบวางบิล';
     case 'QO': return 'ใบเสนอราคา';
     case 'SO': return 'ใบสั่งขาย';
+    case 'AP': return 'บิลซื้อ';
+    case 'EXP': return 'ค่าใช้จ่าย';
+    case 'CNR': return 'ใบลดหนี้ (ซื้อ)';
+    case 'DNR': return 'ใบเพิ่มหนี้ (ซื้อ)';
+    case 'PV': return 'ใบสำคัญจ่าย';
+    case 'PO': return 'ใบสั่งซื้อ';
+    case 'PR': return 'ใบขอซื้อ';
     default: return d.doc_type;
   }
 }
@@ -50,6 +57,11 @@ export function docNav(d: Pick<Doc, 'doc_type' | 'id'>): { list: string; listLab
     case 'CN': case 'DN': return { list: href('creditnote'), listLabel: 'ใบลดหนี้/เพิ่มหนี้', view: `${href('creditnote')}/${d.id}`, active: 'creditnote' };
     case 'DP': return { list: href('deposit'), listLabel: 'มัดจำ', view: `${href('deposit')}/${d.id}`, active: 'deposit' };
     case 'QO': case 'SO': return { list: href('quote'), listLabel: 'ใบเสนอราคา', view: `${href('quote')}/${d.id}`, active: 'quote' };
+    case 'AP': return { list: href('purchase'), listLabel: 'บิลซื้อ', view: `${href('purchase')}/${d.id}`, active: 'purchase' };
+    case 'EXP': return { list: href('expense'), listLabel: 'ค่าใช้จ่าย', view: `${href('expense')}/${d.id}`, active: 'expense' };
+    case 'CNR': case 'DNR': return { list: href('purchasecn'), listLabel: 'ใบลดหนี้/เพิ่มหนี้ (ซื้อ)', view: `${href('purchasecn')}/${d.id}`, active: 'purchasecn' };
+    case 'PV': return { list: href('payment'), listLabel: 'จ่ายชำระ', view: `${href('payment')}/${d.id}`, active: 'payment' };
+    case 'PO': case 'PR': return { list: href('po'), listLabel: 'ใบสั่งซื้อ', view: `${href('po')}/${d.id}`, active: 'po' };
     default: return { list: href('invoice'), listLabel: 'ใบกำกับภาษี', view: `${href('invoice')}/${d.id}`, active: 'invoice' };
   }
 }

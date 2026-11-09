@@ -138,3 +138,54 @@ describe('ตั้งค่าบริษัท (ScreenSettings)', () => {
     await expect(saveCompanySettings(db, A, null, { ...input, branchCode: '1' })).rejects.toThrow(/5 หลัก/u);
   });
 });
+
+describe('รายงานตรวจความถูกต้อง (ScreenReconReport) — จุดตรวจที่เพิ่ม', () => {
+  it('ทะเบียนเช็ค ↔ GL · เอกสาร ↔ GL ผ่าน · JV คีย์มือเข้าค่าใช้จ่ายถูกจับเป็นผลต่างพร้อมเลข JV', async () => {
+    const { reconChecks } = await import('../src/reports.ts');
+    const { postJournal } = await import('../src/ledger-service.ts');
+    const { Money } = await import('@innovera/ledger');
+    let r = await reconChecks(db, A, '2026-11');
+    expect(r.checks).toHaveLength(16); // ข้อ 1: 6 · ข้อ 2: 5 · ข้อ 3: 5
+    const k = (key: string) => r.checks.find((c) => c.key === key)!;
+    expect(k('cheques')).toMatchObject({ ok: true, byDocs: '96300.00', count: '1 ฉบับ' });
+    for (const key of ['doc_iv', 'doc_rv', 'doc_ap_exp', 'doc_orphans', 'vat_deferred', 'wht_received']) expect(k(key).ok, key).toBe(true);
+    const jv = await postJournal(db, A, { date: '2026-11-20', role: 'accounting_manager', lines: [
+      { side: 'Dr', account: '5301200', amount: Money.parse('2000.00') }, { side: 'Cr', account: '1100100', amount: Money.parse('2000.00') }] });
+    r = await reconChecks(db, A, '2026-11');
+    expect(k('doc_ap_exp')).toMatchObject({ ok: false, diff: '2000.00', note: `${jv.journalNo} คีย์มือ ไม่มีเอกสารอ้างอิง` });
+    expect(k('doc_orphans')).toMatchObject({ ok: false, count: '0 / 1' });
+  });
+});
+
+describe('แก้บิลซื้อที่ผ่านรายการแล้ว (ScreenDocEdit · ตัวอย่าง AP2611-0079)', () => {
+  it('เลขผู้เสียภาษี/ใบกำกับผู้ขาย/มิติ แก้ได้ · ย้ายบัญชีค่าใช้จ่ายสร้าง JV โอนย้าย · ยอดไม่เปลี่ยน · ปิดแข็งแก้ไม่ได้', async () => {
+    const { savePurchaseDraft, approvePurchase } = await import('../src/purchase.ts');
+    const { editPurchaseDoc, getDocument } = await import('../src/sales.ts');
+    const { vatReports } = await import('../src/reports.ts');
+    const { closePeriod } = await import('../src/close-ops.ts');
+    const id = await savePurchaseDraft(db, A, mgr, { docType: 'AP', contactId: await contact('V0210'), issueDate: '2026-11-05', vendorRef: 'INV-5521',
+      lines: [{ description: 'ค่าจ้างภายนอก', qty: '1', unitPrice: '120000.00', vat: true, accountCode: '5301200' }, { description: 'ค่าซอฟต์แวร์', qty: '1', unitPrice: '30000.00', vat: true, accountCode: '5301200' }] });
+    await approvePurchase(db, A, mgr, id);
+    const g = await getDocument(db, A, id);
+    const line2 = g!.lines[1]!;
+    await expect(editPurchaseDoc(db, A, mgr, id, { reason: ' ', date: '2026-11-30', vendorRef: 'x' })).rejects.toThrow(/เหตุผล/u);
+    await expect(editPurchaseDoc(db, A, mgr, id, { reason: 'r', date: '2026-11-30', partyTaxId: '010555123456' })).rejects.toThrow(/13 หลัก/u);
+    await expect(editPurchaseDoc(db, A, mgr, id, { reason: 'r', date: '2026-11-30', vendorInvoiceDate: '2026-10-31' })).rejects.toThrow(/งวดเดียวกัน/u);
+    const before = await vatReports(db, A, '2026-11');
+    const r = await editPurchaseDoc(db, A, mgr, id, { reason: 'ผู้ขายแจ้งเลขผู้เสียภาษีผิด', date: '2026-11-30', partyTaxId: '0105536000992', projectCode: 'PRJ-09',
+      lines: [{ lineId: line2.id, accountCode: '5306100' }] });
+    expect(r.changed).toBe(3);
+    expect(r.journalNo).toMatch(/^JV2611-/u);
+    const after = await vatReports(db, A, '2026-11');
+    expect(after.purchases.vat).toBe(before.purchases.vat);
+    expect(after.purchases.rows.find((x) => x.docId === id)?.taxId).toBe('0105536000992');
+    expect((await balance('5306100'))).toBe('30000.00');
+    const doc = await getDocument(db, A, id);
+    expect(doc!.doc).toMatchObject({ grand_total: '160500.00', project_code: 'PRJ-09' });
+    expect(doc!.lines[1]!.account_code).toBe('5306100');
+    const { reconChecks } = await import('../src/reports.ts');
+    expect((await reconChecks(db, A, '2026-11')).checks.find((c) => c.key === 'doc_ap_exp')?.note ?? '').not.toContain(r.journalNo!); // JV โอนย้ายผูกเอกสาร ไม่ใช่คีย์มือ
+    for (let p = 1; p <= 11; p++) await closePeriod(db, A, { userId: null, role: 'owner' }, { fiscalYear: 2569, periodNo: p, to: 'hard_closed' });
+    await expect(editPurchaseDoc(db, A, mgr, id, { reason: 'r', date: '2026-12-01', vendorRef: 'INV-1' })).rejects.toThrow(/ปิดแข็ง/u);
+  });
+});

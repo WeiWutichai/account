@@ -1,6 +1,6 @@
 // M4 ขาย + รับเงิน (docs/technical-plan-M4.md) — เอกสาร QO/SO/IV/CN/DN/DP/BN/RV · ลงบัญชีผ่าน Posting Engine · ทุกอย่างใน withCompany (RLS)
 import { docTotals, Money, post, receiptTotals, type CompanyRole, type MoneyString, type RuleDefinition } from '@innovera/ledger';
-import { bahtText, whtOnReceipt } from '@innovera/tax-th';
+import { bahtText, validateTaxId, whtOnReceipt } from '@innovera/tax-th';
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
@@ -335,6 +335,19 @@ export async function voidDocumentTx(tx: CompanyTx, companyId: string, actor: Ac
 
 /** หลังผ่านรายการแก้ได้เฉพาะข้อมูลอ้างอิง (CLAUDE.md) — ยอด/ภาษี/บัญชีแก้ไม่ได้ */
 export const REFERENCE_FIELDS = ['address', 'notes', 'reference', 'due_date'] as const;
+/** งวดของเอกสาร: ปิดแข็ง → แก้ไม่ได้ทุกช่อง · ปิดอ่อน → ผู้จัดการบัญชีขึ้นไป (ScreenDocEdit) */
+async function assertEditable(tx: CompanyTx, actor: Actor, issueDate: string) {
+  const p = await tx.selectFrom('acct.period').select(['status', 'period_no', 'fiscal_year']).where('starts_on', '<=', issueDate).where('ends_on', '>=', issueDate)
+    .where('period_no', '>=', 1).where('period_no', '<=', 12).executeTakeFirst();
+  if (p?.status === 'hard_closed') throw new LedgerError(`งวด ${p.period_no}/${p.fiscal_year} ปิดแข็งแล้ว — ต้องเปิดงวดคืนพร้อมเหตุผลก่อนแก้ไข`);
+  if (p?.status === 'soft_closed' && !['owner', 'accounting_manager'].includes(actor.role)) throw new LedgerError(`งวด ${p.period_no}/${p.fiscal_year} ปิดอ่อนแล้ว — ผู้จัดการบัญชีขึ้นไปเท่านั้นที่แก้ได้`);
+}
+
+async function auditEdit(tx: CompanyTx, companyId: string, actor: Actor, id: string, before: unknown, after: unknown) {
+  await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor.userId, action: 'document.edit_posted', entity: 'document', entity_id: id,
+    before: JSON.stringify(before), after: JSON.stringify(after), prev_hash: null, hash: null }).execute();
+}
+
 export async function editReference(db: Db, companyId: string, actor: Actor, id: string, input: Partial<Record<(typeof REFERENCE_FIELDS)[number], string | null>> & Record<string, unknown> & { reason?: string }) {
   const { reason, ...patch } = input;
   const bad = Object.keys(patch).filter((k) => !(REFERENCE_FIELDS as readonly string[]).includes(k));
@@ -342,9 +355,66 @@ export async function editReference(db: Db, companyId: string, actor: Actor, id:
   return db.withCompany(companyId, async (tx) => {
     const d = await docOrThrow(tx, id);
     if (d.status === 'voided') throw new LedgerError('เอกสารถูกยกเลิกแล้ว');
+    await assertEditable(tx, actor, d.issue_date);
     const before = Object.fromEntries(Object.keys(patch).map((k) => [k, (d as Record<string, unknown>)[k] ?? null]));
     await tx.updateTable('acct.document').set({ ...(patch as Record<string, string | null>), updated_at: new Date() }).where('id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'reference_edited', { before, after: patch, ...(reason ? { reason } : {}) });
+    await auditEdit(tx, companyId, actor, id, before, { ...patch, reason: reason ?? null });
+  });
+}
+
+export interface PurchaseEditInput {
+  partyTaxId?: string | null; vendorRef?: string | null; vendorInvoiceDate?: string | null; projectCode?: string | null;
+  lines?: { lineId: string; accountCode: string }[]; reason: string; date: string; // date = วันที่ของ JV โอนย้ายบัญชี
+}
+
+/**
+ * แก้บิลซื้อ/ค่าใช้จ่ายที่ผ่านรายการแล้ว (ScreenDocEdit): เลขผู้เสียภาษีผู้ขาย (อัปเดตรายงานภาษีซื้อ · ยอดไม่เปลี่ยน) · เลขที่/วันที่ใบกำกับผู้ขาย (วันที่ภายในงวดเดียวกัน)
+ * · มิติ/โครงการ (ไม่กระทบ GL) · บัญชีค่าใช้จ่ายของบรรทัด → JV โอนย้ายบัญชี Dr ใหม่ / Cr เดิม (ผูกเอกสารต้นทาง)
+ * จำนวนเงิน / VAT / อัตราหัก / ผู้ขาย แก้ไม่ได้ — ยกเลิกแล้วออกใหม่ หรือออกใบลดหนี้/เพิ่มหนี้
+ */
+export async function editPurchaseDoc(db: Db, companyId: string, actor: Actor, id: string, input: PurchaseEditInput) {
+  if (!input.reason?.trim()) throw new LedgerError('ต้องระบุเหตุผลการแก้ไข');
+  return db.withCompany(companyId, async (tx) => {
+    const d = await docOrThrow(tx, id);
+    if (!['AP', 'EXP'].includes(d.doc_type)) throw new LedgerError('แก้ได้เฉพาะบิลซื้อและค่าใช้จ่าย');
+    if (d.status !== 'posted') throw new LedgerError('แก้ได้เฉพาะเอกสารที่ผ่านรายการแล้ว');
+    await assertEditable(tx, actor, d.issue_date);
+    const patch: Record<string, string | null> = {};
+    if (input.partyTaxId !== undefined) {
+      if (input.partyTaxId && !validateTaxId(input.partyTaxId)) throw new LedgerError('เลขประจำตัวผู้เสียภาษีของผู้ขายไม่ถูกต้อง (13 หลัก · checksum)');
+      patch.party_tax_id = input.partyTaxId || null;
+    }
+    if (input.vendorRef !== undefined) patch.vendor_ref = input.vendorRef || null;
+    if (input.vendorInvoiceDate !== undefined) {
+      if (input.vendorInvoiceDate && input.vendorInvoiceDate.slice(0, 7) !== d.issue_date.slice(0, 7)) throw new LedgerError('วันที่ในใบกำกับของผู้ขายแก้ได้ภายในงวดเดียวกันเท่านั้น');
+      patch.vendor_invoice_date = input.vendorInvoiceDate || null;
+    }
+    if (input.projectCode !== undefined) patch.project_code = input.projectCode || null;
+    const before: Record<string, unknown> = Object.fromEntries(Object.keys(patch).map((k) => [k, (d as Record<string, unknown>)[k] ?? null]));
+    let journalNo: string | null = null;
+    const moves = [];
+    for (const m of input.lines ?? []) {
+      const l = await tx.selectFrom('acct.document_line').select(['id', 'account_code', 'amount', 'description']).where('id', '=', m.lineId).where('document_id', '=', id).executeTakeFirst();
+      if (!l) throw new LedgerError('ไม่พบบรรทัดของเอกสาร');
+      if (!l.account_code || l.account_code === m.accountCode) continue;
+      const acct = await tx.selectFrom('acct.account').select(['code', 'is_control']).where('code', '=', m.accountCode).executeTakeFirst();
+      if (!acct || acct.is_control || !(m.accountCode.startsWith('5') || /^15[1-4]/u.test(m.accountCode))) throw new LedgerError(`บัญชี ${m.accountCode} ใช้เป็นบัญชีค่าใช้จ่าย/สินทรัพย์ไม่ได้`);
+      moves.push({ ...l, to: m.accountCode });
+    }
+    if (moves.length) {
+      const lines = moves.flatMap((m) => [{ side: 'Dr' as const, account: m.to, amount: Money.parse(m.amount) }, { side: 'Cr' as const, account: m.account_code!, amount: Money.parse(m.amount) }]);
+      const j = await postJournalTx(tx, companyId, { date: input.date, lines, role: actor.role, book: 'GJ', sourceDocumentId: id, description: `โอนย้ายบัญชี ${d.doc_no ?? ''}: ${input.reason.trim()}` });
+      journalNo = j.journalNo;
+      for (const m of moves) await tx.updateTable('acct.document_line').set({ account_code: m.to }).where('id', '=', m.id).execute();
+      before.lines = moves.map((m) => ({ lineId: m.id, account: m.account_code }));
+    }
+    if (!Object.keys(patch).length && !moves.length) throw new LedgerError('ไม่มีช่องที่เปลี่ยน');
+    if (Object.keys(patch).length) await tx.updateTable('acct.document').set({ ...patch, updated_at: new Date() }).where('id', '=', id).execute();
+    const after = { ...patch, ...(moves.length ? { lines: moves.map((m) => ({ lineId: m.id, account: m.to })), journal: journalNo } : {}), reason: input.reason.trim() };
+    await event(tx, companyId, id, actor.userId, 'reference_edited', { before, after });
+    await auditEdit(tx, companyId, actor, id, before, after);
+    return { changed: Object.keys(patch).length + moves.length, journalNo };
   });
 }
 

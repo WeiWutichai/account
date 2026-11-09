@@ -80,7 +80,7 @@ export interface AcctDB {
     rule_code: string | null; tax_mode: 'on_payment' | 'immediate' | null; ref_document_id: string | null; address: string | null; notes: string | null; reference: string | null;
     journal_id: string | null; created_by: string | null; approved_by: string | null; approved_at: Ts | null; voided_at: Ts | null; void_reason: string | null; void_journal_id: string | null;
     receive_account: string | null; fee: Money; fee_account: string | null; wht_cert_no: string | null; wht_rate: string | null; bill_discount: Money; credit_days: number | null; sent_at: Ts | null;
-    vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> };
+    vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> ; party_tax_id: Generated<string | null>; vendor_invoice_date: ColumnType<string | null, string | null | undefined, string | null>; project_code: Generated<string | null> };
   'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
     pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
   'acct.bank_statement_line': { company_id: string; id: Generated<string>; bank_account: string; line_date: DateCol; description: string; amount: string; balance: string | null; ref: string | null;

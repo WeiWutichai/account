@@ -2,6 +2,7 @@
 import { Body, Controller, Get, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Db } from '@innovera/db';
 import { approvePayment, approvePurchase, createPayment, createPaymentRun, payables, pettyCashSummary, reimbursePettyCash, savePettyCash, savePurchaseDraft, setCompanySetting, whtCertificates, type PaymentInput, type PettyCashInput, type PurchaseDraftInput } from '@innovera/db/purchase';
+import { editPurchaseDoc, type PurchaseEditInput } from '@innovera/db/sales';
 import { WHT_TYPES } from '@innovera/tax-th';
 import type { Request } from 'express';
 import { companyOf, Need, roleOf, userOf } from './context.js';
@@ -12,6 +13,12 @@ const actor = (req: Request) => ({ userId: userOf(req).userId === 'dev' ? null :
 @Controller('v1')
 export class PurchaseController {
   constructor(@Inject(DB) private readonly db: Db) {}
+
+  /** ScreenDocEdit: แก้บิลซื้อ/ค่าใช้จ่ายที่ผ่านรายการแล้ว (ข้อมูลอ้างอิง + ย้ายบัญชีค่าใช้จ่ายด้วย JV) · สิทธิ์ผู้จัดการบัญชี (ผ่านรายการซื้อ) */
+  @Need('purchase', 'post') @Put('documents/:id/purchase-edit')
+  purchaseEdit(@Req() req: Request, @Param('id') id: string, @Body() b: PurchaseEditInput) {
+    return editPurchaseDoc(this.db, companyOf(req), actor(req), id, { ...b, date: b.date ?? (process.env.APP_TODAY ?? new Date().toISOString().slice(0, 10)) });
+  }
 
   @Need('purchase', 'write') @Post('purchases')
   async create(@Req() req: Request, @Body() b: PurchaseDraftInput) { return { id: await savePurchaseDraft(this.db, companyOf(req), actor(req), b) }; }

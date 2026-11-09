@@ -18,7 +18,7 @@ export interface PndRow {
   name: string; tax_id: string | null; branch_code: string | null; address: string | null; doc_no: string | null;
 }
 export interface PndReport { month: string; pnd: '3' | '53'; rows: PndRow[]; certs: number; base: string; tax: string; pendingAuditor: boolean }
-export interface ReconCheck { key: string; label: string; byDocs: string; byGl: string; diff: string; ok: boolean }
+export interface ReconCheck { key: string; section?: 1 | 2 | 3; label: string; byDocs: string; byGl: string; diff: string; ok: boolean; count?: string; note?: string }
 export interface ReconReport { month: string; checks: ReconCheck[]; passed: number; toReview: number }
 export interface WhtType { key: string; label: string; section?: string; status?: string }
 

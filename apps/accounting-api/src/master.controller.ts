@@ -4,7 +4,7 @@ import { Body, Controller, Get, Inject, NotFoundException, Param, Post, Put, Que
 import type { Db } from '@innovera/db';
 import {
   bounceCheque, chequeRegister, clearCheque, companySettings, contactDetail, contactsOverview, CONTACT_ROLES, depositCheques, productDetail, productsOverview,
-  saveCompanySettings, saveContact, saveProduct, type CompanySettingsInput, type ContactInput, type ContactRole, type ProductInput,
+  saveCompanySettings, saveContact, saveProduct, sidebarBadges, sidebarUser, type CompanySettingsInput, type ContactInput, type ContactRole, type ProductInput,
 } from '@innovera/db/master';
 import type { Request } from 'express';
 import { companyOf, Need, roleOf, userOf } from './context.js';
@@ -65,6 +65,13 @@ export class MasterController {
   @Need('finance', 'void') @Post('cheques/:id/bounce')
   bounce(@Req() req: Request, @Param('id') id: string, @Body() b: { date?: string; reason: string }) {
     return bounceCheque(this.db, companyOf(req), actor(req), id, { date: date(b.date), reason: b.reason ?? '' });
+  }
+
+  // ---------- Sidebar (ทุกหน้า) ----------
+  @Get('sidebar')
+  async sidebar(@Req() req: Request) {
+    const [badges, user] = await Promise.all([sidebarBadges(this.db, companyOf(req), today()), sidebarUser(this.db, companyOf(req), actor(req).userId)]);
+    return { badges, user };
   }
 
   // ---------- ตั้งค่าบริษัท ----------

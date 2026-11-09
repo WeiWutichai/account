@@ -1,8 +1,6 @@
 // R3 รายงานตรวจความถูกต้อง — design/project/ScreenReconReport.dc.html · เส้นทาง /tax/recon (packages/ui routes.ts id 'recon')
 // ข้อมูล: GET /v1/reports/recon?month= (packages/db/src/reports.ts reconChecks) — ตัวเลขทุกตัวมาจาก API
-// TODO(backend) ScreenReconReport.dc.html: ข้อ 1 "เอกสารเทียบบัญชีแยกประเภท" (IV/CN/DN/AP/EXP/RV/PV ↔ GL · JV ที่ไม่มีเอกสาร) ยังไม่มีใน API → แสดงหัวตาราง ไม่มีแถว
-// TODO(backend): ข้อ 2 "ภาษีขายที่ยังไม่ถึงกำหนด (2150400)" และ "ภาษีถูกหัก ณ ที่จ่าย (1160100)" · ข้อ 3 "2140100 / 1140100 / 1150100-1150200" ยังไม่มีจุดตรวจใน API → ไม่แสดงแถว
-// TODO(backend): ต้นเหตุของผลต่าง (เช่น "JV2611-0098 ลงบัญชีคุมโดยตรง ไม่ผูกผู้ขาย") ยังไม่มีใน API → ลิงก์ไปบัญชีแยกประเภทของบัญชีนั้นแทน
+// ข้อ 1–3 ครบ 15 จุดตรวจจาก API · ข้อ 1 ผลต่างที่มาจาก JV คีย์มือแสดงเลข JV (note) · ข้ออื่น TODO(backend): ต้นเหตุของผลต่าง (เช่น "JV2611-0098 ลงบัญชีคุมโดยตรง ไม่ผูกผู้ขาย") → ลิงก์ไปบัญชีแยกประเภทของบัญชีนั้นแทน
 // TODO(backend): "ตรวจอัตโนมัติทุกคืน" (job) ยังไม่มี — ตรวจทุกครั้งที่เปิดหน้า · "ตรวจล่าสุด" = เวลาที่เปิดหน้า · "ใช้เวลา" = เวลาที่ API ใช้จริง
 import { css, href, money, S } from '@innovera/ui';
 import type { ReactNode } from 'react';
@@ -16,15 +14,28 @@ const TH = 'padding: 0 12px; font-weight: 400';
 const mp = (v: string): string => money(v, { paren: true });
 
 interface RowSpec { key: string; label: (m: string) => string; account: string; gl: string; okNote?: string }
+// ข้อ 1: บัญชีที่ตรวจตามข้อความแบบร่าง
+const DOC_ROWS: RowSpec[] = [
+  { key: 'doc_iv', label: () => 'ใบกำกับภาษี IV (ขาย)', account: '4100100 + 4101100 รายได้', gl: '4100100' },
+  { key: 'doc_cn_dn', label: () => 'ใบลดหนี้ CN / เพิ่มหนี้ DN', account: '4100100 (กลับรายการ) / 4150100 รับคืน', gl: '4150100' },
+  { key: 'doc_ap_exp', label: () => 'บิลซื้อ AP + ค่าใช้จ่าย EXP', account: '53xxxxx ค่าใช้จ่าย + 15xxxxx สินทรัพย์', gl: '5301200' },
+  { key: 'doc_rv', label: () => 'รับชำระ RV', account: '1100xxx เงินฝาก + 1150xxx เช็ครับ', gl: '1100100' },
+  { key: 'doc_pv', label: () => 'จ่ายชำระ PV', account: '1100xxx เงินฝาก (ด้านเครดิต)', gl: '1100100' },
+];
 const TAX_ROWS: RowSpec[] = [
   { key: 'vat_output', label: (m) => `รายงานภาษีขาย ${m}`, account: '2150100 ภาษีขาย (เครดิตในงวด)', gl: '2150100' },
   // TODO(backend): "(รวมใช้สิทธิ์ข้ามเดือน N ใบ)" — ภาษีซื้อข้ามเดือนยังไม่มีใน API
   { key: 'vat_input', label: (m) => `รายงานภาษีซื้อ ${m}`, account: '1170100 ภาษีซื้อ (เดบิตในงวด)', gl: '1170100' },
+  { key: 'vat_deferred', label: () => 'ภาษีขายที่ยังไม่ถึงกำหนด (บริการยังไม่รับเงิน)', account: '2150400 ภาษีขายยังไม่ถึงกำหนด', gl: '2150400' },
   { key: 'wht_payable', label: (m) => `ภ.ง.ด.3 + ภ.ง.ด.53 ${m} (หนังสือรับรองที่ออก)`, account: '2150300 ภาษีหัก ณ ที่จ่ายค้างนำส่ง', gl: '2150300', okNote: ' · รับรู้ตอนจ่ายเงินทุกฉบับ' },
+  { key: 'wht_received', label: () => 'ภาษีถูกหัก ณ ที่จ่าย (50 ทวิ ที่ได้รับ)', account: '1160100 ภาษีถูกหัก ณ ที่จ่าย', gl: '1160100' },
 ];
 const CONTROL_ROWS: RowSpec[] = [
   { key: 'ar_control', label: () => '1130100 ลูกหนี้การค้า', account: '', gl: '1130100' },
   { key: 'ap_control', label: () => '2110100 เจ้าหนี้การค้า', account: '', gl: '2110100' },
+  { key: 'deposit_received', label: () => '2140100 เงินมัดจำรับล่วงหน้า', account: '', gl: '2140100' },
+  { key: 'deposit_paid', label: () => '1140100 เงินมัดจำจ่ายล่วงหน้า', account: '', gl: '1140100' },
+  { key: 'cheques', label: () => '1150100/1150200 เช็ครับรอเรียกเก็บ', account: '', gl: '1150100' },
 ];
 
 /** ผลต่างตามแบบร่าง = เอกสาร − GL (ค่าลบในวงเล็บ) */
@@ -32,6 +43,7 @@ const diffOf = (c: ReconCheck): string => fromCents(cents(c.byDocs) - cents(c.by
 
 function Result({ c, spec, ym }: { c: ReconCheck; spec: RowSpec; ym: string }): ReactNode {
   if (c.ok) return <td style={css('padding: 0 12px; color: #0e6027')}>✓ ผ่าน{spec.okNote ?? ''}</td>;
+  if (c.note) return <td style={css('padding: 0 12px')}><a href={href('journal')} style={css('text-decoration: none; color: #a2191f')}>✕ {c.note}</a></td>;
   const last = new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate();
   return <td style={css('padding: 0 12px')}><a href={`${href('ledger')}?account=${spec.gl}&from=${ym}-01&to=${ym}-${String(last).padStart(2, '0')}`} style={css('text-decoration: none; color: #a2191f')}>✕ มีผลต่าง — ดูบัญชีแยกประเภท {spec.gl}</a></td>;
 }
@@ -51,15 +63,15 @@ export default async function ReconPage({ searchParams }: { searchParams: Promis
   const failSum = fromCents(failing.reduce((s, c) => { const d = cents(diffOf(c)); return s + (d < 0n ? -d : d); }, 0n));
   const m = monthAbbr(ym);
 
-  const row = (spec: RowSpec, cols: 'tax' | 'control') => {
+  const row = (spec: RowSpec, cols: 'doc' | 'tax' | 'control') => {
     const c = byKey.get(spec.key);
     if (!c) return null;
     const d = diffOf(c);
     return (
       <tr key={spec.key} style={css(S.tr)}>
         <td style={css('height: 40px; padding: 0 12px')}>{spec.label(m)}</td>
-        {/* TODO(backend): จำนวนราย / เอกสาร ของบัญชีคุมยังไม่มีใน GET /v1/reports/recon */}
-        <td style={css(cols === 'tax' ? 'padding: 0 12px' : NUM)}>{cols === 'tax' ? spec.account : ''}</td>
+        {cols === 'doc' && <td style={css(NUM)}>{c.count ?? ''}</td>}
+        <td style={css(cols === 'control' ? NUM : 'padding: 0 12px')}>{cols === 'control' ? (c.count ?? '') : spec.account}</td>
         <td style={css(NUM)}>{mp(c.byDocs)}</td><td style={css(NUM)}>{mp(c.byGl)}</td>
         <td style={css(`${NUM}; color: ${c.ok ? '#525252' : '#a2191f'}`)}>{mp(d)}</td>
         <Result c={c} spec={spec} ym={ym} />
@@ -88,7 +100,22 @@ export default async function ReconPage({ searchParams }: { searchParams: Promis
           <div style={css('padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between')}><strong style={css('font-weight: 600')}>1. เอกสารเทียบบัญชีแยกประเภท (ยอดรวมเอกสารที่ผ่านรายการในงวด ↔ ยอดเคลื่อนไหว GL)</strong><span style={css('font-size: 13px; color: #525252')}>ตรวจว่าทุกเอกสารมี JV และ JV ตรงยอด</span></div>
           <table style={css(`${S.table}; min-width: 960px`)}>
             <thead><tr style={css(S.theadRow)}><th style={css(`height: 40px; ${TH}`)}>ประเภทเอกสาร</th><th style={css(`${TH}; text-align: right`)}>จำนวน</th><th style={css(TH)}>บัญชีที่ตรวจ</th><th style={css(`${TH}; text-align: right`)}>ยอดตามเอกสาร</th><th style={css(`${TH}; text-align: right`)}>ยอดตาม GL</th><th style={css(`${TH}; text-align: right`)}>ผลต่าง</th><th style={css(TH)}>ผล</th></tr></thead>
-            <tbody></tbody>
+            <tbody>
+              {DOC_ROWS.map((s) => row(s, 'doc'))}
+              {(() => {
+                const o = byKey.get('doc_orphans');
+                if (!o) return null;
+                return (
+                  <tr style={css(S.tr)}>
+                    <td style={css('height: 40px; padding: 0 12px')}>เอกสารผ่านรายการแต่ไม่มี JV / JV ไม่มีเอกสาร</td>
+                    <td style={css(NUM)}>{o.count}</td>
+                    <td colSpan={3} style={css('padding: 0 12px; color: #525252')}>{o.note ?? ''}</td>
+                    <td style={css(NUM)}></td>
+                    {o.ok ? <td style={css('padding: 0 12px; color: #0e6027')}>✓ ผ่าน</td> : <td style={css('padding: 0 12px')}><a href={href('journal')} style={css('text-decoration: none; color: #a2191f')}>! ดูรายละเอียด</a></td>}
+                  </tr>
+                );
+              })()}
+            </tbody>
           </table>
         </section>
 

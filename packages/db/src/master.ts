@@ -211,7 +211,8 @@ export async function chequeRegister(db: Db, companyId: string, direction: 'rece
       rows: rows.map((r) => ({
         ...r, ref: r.doc_no ?? r.ref_no, payer: r.contact_name ?? r.payer_name,
         postdated: r.status === 'on_hand' && r.cheque_date > today, dueToday: r.status === 'on_hand' && r.cheque_date <= today,
-        overdueClearing: r.status === 'deposited' && r.deposited_on ? businessDaysBetween(r.deposited_on, today) > 3 : false,
+        // fixtures: นำฝาก 25/11 ณ 30/11 (ผ่านไป 3 วันทำการ) = "รอผ่านเกิน 3 วันทำการ" → ครบ 3 วันทำการแล้วยังไม่ผ่าน = เกินกำหนด · TODO(Wei): ยืนยันเกณฑ์
+        overdueClearing: r.status === 'deposited' && r.deposited_on ? businessDaysBetween(r.deposited_on, today) >= 3 : false,
       })),
     };
   });
@@ -340,4 +341,52 @@ export async function saveCompanySettings(db: Db, companyId: string, actorId: st
       before: JSON.stringify(before), after: JSON.stringify(s), prev_hash: null, hash: null }).execute();
   });
   return companySettings(db, companyId);
+}
+
+// ---------- Sidebar (Sidebar.dc.html): ป้ายงานค้าง + ผู้ใช้ ----------
+
+export interface SidebarBadgeRow { count: number; tone: 'act' | 'warn'; hint: string }
+const TH_MONTH = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+
+/**
+ * ป้ายของ Sidebar ตามแบบร่าง: น้ำเงิน (act) = ต้องทำ · เหลือง (warn) = ใกล้กำหนด
+ * home = เอกสารรออนุมัติทั้งหมด · invoice = IV รออนุมัติ · purchase = บิลซื้อรอตรวจ · cheque = เช็คถึงกำหนดนำฝาก
+ * bank = statement ยังไม่จับคู่ · tax = แบบที่ต้องยื่นของเดือนนี้ (ภ.ง.ด. ถ้ามี 50 ทวิ · ภ.พ.30 ถ้าจด VAT)
+ * TODO(backend): apps "รอแม็ปคู่ค้า" — ยังไม่มีสถานะคู่ค้ารอแม็ปจาก TMS
+ */
+export async function sidebarBadges(db: Db, companyId: string, today: string): Promise<Record<string, SidebarBadgeRow>> {
+  const vatRegistered = (await db.withPublic((tx) => tx.selectFrom('public.company').select('vat_registered').where('id', '=', companyId).executeTakeFirst()))?.vat_registered ?? true;
+  return db.withCompany(companyId, async (tx) => {
+    const pending = await tx.selectFrom('acct.document').select(['doc_type', sql<string>`count(*)`.as('n')]).where('status', '=', 'pending_approval').groupBy('doc_type').execute();
+    const n = (t?: string) => pending.filter((p) => !t || p.doc_type === t).reduce((s, p) => s + Number(p.n), 0);
+    const cheques = Number((await tx.selectFrom('acct.cheque').select(sql<string>`count(*)`.as('n')).where('direction', '=', 'received').where('status', '=', 'on_hand').where('cheque_date', '<=', today).executeTakeFirstOrThrow()).n);
+    const unmatched = Number((await tx.selectFrom('acct.bank_statement_line').select(sql<string>`count(*)`.as('n')).where('match_status', '=', 'unmatched').executeTakeFirstOrThrow()).n);
+    const month = today.slice(0, 7);
+    const certs = Number((await tx.selectFrom('acct.wht_certificate').select(sql<string>`count(*)`.as('n')).where('voided', '=', false)
+      .where('pay_date', '>=', `${month}-01`).where('pay_date', '<', addDays(`${month}-28`, 4).slice(0, 7) + '-01').executeTakeFirstOrThrow()).n);
+    const ext = await tx.selectFrom('acct.company_setting').select('value').where('key', '=', 'tax.filing.online_extension').executeTakeFirst();
+    const online = ext ? ext.value !== false : true; // รอผู้สอบบัญชี: ค่าตั้งต้นชั่วคราว true (CLAUDE.md)
+    const m = Number(today.slice(5, 7));
+    const next = TH_MONTH[m % 12]!;
+    const filings = [...(certs ? [`ยื่น ภ.ง.ด. ภายใน ${online ? 15 : 7} ${next}`] : []), ...(vatRegistered ? [`ภ.พ.30 ภายใน ${online ? 23 : 15} ${next}`] : [])];
+    const out: Record<string, SidebarBadgeRow> = {};
+    if (n()) out['home'] = { count: n(), tone: 'act', hint: `รออนุมัติ ${n()} เอกสาร` };
+    if (n('IV')) out['invoice'] = { count: n('IV'), tone: 'act', hint: 'รออนุมัติ' };
+    if (n('AP')) out['purchase'] = { count: n('AP'), tone: 'act', hint: 'รอตรวจ' };
+    if (cheques) out['cheque'] = { count: cheques, tone: 'warn', hint: `เช็คถึงกำหนดนำฝากวันนี้ ${today.slice(8, 10)}/${today.slice(5, 7)}` };
+    if (unmatched) out['bank'] = { count: unmatched, tone: 'act', hint: 'รายการยังไม่จับคู่' };
+    if (filings.length) out['tax'] = { count: filings.length, tone: 'warn', hint: `เดือน ${TH_MONTH[m - 1]} ${filings.join(' · ')}` };
+    return out;
+  });
+}
+
+/** ผู้ใช้ที่มุมล่างของ Sidebar: ชื่อ · บทบาทในบริษัท · แผน */
+export async function sidebarUser(db: Db, companyId: string, userId: string | null) {
+  return db.withPublic(async (tx) => {
+    const u = userId ? await tx.selectFrom('public.app_user').select(['display_name', 'email']).where('id', '=', userId).executeTakeFirst() : undefined;
+    const m = userId ? await tx.selectFrom('public.company_membership').select('company_role').where('company_id', '=', companyId).where('user_id', '=', userId).executeTakeFirst() : undefined;
+    const plan = await tx.selectFrom('public.company as c').innerJoin('public.subscription as s', 's.org_id', 'c.org_id').innerJoin('public.plan as p', 'p.code', 's.plan_code')
+      .select('p.name').where('c.id', '=', companyId).executeTakeFirst();
+    return { name: u?.display_name ?? u?.email ?? null, role: m?.company_role ?? null, plan: plan?.name ?? null };
+  });
 }

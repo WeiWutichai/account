@@ -19,7 +19,7 @@ if (exists) {
 } else {
   await db.withPublic(async (tx) => {
     await tx.insertInto('public.organization').values({ id: ORG_ID, name: 'Innovera Group' } as never).onConflict((oc) => oc.column('id').doNothing()).execute();
-    await tx.insertInto('public.company').values({ id: COMPANY_ID, org_id: ORG_ID, name_th: 'บจก. [ชื่อบริษัท]', name_en: '[Company Name] Co., Ltd.', tax_id: '0105xxxxxxxxx', db_dsn: null } as never).execute();
+    await tx.insertInto('public.company').values({ id: COMPANY_ID, org_id: ORG_ID, name_th: 'บริษัท [ชื่อบริษัท] จำกัด', name_en: '[Company Name] Co., Ltd.' /* fixtures company */, tax_id: '0105xxxxxxxxx', db_dsn: null } as never).execute();
   });
   const r = await seedCompany(db, COMPANY_ID);
   console.log('seed:', r);
