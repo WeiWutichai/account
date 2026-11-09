@@ -11,7 +11,8 @@ export async function currentUrl(): Promise<string> {
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
   const jar = await cookies();
-  const res = await fetch(`${ACCOUNTING_API}${path}`, { ...init, cache: 'no-store', headers: { ...apiHeaders((n) => jar.get(n)?.value), ...(init?.headers ?? {}) } });
+  const xff = (await headers()).get('x-forwarded-for');
+  const res = await fetch(`${ACCOUNTING_API}${path}`, { ...init, cache: 'no-store', headers: { ...apiHeaders((n) => jar.get(n)?.value), ...(xff ? { 'x-forwarded-for': xff } : {}), ...(init?.headers ?? {}) } });
   if (res.status === 401) redirect(refreshUrl(await currentUrl()));
   const body = (await res.json()) as T & { error?: string };
   if (res.status === 400 && /เลือกบริษัท/u.test(body.error ?? '')) redirect('/companies');

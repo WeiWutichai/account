@@ -126,7 +126,8 @@ export interface DraftDocument {
 }
 
 /** สร้างร่างเอกสาร (API/MCP/TMS สร้างได้แค่ร่าง) · external_source + external_ref ซ้ำ → คืนตัวเดิม ไม่สร้างใหม่ (golden 10) */
-export async function createDraftDocument(db: Db, companyId: string, d: DraftDocument): Promise<{ id: string; created: boolean }> {
+/** สร้างเอกสารร่างจาก API/MCP · clientId = API client ที่สร้าง (ผูกไว้ที่ document.created_by_client + ประวัติเอกสาร + audit "สร้างเอกสาร (API)") */
+export async function createDraftDocument(db: Db, companyId: string, d: DraftDocument, clientId: string | null = null): Promise<{ id: string; created: boolean }> {
   if ((d.external_source === undefined) !== (d.external_ref === undefined)) throw new LedgerError('external_source และ external_ref ต้องมาคู่กัน');
   return db.withCompany(companyId, async (tx) => {
     const contact = await tx.selectFrom('acct.contact').select('id').where('code', '=', d.contact_code).executeTakeFirst();
@@ -134,6 +135,7 @@ export async function createDraftDocument(db: Db, companyId: string, d: DraftDoc
     const ins = await tx.insertInto('acct.document').values({
       company_id: companyId, doc_type: d.doc_type, doc_no: null, issue_date: d.issue_date, due_date: d.due_date ?? null, contact_id: contact.id,
       price_incl_vat: d.price_incl_vat ?? false, branch_code: d.branch_code ?? '00000', external_source: d.external_source ?? null, external_ref: d.external_ref ?? null,
+      created_by_client: clientId,
     }).onConflict((oc) => oc.columns(['company_id', 'external_source', 'external_ref']).doNothing()).returning('id').executeTakeFirst();
     if (!ins) {
       const existing = await tx.selectFrom('acct.document').select('id').where('external_source', '=', d.external_source!).where('external_ref', '=', d.external_ref!).executeTakeFirstOrThrow();
@@ -143,6 +145,10 @@ export async function createDraftDocument(db: Db, companyId: string, d: DraftDoc
       company_id: companyId, document_id: ins.id, line_no: i + 1, line_type: l.line_type ?? 'item', product_code: l.product_code ?? null, description: l.description,
       qty: l.qty ?? null, unit_price: l.unit_price ?? null, amount: l.amount ?? '0.00', vat_rate: null, account_code: l.account_code ?? null,
     }))).execute();
+    const detail = { ...(clientId ? { api_client: clientId } : {}), ...(d.external_ref ? { external_source: d.external_source ?? null, external_ref: d.external_ref } : {}) };
+    await tx.insertInto('acct.document_event').values({ company_id: companyId, document_id: ins.id, actor: null, event: 'created', detail: JSON.stringify(detail) }).execute();
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: null, action: 'document.create', entity: 'document', entity_id: ins.id, before: null,
+      after: JSON.stringify({ ...detail, doc_type: d.doc_type, status: 'draft', contact: d.contact_code }), prev_hash: null, hash: null }).execute();
     return { id: ins.id, created: true };
   });
 }

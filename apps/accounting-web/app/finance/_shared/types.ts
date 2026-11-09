@@ -15,7 +15,8 @@ export interface Doc {
 }
 export interface DocLine { line_no: number; description: string | null; line_type: string }
 export interface Contact { id: string; code: string; name: string; kind: string; bank_account?: string | null }
-export interface DocEvent { at: string; actor: string | null; event: string; detail: Record<string, unknown> | null }
+/** actor_name = ชื่อผู้ทำจาก Innovera ID (null = ระบบ/API) */
+export interface DocEvent { at: string; actor: string | null; actor_name: string | null; event: string; detail: Record<string, unknown> | null }
 export interface SettlementIn { id: string; doc_no: string; doc_type: string; issue_date: string; applied: string; wht: string; vat_due: string; voided: boolean }
 export interface SettlementOut { id: string; doc_no: string; doc_type: string; issue_date: string; due_date: string | null; grand_total: string; vat: string; applied: string; wht: string; wht_base: string | null; vat_due: string; voided: boolean }
 export interface BillingItem { id: string; doc_no: string; issue_date: string; due_date: string | null; grand_total: string }
@@ -23,6 +24,8 @@ export interface JournalRow { journal_no: string; line_no: number; account_code:
 export interface DocDetail {
   doc: Doc; lines: DocLine[]; contact: Contact | null; events: DocEvent[]; settlementsIn: SettlementIn[]; settlementsOut: SettlementOut[];
   billing: BillingItem[]; journal: JournalRow[]; cheques?: Cheque[]; ref: { id: string; doc_no: string | null; doc_type: string; grand_total: string; issue_date: string } | null; outstanding: string | null; amountText: string;
+  /** ชื่อผู้สร้าง/ผู้อนุมัติ (Innovera ID) · API client ที่สร้างเอกสาร */
+  created_by_name: string | null; approved_by_name: string | null; created_by_client_name: string | null;
 }
 export interface Cheque { cheque_no: string; bank: string; branch: string | null; cheque_date: string; amount: string; status: string }
 export interface DocSetting { doc_type: string; prefix: string; pattern: string; reset: 'monthly' | 'yearly' | 'never'; settings: Record<string, unknown>; updated_at: string }

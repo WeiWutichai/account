@@ -29,7 +29,7 @@ export default async function UserEditPage({ params }: { params: Promise<{ id: s
         initial={{
           role: u.company_role, scope: u.scope, // ช่องว่าง = ไม่จำกัด (id-api รับ null/ว่าง)
           approvalLimit: u.approval_limit ?? (u.effective.approve_pay.post ? '' : '0.00'),
-          expires: u.expires_at ? thaiDate(u.expires_at.slice(0, 10)) : 'ไม่จำกัด', require2fa: u.require_2fa ?? true,
+          expires: u.expires_at ? thaiDate(u.expires_at.slice(0, 10)) : 'ไม่จำกัด', require2fa: u.require_2fa,
           perms: effectivePermissions(u.company_role, u.permissions),
         }}
         roles={roles} scopes={SCOPES} defaults={ROLE_DEFAULTS} limits={LIMITS}

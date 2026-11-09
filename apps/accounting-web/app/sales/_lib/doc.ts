@@ -26,7 +26,8 @@ export interface Doc {
   voided_at: string | null; void_reason: string | null; receive_account: string | null; credit_days: number | null; sent_at: string | null;
   salesperson?: string | null; project_code?: string | null; payment_terms?: string | null; price_level?: number | null; print_count?: number;
 }
-export interface DocEvent { at: string; actor: string | null; event: string; detail: Record<string, unknown> }
+/** actor_name = ชื่อผู้ทำจาก Innovera ID (null = ระบบ/API) */
+export interface DocEvent { at: string; actor: string | null; actor_name: string | null; event: string; detail: Record<string, unknown> }
 export interface Settlement { id: string; doc_no: string | null; doc_type: DocType; issue_date: string; applied: string; wht: string; vat_due: string; voided: boolean; due_date?: string | null; grand_total?: string }
 /** GET /v1/contacts (listContacts) · credit_remaining = วงเงิน − ลูกหนี้คงค้าง (null = ไม่กำหนดวงเงิน) */
 export interface Contact {
@@ -40,6 +41,8 @@ export interface DocDetail {
   journal: { journal_no: string; line_no: number; account_code: string; name: string; debit: string; credit: string }[];
   ref: { id: string; doc_no: string | null; doc_type: DocType; grand_total: string; issue_date: string } | null;
   outstanding: string | null; amountText: string;
+  /** ชื่อผู้สร้าง/ผู้อนุมัติ (Innovera ID) · API client ที่สร้างเอกสาร (document.created_by_client) */
+  created_by_name: string | null; approved_by_name: string | null; created_by_client_name: string | null;
 }
 /** POST /v1/documents/preview */
 export interface Totals {

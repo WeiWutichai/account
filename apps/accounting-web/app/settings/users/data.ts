@@ -9,7 +9,7 @@ export interface CompanyUser {
   company_role: CompanyRole; scope: string; approval_limit: string | null; expires_at: string | null;
   permissions: Partial<Record<Area, Grant>> | null; org_role: string | null; effective: Permissions;
   otherCompanies: { user_id: string; id: string; name_th: string; company_role: CompanyRole }[];
-  require_2fa?: boolean; // TODO(backend): id-api companyUsers ยังไม่ส่ง require_2fa → ถือว่า "บังคับ" (ค่าตั้งต้นของตาราง)
+  require_2fa: boolean; // company_membership.require_2fa (id-api companyUsers)
 }
 export interface Invite { id: string; email: string; role: CompanyRole; kind: string; created_at: string; expires_at: string }
 export interface UsersPayload { orgId: string; myRole: CompanyRole; seats: { used: number; limit: number | null; plan: string | null }; users: CompanyUser[]; invites: Invite[] }

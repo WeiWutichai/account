@@ -405,6 +405,9 @@ export async function saveCompanySettings(db: Db, companyId: string, actorId: st
   await db.withPublic((tx) => tx.updateTable('public.company').set({ name_th: s.nameTh.trim(), name_en: s.nameEn || null, tax_id: s.taxId || null, branch_code: s.branchCode,
     address: s.address || null, phone: s.phone || null, email: s.email || null, business_type: s.businessType, vat_registered: s.vatRegistered, service_tax_point: s.serviceTaxPoint }).where('id', '=', companyId).execute());
   const defaults: CompanyDefaults = { ...DEFAULTS, ...s.defaults };
+  // "บังคับ 2FA ทุกผู้ใช้": ตั้ง require_2fa ของสมาชิกทุกคน → accounting-api ตรวจ amr ทุก request · id-api บังคับตั้ง 2FA ตอนเข้าสู่ระบบ (requires2fa)
+  // ปิดแล้วไม่คืนค่ารายคน (ผู้ดูแลแก้รายคนได้ใน ScreenUserEdit)
+  if (defaults.enforce2fa) await db.withPublic((tx) => tx.updateTable('public.company_membership').set({ require_2fa: true }).where('company_id', '=', companyId).execute());
   await db.withCompany(companyId, async (tx) => {
     await tx.insertInto('acct.company_setting').values({ company_id: companyId, key: 'company.defaults', value: JSON.stringify(defaults), updated_at: new Date() })
       .onConflict((oc) => oc.columns(['company_id', 'key']).doUpdateSet({ value: JSON.stringify(defaults), updated_at: new Date() })).execute();
