@@ -1,0 +1,42 @@
+<!-- @dsCard group="ตาราง" height=300 subtitle="รายการเอกสาร 40 px · แท็บสถานะ · batch action" -->
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:16px;background:var(--bg-page);color:var(--text-primary);font-family:var(--font-sans);font-size:14px}
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border-subtle);margin-bottom:var(--space-03)}
+.tabs button{font-family:inherit;font-size:14px;height:40px;padding:0 var(--space-05);border:0;border-bottom:2px solid transparent;background:transparent;color:var(--text-secondary);cursor:pointer}
+.tabs button[aria-selected=true]{color:var(--text-primary);border-bottom-color:var(--interactive);font-weight:600}
+.bar{display:flex;gap:var(--space-03);align-items:center;height:40px;margin-bottom:var(--space-02)}
+.bar input{flex:1;max-width:320px;height:40px;border:0;border-bottom:1px solid var(--border-strong);background:var(--bg-layer-1);padding:0 var(--space-05);font-family:inherit;font-size:14px;color:var(--text-primary)}
+table{border-collapse:collapse;width:100%}
+th{height:40px;background:var(--bg-layer-1);font-size:13px;font-weight:400;color:var(--text-secondary);text-align:left;padding:0 var(--space-04);white-space:nowrap}
+td{height:40px;padding:0 var(--space-04);border-top:1px solid var(--border-subtle);white-space:nowrap}
+tr:hover td{background:var(--bg-hover)}
+tr.sel td{background:var(--bg-selected)}
+.amt{text-align:right;font-variant-numeric:tabular-nums}
+a{color:var(--link);font-weight:500;text-decoration:none}
+.tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 var(--space-03);border-radius:var(--radius-sm);font-size:13px;font-weight:500}
+.tag::before{content:"";width:8px;height:8px;border-radius:999px;background:currentColor}
+.ok{background:var(--status-success-bg);color:var(--status-success-text)}
+.wait{background:var(--status-warning-bg);color:var(--status-warning-text)}
+.err{background:var(--status-error-bg);color:var(--status-error-text)}
+.info{background:var(--status-info-bg);color:var(--status-info-text)}
+.src{background:var(--bg-inverse);color:var(--text-inverse);font-size:11px;height:20px;margin-left:6px}
+.src::before{display:none}
+input[type=checkbox]{width:16px;height:16px;margin:0}
+</style></head><body>
+<div class="tabs" role="tablist">
+  <button role="tab" aria-selected="true">ทั้งหมด 128</button><button role="tab">ร่าง 3</button><button role="tab">รออนุมัติ 5</button><button role="tab">ค้างชำระ 31</button><button role="tab">เกินกำหนด 4</button>
+</div>
+<div class="bar"><input aria-label="ค้นหา" placeholder="ค้นหาเลขเอกสาร ลูกค้า"><span style="font-size:13px;color:var(--text-secondary)">ตัวกรองขั้นสูง ▾</span></div>
+<table>
+<thead><tr><th style="width:32px"><input type="checkbox" aria-label="เลือกทั้งหมด"></th><th>เลขที่</th><th>วันที่</th><th>ลูกค้า</th><th class="amt">ยอดรวม</th><th class="amt">ค้างชำระ</th><th>สถานะ</th></tr></thead>
+<tbody>
+<tr><td><input type="checkbox" aria-label="เลือก"></td><td><a href="#">IV2611-0053</a></td><td>05/11/2569</td><td>บจก. สยามพลาสติก<span class="tag src">TMS</span></td><td class="amt">31,200.00</td><td class="amt">31,200.00</td><td><span class="tag ok">ลงบัญชีแล้ว</span></td></tr>
+<tr class="sel"><td><input type="checkbox" checked aria-label="เลือก"></td><td><a href="#">IV2611-0052</a></td><td>04/11/2569</td><td>[ลูกค้า A] จำกัด</td><td class="amt">10,700.00</td><td class="amt">10,700.00</td><td><span class="tag wait">รออนุมัติ</span></td></tr>
+<tr><td><input type="checkbox" aria-label="เลือก"></td><td><a href="#">IV2610-0048</a></td><td>15/10/2569</td><td>[ลูกค้า D] จำกัด</td><td class="amt">344,326.00</td><td class="amt">344,326.00</td><td><span class="tag err">เกินกำหนด 21 วัน</span></td></tr>
+<tr><td><input type="checkbox" aria-label="เลือก"></td><td><a href="#">IV2611-0054</a></td><td>05/11/2569</td><td>หจก. [ชื่อบริษัท]</td><td class="amt">4,280.00</td><td class="amt"></td><td><span class="tag info">ร่าง</span></td></tr>
+</tbody>
+</table>
+</body></html>

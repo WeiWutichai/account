@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>แยกประเภท</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="ledger" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">บัญชี / แยกประเภท</span><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">Export Excel</button></header>
+    <div style="padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 16px">
+      <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">บัญชีแยกประเภท</h1>
+      <div style="display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 16px 24px">
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">บัญชี<input value="1130100 ลูกหนี้การค้า" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ช่วงวันที่<input value="01/11/2569 – 30/11/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">คู่ค้า<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ทั้งหมด</option><option>[ลูกค้า A] จำกัด</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">มิติ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ทั้งหมด</option><option>โครงการ PRJ-07</option><option>แผนก: ขาย</option></select></label>
+      </div>
+      <div style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 980px; border-collapse: collapse; font-size: 14px; line-height: 18px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 32px; padding: 0 12px; font-weight: 400">วันที่</th><th style="padding: 0 12px; font-weight: 400">เอกสาร</th><th style="padding: 0 12px; font-weight: 400">สมุด</th><th style="padding: 0 12px; font-weight: 400">คำอธิบาย</th><th style="padding: 0 12px; font-weight: 400">คู่ค้า</th><th style="padding: 0 12px; font-weight: 400; text-align: right">เดบิต</th><th style="padding: 0 12px; font-weight: 400; text-align: right">เครดิต</th><th style="padding: 0 12px; font-weight: 400; text-align: right">คงเหลือ</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0; background: #f4f4f4"><td style="height: 32px; padding: 0 12px" colspan="7">ยอดยกมา 01/11/2569</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,027,816.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">01/11</td><td style="padding: 0 12px"><a href="ScreenInvoice.dc.html" style="text-decoration: none">IV2611-0001</a></td><td style="padding: 0 12px">SJ</td><td style="padding: 0 12px">ขายเชื่อ</td><td style="padding: 0 12px">[ลูกค้า A] จำกัด</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">10,700.00</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,038,516.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">03/11</td><td style="padding: 0 12px"><a href="ScreenInvoice.dc.html" style="text-decoration: none">IV2611-0051</a></td><td style="padding: 0 12px">SJ</td><td style="padding: 0 12px">ขายเชื่อ</td><td style="padding: 0 12px">[ลูกค้า C] จำกัด</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">4,280.00</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,042,796.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">05/11</td><td style="padding: 0 12px"><a href="ScreenDocList.dc.html" style="text-decoration: none">IV2611-0053</a></td><td style="padding: 0 12px">SJ</td><td style="padding: 0 12px">ค่าติดตั้ง on-site ×5 (TMS)</td><td style="padding: 0 12px">บจก. สยามพลาสติก</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">31,200.00</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,073,996.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">06/11</td><td style="padding: 0 12px"><a href="ScreenReceipt.dc.html" style="text-decoration: none">RV2611-0003</a></td><td style="padding: 0 12px">RJ</td><td style="padding: 0 12px">รับชำระ IV2611-0051</td><td style="padding: 0 12px">[ลูกค้า C] จำกัด</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">4,280.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,069,716.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">10/11</td><td style="padding: 0 12px"><a href="ScreenDocList.dc.html" style="text-decoration: none">IV2611-0056</a></td><td style="padding: 0 12px">SJ</td><td style="padding: 0 12px">ค่าติดตั้ง on-site ×8 (TMS)</td><td style="padding: 0 12px">บจก. สยามพลาสติก</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">281,200.00</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,350,916.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">14/11</td><td style="padding: 0 12px"><a href="ScreenInvoice.dc.html" style="text-decoration: none">IV2611-0059</a></td><td style="padding: 0 12px">SJ</td><td style="padding: 0 12px">ขายเชื่อ</td><td style="padding: 0 12px">[ลูกค้า E] จำกัด</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">96,300.00</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3,447,216.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">27/11</td><td style="padding: 0 12px"><a href="ScreenReceipt.dc.html" style="text-decoration: none">RV2611-0021</a></td><td style="padding: 0 12px">RJ</td><td style="padding: 0 12px">รับชำระ IV2610-0049 + IV2611-0053</td><td style="padding: 0 12px">บจก. สยามพลาสติก</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,560,200.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,887,016.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">28/11</td><td style="padding: 0 12px"><a href="ScreenReceipt.dc.html" style="text-decoration: none">RV2611-0022</a></td><td style="padding: 0 12px">RJ</td><td style="padding: 0 12px">รับชำระ IV2610-0047</td><td style="padding: 0 12px">[ลูกค้า A] จำกัด</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">10,700.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,876,316.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 12px">30/11</td><td style="padding: 0 12px"><a href="ScreenCheque.dc.html" style="text-decoration: none">RV2611-0025</a></td><td style="padding: 0 12px">RJ</td><td style="padding: 0 12px">รับเช็ค IV2611-0059</td><td style="padding: 0 12px">[ลูกค้า E] จำกัด</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">96,300.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,780,016.00</td></tr>
+          </tbody>
+          <tfoot><tr style="border-top: 1px solid #8d8d8d; font-weight: 600"><td colspan="5" style="height: 40px; padding: 0 12px">รวมงวด · ยอดยกไป</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">423,680.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,671,480.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,780,016.00</td></tr></tfoot>
+        </table>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #525252">คลิกเลขเอกสารเพื่อเปิดต้นทาง · ยอดคงเหลือตรงกับอายุลูกหนี้ ✓</p>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

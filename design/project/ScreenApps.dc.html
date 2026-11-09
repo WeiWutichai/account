@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>แอปที่เชื่อมต่อ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="apps" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ตั้งค่า / แอปที่เชื่อมต่อ</span><a href="ScreenMcp.dc.html" style="text-decoration: none">เอกสาร API สำหรับนักพัฒนา</a></header>
+    <div style="padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 24px">
+      <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">แอปที่เชื่อมต่อ</h1><span style="font-size: 13px; color: #525252">ระบบบัญชีเป็นศูนย์กลาง (hub) · แอปของ Innovera เชื่อมได้ในคลิกเดียวด้วย Innovera ID · แอปอื่นใช้ API key / webhook</span></div>
+      <section style="display: flex; flex-direction: column; gap: 12px">
+        <div style="font-size: 13px; color: #525252">แอป Innovera (เชื่อมด้วย Innovera ID)</div>
+        <div style="border: 1px solid #e0e0e0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0">
+          <div style="padding: 16px; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; gap: 8px">
+            <div style="display: flex; justify-content: space-between; align-items: center"><div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; background: #393939; color: #ffffff; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">TMS</span><div><div style="font-weight: 600">TMS — ระบบบริหารงานขนส่ง/ติดตั้งภาคสนาม</div><div style="font-size: 13px; color: #525252">เชื่อมต่อแล้ว 02/09/2569 · องค์กรเดียวกัน</div></div></div><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ทำงานปกติ</span></div>
+            <table style="border-collapse: collapse; font-size: 14px; width: 100%"><tbody>
+              <tr><td style="height: 28px; color: #525252">เหตุการณ์รับเข้า 24 ชม.</td><td style="text-align: right; font-variant-numeric: tabular-nums">38 รายการ · ล้มเหลว 0</td></tr>
+              <tr><td style="height: 28px; color: #525252">แจ้งกลับ (webhook) 24 ชม.</td><td style="text-align: right; font-variant-numeric: tabular-nums">12 · สำเร็จทั้งหมด</td></tr>
+              <tr><td style="height: 28px; color: #525252">คู่ค้าที่ซิงก์ (ตามเลขผู้เสียภาษี)</td><td style="text-align: right; font-variant-numeric: tabular-nums">214 ราย · ขัดแย้ง 2</td></tr>
+              <tr><td style="height: 28px; color: #525252">รอดำเนินการในคิว</td><td style="text-align: right; font-variant-numeric: tabular-nums">3 (ไม่พบคู่ค้า)</td></tr>
+            </tbody></table>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ตั้งค่าการแม็ป</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ดูบันทึกเหตุการณ์</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ส่งซ้ำที่ล้มเหลว</button></div>
+          </div>
+          <div style="padding: 16px; display: flex; flex-direction: column; gap: 10px; font-size: 14px">
+            <strong>การแม็ปจาก TMS → บัญชี</strong>
+            <table style="border-collapse: collapse; width: 100%; font-size: 14px"><thead><tr style="color: #525252; font-size: 13px"><th style="text-align: left; font-weight: 400; height: 28px">เหตุการณ์ TMS</th><th style="text-align: left; font-weight: 400">เอกสาร</th><th style="text-align: left; font-weight: 400">สูตร</th></tr></thead><tbody>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px">trip.completed (ลูกค้า)</td><td>IV ร่าง — รวมตามรอบวางบิล</td><td>Credit[Freight]</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px">subcontractor.bill</td><td>AP ร่าง · หัก 1%</td><td>Credit[AP-Sub]</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px">fuel.fillup</td><td>EXP · มิติ vehicle</td><td>Cash[Fuel]</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px">driver.advance</td><td>JV เงินทดรอง</td><td>Advance[Drv]</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px">toll / fine</td><td>EXP · มิติ trip</td><td>Cash[Toll]</td></tr>
+            </tbody></table>
+            <span style="font-size: 13px; color: #525252">ทุกเหตุการณ์มี external_source + external_ref กันซ้ำ · เอกสารเข้ามาเป็น "ร่าง" และต้องมีคนผ่านรายการ (เปลี่ยนเป็นอัตโนมัติได้ต่อเหตุการณ์)</span>
+            <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> แจ้งกลับ TMS เมื่อ: document.posted, payment.received, payment.paid, document.voided</label>
+          </div>
+        </div>
+        <div style="border: 1px solid #e0e0e0; padding: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px"><div style="display: flex; align-items: center; gap: 12px"><span style="width: 40px; height: 40px; border: 1px dashed #8d8d8d; display: flex; align-items: center; justify-content: center; color: #8d8d8d; font-size: 13px">+</span><div><div style="font-weight: 600">แอป Innovera อื่นในอนาคต (HR / Payroll, CRM, Fleet)</div><div style="font-size: 13px; color: #525252">จะปรากฏที่นี่เมื่อองค์กรเปิดใช้ · เชื่อมคลิกเดียว</div></div></div></div>
+      </section>
+      <section style="display: flex; flex-direction: column; gap: 12px">
+        <div style="display: flex; justify-content: space-between; align-items: center"><div style="font-size: 13px; color: #525252">แอปภายนอก / API key</div><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">+ สร้าง API key</button></div>
+        <div style="border: 1px solid #e0e0e0; overflow-x: auto">
+          <table style="width: 100%; min-width: 880px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+            <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">ชื่อ</th><th style="padding: 0 12px; font-weight: 400">ประเภท</th><th style="padding: 0 12px; font-weight: 400">ขอบเขต (scopes)</th><th style="padding: 0 12px; font-weight: 400">ใช้ล่าสุด</th><th style="padding: 0 12px; font-weight: 400">สถานะ</th><th style="padding: 0 12px; font-weight: 400"></th></tr></thead>
+            <tbody>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; font-weight: 500">ธนาคาร [B] — statement feed</td><td style="padding: 0 12px">Bank feed (Open API)</td><td style="padding: 0 12px; color: #525252">bank.statement:read</td><td style="padding: 0 12px; color: #525252">วันนี้ 06:00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ใช้งาน</span></td><td style="padding: 0 12px"><a href="ScreenMcp.dc.html" style="text-decoration: none">จัดการ</a></td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; font-weight: 500">ผู้ให้บริการ e-Tax Invoice</td><td style="padding: 0 12px">Service provider</td><td style="padding: 0 12px; color: #525252">etax.submit · etax.status:read</td><td style="padding: 0 12px; color: #525252">วันนี้ 10:30</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>3 ฉบับล้มเหลว</span></td><td style="padding: 0 12px"><a href="ScreenMcp.dc.html" style="text-decoration: none">จัดการ</a></td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; font-weight: 500">ร้านค้าออนไลน์ (คีย์ของลูกค้าแพลตฟอร์ม)</td><td style="padding: 0 12px">API key</td><td style="padding: 0 12px; color: #525252">documents:write · contacts:read</td><td style="padding: 0 12px; color: #525252">3 วันก่อน</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ใช้งาน</span></td><td style="padding: 0 12px"><a href="ScreenMcp.dc.html" style="text-decoration: none">จัดการ</a></td></tr>
+              <tr style="border-top: 1px solid #e0e0e0; color: #525252"><td style="height: 40px; padding: 0 12px; font-weight: 500; color: #161616">Webhook → ระบบ BI ของลูกค้า</td><td style="padding: 0 12px">Webhook ออก</td><td style="padding: 0 12px">document.posted · period.closed</td><td style="padding: 0 12px">—</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #e0e0e0; color: #161616; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ปิดอยู่</span></td><td style="padding: 0 12px"><a href="ScreenMcp.dc.html" style="text-decoration: none">จัดการ</a></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div style="display: flex; gap: 24px; flex-wrap: wrap">
+          <section style="flex: 1 1 360px; border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px"><strong>นำเข้า / ส่งออกไฟล์</strong><span>· นำเข้าผังบัญชี ยอดยกมา คู่ค้า สินค้า จาก Excel (มีแม่แบบ)</span><span>· นำเข้าเอกสารจาก Express / FlowAccount / PEAK (ตัวช่วยย้ายระบบ)</span><span>· ส่งออก: Excel, CSV, ไฟล์ยื่นภาษีออนไลน์, งบการเงินตามรูปแบบ DBD e-Filing (XBRL)</span><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d; align-self: flex-start">เปิดตัวช่วยย้ายระบบ</button></section>
+          <section style="flex: 1 1 360px; background: #f4f4f4; border: 1px solid #e0e0e0; padding: 16px; font-size: 13px; color: #525252; display: flex; flex-direction: column; gap: 6px"><strong style="color: #161616; font-size: 14px">สัญญา API (สรุป)</strong><span>POST /v1/documents (batch ≤ 500) · idempotent ด้วย external_source + external_ref</span><span>GET /v1/contacts?tax_id= · PUT /v1/contacts/:id (sync สองทาง)</span><span>GET /v1/ledger/balances?dimension=vehicle (ให้ TMS ดึงต้นทุนต่อรถ)</span><span>Webhooks ลงนาม HMAC · retry 3 ครั้ง · dead-letter แสดงในคิวหน้าแรก</span></section>
+        </div>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

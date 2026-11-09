@@ -1,0 +1,26 @@
+<!-- @dsCard group="ตัวเลข" height=200 subtitle="ชิดขวา · tabular-nums · ศูนย์ว่าง · ติดลบ 2 แบบ" -->
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:16px;background:var(--bg-page);color:var(--text-primary);font-family:var(--font-sans);font-size:14px}
+table{border-collapse:collapse;width:100%;max-width:560px}
+th{font-size:13px;font-weight:400;color:var(--text-secondary);text-align:left;padding:0 var(--space-04);height:32px;background:var(--bg-layer-1)}
+td{padding:0 var(--space-04);height:32px;border-top:1px solid var(--border-subtle)}
+.amt,th.amt{text-align:right;font-variant-numeric:tabular-nums}
+.neg{color:var(--amount-negative)}
+tfoot td{font-size:16px;font-weight:600;border-top:1px solid var(--border-strong);height:40px}
+.cap{margin:10px 0 0;font-size:13px;color:var(--text-secondary)}
+</style></head><body>
+<table>
+<thead><tr><th>บัญชี</th><th class="amt">เดบิต</th><th class="amt">เครดิต</th><th class="amt">งบ (วงเล็บ)</th></tr></thead>
+<tbody>
+<tr><td>1130100 ลูกหนี้การค้า</td><td class="amt">1,284,350.00</td><td class="amt"></td><td class="amt">1,284,350.00</td></tr>
+<tr><td>4100100 รายได้บริการ</td><td class="amt"></td><td class="amt">1,200,327.10</td><td class="amt">(1,200,327.10)</td></tr>
+<tr><td>2150100 ภาษีขาย</td><td class="amt"></td><td class="amt">84,022.90</td><td class="amt">(84,022.90)</td></tr>
+<tr><td>ส่วนลดจ่าย</td><td class="amt neg">−1,200.00</td><td class="amt"></td><td class="amt">(1,200.00)</td></tr>
+</tbody>
+<tfoot><tr><td>รวม</td><td class="amt">1,283,150.00</td><td class="amt">1,284,350.00</td><td class="amt"></td></tr></tfoot>
+</table>
+<p class="cap">ตัวเลขทุกคอลัมน์ใช้ IBM Plex Sans Thai + tabular-nums หลักตรงกันโดยไม่ต้องใช้ mono</p>
+</body></html>

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>แก้ไขเอกสารที่ผ่านรายการแล้ว</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="purchase" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252"><a href="ScreenPurchaseList.dc.html" style="text-decoration: none">บิลซื้อ</a> / <a href="ScreenPurchaseBill.dc.html" style="text-decoration: none">AP2611-0079</a> / แก้ไข</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ผ่านรายการแล้ว</span></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">แก้ไข AP2611-0079</h1><span style="font-size: 13px; color: #525252">แก้ได้เฉพาะข้อมูลอ้างอิงและการจัดประเภท — ยอดเงินและภาษีของเอกสารที่ผ่านรายการแล้วแก้ไม่ได้ เพื่อให้เลขที่และรายงานภาษีคงความต่อเนื่อง</span></div>
+
+      <section style="border: 1px solid #e0e0e0; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 24px; font-size: 14px">
+        <div><span style="font-size: 13px; color: #525252">เอกสาร</span><div style="font-weight: 600">AP2611-0079 บิลซื้อ</div></div>
+        <div><span style="font-size: 13px; color: #525252">ผู้ขาย</span><div>บจก. [ผู้ขาย ข.] · V0210</div></div>
+        <div><span style="font-size: 13px; color: #525252">ยอดรวม</span><div style="font-variant-numeric: tabular-nums">160,500.00 (ภาษีซื้อ 10,500.00)</div></div>
+        <div><span style="font-size: 13px; color: #525252">สถานะ / งวด</span><div>ผ่านรายการ 05/11/2569 · จ่ายแล้ว 28/11 (PV2611-0032)</div></div>
+      </section>
+      <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; align-items: start">
+        <section style="display: flex; flex-direction: column; gap: 16px">
+          <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+            <div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between"><strong style="font-weight: 600">สิ่งที่แก้ไขได้ในเอกสารที่ผ่านรายการแล้ว</strong><span style="font-size: 13px; color: #525252">ช่องที่กระทบยอด/ภาษี ต้องยกเลิกแล้วออกใหม่</span></div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px">
+              <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">ช่อง</th><th style="height: 40px; padding: 0 12px; font-weight: 400">ค่าปัจจุบัน</th><th style="height: 40px; padding: 0 12px; font-weight: 400">ค่าใหม่</th><th style="height: 40px; padding: 0 12px; font-weight: 400">ผล</th></tr></thead>
+              <tbody>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">เลขประจำตัวผู้เสียภาษีของผู้ขาย</td><td style="padding: 0 12px" style="padding: 0 12px; font-variant-numeric: tabular-nums; color: #a2191f">010555123456 (12 หลัก)</td><td style="padding: 0 12px"><input value="0105551234567" style="width: 180px; height: 32px; padding: 0 12px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums"></td><td style="padding: 0 12px" style="padding: 0 12px; color: #0e6027">แก้ได้ · อัปเดตรายงานภาษีซื้อ</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">เลขที่ใบกำกับของผู้ขาย</td><td style="padding: 0 12px">INV-5521</td><td style="padding: 0 12px"><input value="INV-5521" style="width: 180px; height: 32px; padding: 0 12px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"></td><td style="padding: 0 12px" style="padding: 0 12px; color: #0e6027">แก้ได้</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">วันที่ในใบกำกับของผู้ขาย</td><td style="padding: 0 12px" style="padding: 0 12px; font-variant-numeric: tabular-nums">05/11/2569</td><td style="padding: 0 12px"><input value="05/11/2569" style="width: 180px; height: 32px; padding: 0 12px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums"></td><td style="padding: 0 12px" style="padding: 0 12px; color: #684e00">แก้ได้ภายในงวดเดียวกัน</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">มิติ / โครงการ / หมายเหตุ / ไฟล์แนบ</td><td style="padding: 0 12px">PRJ-07</td><td style="padding: 0 12px"><select style="height: 32px; padding: 0 12px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"><option>PRJ-07 [ลูกค้า A]</option><option>PRJ-09 [ลูกค้า B]</option></select></td><td style="padding: 0 12px" style="padding: 0 12px; color: #0e6027">แก้ได้ · ไม่กระทบ GL</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">บัญชีค่าใช้จ่ายของบรรทัด</td><td style="padding: 0 12px">5301200</td><td style="padding: 0 12px"><select style="height: 32px; padding: 0 12px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"><option>5301200 ค่าจ้างภายนอก</option><option>5306100 ค่าซอฟต์แวร์</option></select></td><td style="padding: 0 12px" style="padding: 0 12px; color: #684e00">แก้ได้ · สร้าง JV โอนย้ายบัญชี</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0" style="border-top: 1px solid #e0e0e0; color: #6f6f6f"><td style="height: 40px; padding: 0 12px">จำนวนเงิน / VAT / อัตราหัก ณ ที่จ่าย / ผู้ขาย</td><td style="padding: 0 12px">160,500.00</td><td style="padding: 0 12px">—</td><td style="padding: 0 12px" style="padding: 0 12px"><a href="ScreenDocVoid.dc.html" style="text-decoration: none; color: #da1e28">แก้ไม่ได้ · ยกเลิกและออกใหม่</a> หรือ <a href="ScreenPurchaseCreditNote.dc.html" style="text-decoration: none">ใบลดหนี้/เพิ่มหนี้</a></td></tr>
+              </tbody>
+            </table>
+          </section>
+          <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px">
+            <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เหตุผลการแก้ไข (บังคับ)<input value="ผู้ขายแจ้งเลขผู้เสียภาษีผิด — ยืนยันจากหนังสือรับรอง ภ.พ.20" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616"></label>
+          </section>
+          <section style="background: #f4f4f4; border: 1px solid #e0e0e0"><div style="display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">รายการบัญชีที่จะเกิด</strong><span style="font-size: 13px; color: #525252">เฉพาะเมื่อย้ายบัญชีค่าใช้จ่าย · ไม่มีถ้าแก้แค่ข้อมูลอ้างอิง</span></div><table style="width: 100%; border-collapse: collapse; font-size: 14px"><tbody><tr><td style="height: 32px; padding: 0 16px">Dr 5306100 ค่าซอฟต์แวร์</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">30,000.00</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums"></td></tr><tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 5301200 ค่าจ้างภายนอก</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums"></td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">30,000.00</td></tr></tbody></table></section>
+        </section>
+        <aside style="display: flex; flex-direction: column; gap: 16px">
+          <section style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 10px">
+            <strong>ผลกระทบของการแก้ไขครั้งนี้</strong>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>รายงานภาษีซื้อ พ.ย.</span><span style="color: #0e6027">แก้เลขผู้เสียภาษีในบรรทัด INV-5521 · ยอดไม่เปลี่ยน</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>ภ.พ.30 พ.ย. (ร่าง)</span><span style="color: #525252">ไม่เปลี่ยน · 116,069.36</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>งวด 11/2569</span><span style="color: #0e6027">เปิด · แก้ได้</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>สิทธิ์ที่ต้องใช้</span><span style="color: #525252">ผู้จัดการบัญชี</span></div>
+          </section>
+          <section style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px"><strong>ประวัติการแก้ไขเอกสารนี้</strong><div style="display: flex; justify-content: space-between; gap: 8px; color: #525252"><span>05/11 09:12 ผ่านรายการ</span><span>[พนักงานบัญชี 1]</span></div><div style="display: flex; justify-content: space-between; gap: 8px; color: #525252"><span>05/11 09:10 สร้างจาก PO2611-0014</span><span>[พนักงานบัญชี 1]</span></div><span style="font-size: 13px; color: #525252">ทุกการแก้ไขเก็บค่าเดิม → ค่าใหม่ ใน <a href="ScreenAudit.dc.html" style="text-decoration: none">Audit log</a></span></section>
+          <section style="background: #f4f4f4; border: 1px solid #e0e0e0; padding: 12px 16px; font-size: 13px; color: #525252">ถ้างวดปิดอ่อนแล้ว ผู้จัดการบัญชียังแก้ข้อมูลอ้างอิงได้ · ถ้าปิดแข็ง แก้ไม่ได้ทุกช่อง ต้องเปิดงวดคืนพร้อมเหตุผล (<a href="ScreenPeriodClose.dc.html" style="text-decoration: none">ปิดงวด</a>)</section>
+        </aside>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0; flex-wrap: wrap"><span style="font-size: 13px; color: #525252">เปลี่ยน 1 ช่อง · สร้าง 0 รายการบัญชี</span><div style="display: flex; gap: 8px; flex-wrap: wrap"><a href="ScreenPurchaseBill.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ยกเลิก</a><a href="ScreenDocVoid.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #da1e28; border: 1px solid #da1e28">ยกเลิกเอกสารแทน</a><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">บันทึกการแก้ไข</button></div></div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

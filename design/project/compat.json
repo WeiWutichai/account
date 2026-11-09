@@ -1,0 +1,503 @@
+{
+  "v": 1,
+  "mode": "omelette",
+  "root": "project/",
+  "title": "หน้าเปล่าเริ่มออกแบบ",
+  "entry": "Main.dc.html",
+  "pages": [
+    {
+      "path": "Main.dc.html",
+      "title": "หน้าแรก — คิวงาน",
+      "kind": "page",
+      "name": "S1 · หน้าแรก คิวงาน"
+    },
+    {
+      "path": "ScreenDocList.dc.html",
+      "title": "รายการใบกำกับภาษี",
+      "kind": "page",
+      "name": "S2 · รายการใบกำกับภาษี"
+    },
+    {
+      "path": "ScreenInvoice.dc.html",
+      "title": "ฟอร์มใบกำกับภาษี",
+      "kind": "page",
+      "name": "S3 · ฟอร์มใบกำกับภาษี"
+    },
+    {
+      "path": "ScreenDocVoid.dc.html",
+      "title": "ยกเลิก / กลับรายการเอกสาร",
+      "kind": "page",
+      "name": "S3b · ยกเลิก / กลับรายการเอกสาร"
+    },
+    {
+      "path": "ScreenQuote.dc.html",
+      "title": "ใบเสนอราคา / ใบสั่งขาย",
+      "kind": "page",
+      "name": "S4 · ใบเสนอราคา / ใบสั่งขาย"
+    },
+    {
+      "path": "ScreenCreditNote.dc.html",
+      "title": "ใบลดหนี้ / เพิ่มหนี้",
+      "kind": "page",
+      "name": "S5 · ใบลดหนี้ / เพิ่มหนี้"
+    },
+    {
+      "path": "ScreenDeposit.dc.html",
+      "title": "เงินมัดจำ",
+      "kind": "page",
+      "name": "S7 · เงินมัดจำ รับ/จ่าย + ตัดมัดจำ"
+    },
+    {
+      "path": "ScreenPurchaseOrder.dc.html",
+      "title": "ใบขอซื้อ / ใบสั่งซื้อ",
+      "kind": "page",
+      "name": "P0 · ใบขอซื้อ / ใบสั่งซื้อ"
+    },
+    {
+      "path": "ScreenPurchaseList.dc.html",
+      "title": "รายการบิลซื้อ",
+      "kind": "page",
+      "name": "P1 · รายการบิลซื้อ"
+    },
+    {
+      "path": "ScreenPurchaseBill.dc.html",
+      "title": "บิลซื้อ",
+      "kind": "page",
+      "name": "P2 · บิลซื้อ (จาก TMS)"
+    },
+    {
+      "path": "ScreenDocEdit.dc.html",
+      "title": "แก้ไขเอกสารที่ผ่านรายการแล้ว",
+      "kind": "page",
+      "name": "P2b · แก้ไขเอกสารที่ผ่านรายการแล้ว"
+    },
+    {
+      "path": "ScreenPurchaseCreditNote.dc.html",
+      "title": "ใบลดหนี้ / เพิ่มหนี้ (ซื้อ)",
+      "kind": "page",
+      "name": "P4 · ใบลดหนี้ / เพิ่มหนี้ ฝั่งซื้อ"
+    },
+    {
+      "path": "ScreenExpense.dc.html",
+      "title": "ค่าใช้จ่าย",
+      "kind": "page",
+      "name": "P3 · ค่าใช้จ่าย + หัก ณ ที่จ่าย"
+    },
+    {
+      "path": "ScreenBilling.dc.html",
+      "title": "ใบวางบิล / รับวางบิล",
+      "kind": "page",
+      "name": "F1 · ใบวางบิล / รับวางบิล"
+    },
+    {
+      "path": "ScreenReceipt.dc.html",
+      "title": "รับชำระ",
+      "kind": "page",
+      "name": "F2 · รับชำระ / ใบเสร็จ"
+    },
+    {
+      "path": "ScreenPayment.dc.html",
+      "title": "จ่ายชำระ",
+      "kind": "page",
+      "name": "F3 · จ่ายชำระเป็นชุด"
+    },
+    {
+      "path": "ScreenCheque.dc.html",
+      "title": "ทะเบียนเช็ค",
+      "kind": "page",
+      "name": "F4 · ทะเบียนเช็ค"
+    },
+    {
+      "path": "ScreenPettyCash.dc.html",
+      "title": "เงินสดย่อย",
+      "kind": "page",
+      "name": "F5 · เงินสดย่อย"
+    },
+    {
+      "path": "ScreenBankRecon.dc.html",
+      "title": "กระทบยอดธนาคาร",
+      "kind": "page",
+      "name": "F6 · กระทบยอดธนาคาร"
+    },
+    {
+      "path": "ScreenAging.dc.html",
+      "title": "อายุหนี้",
+      "kind": "page",
+      "name": "F7 · อายุหนี้ AR/AP"
+    },
+    {
+      "path": "ScreenTax.dc.html",
+      "title": "ภาษี",
+      "kind": "page",
+      "name": "T1 · ภาษี ภ.พ.30 / ภ.ง.ด."
+    },
+    {
+      "path": "ScreenReconReport.dc.html",
+      "title": "รายงานตรวจความถูกต้อง",
+      "kind": "page",
+      "name": "R3 · ตรวจความถูกต้อง เอกสาร/ภาษี/บัญชีคุม"
+    },
+    {
+      "path": "ScreenReports.dc.html",
+      "title": "รายงาน",
+      "kind": "page",
+      "name": "R1 · งบการเงิน + drill-down"
+    },
+    {
+      "path": "ScreenReportBuilder.dc.html",
+      "title": "ตัวสร้างรูปแบบงบ",
+      "kind": "page",
+      "name": "R2 · ตัวสร้างรูปแบบงบ 18 คอลัมน์"
+    },
+    {
+      "path": "ScreenPeriodClose.dc.html",
+      "title": "ปิดงวดบัญชี",
+      "kind": "page",
+      "name": "B5 · ปิดงวด / ปิดปี"
+    },
+    {
+      "path": "ScreenSettings.dc.html",
+      "title": "ตั้งค่าบริษัท",
+      "kind": "page",
+      "name": "G1 · ตั้งค่าบริษัท"
+    },
+    {
+      "path": "ScreenDocSettings.dc.html",
+      "title": "ตั้งค่าเอกสาร",
+      "kind": "page",
+      "name": "G5 · ตั้งค่าเอกสาร เลขที่/ประเภท/PDPA"
+    },
+    {
+      "path": "ScreenDocSeriesEdit.dc.html",
+      "title": "แก้ไขชุดเลขที่เอกสาร",
+      "kind": "page",
+      "name": "G5b · แก้ไขชุดเลขที่เอกสาร"
+    },
+    {
+      "path": "ScreenUsers.dc.html",
+      "title": "ผู้ใช้และสิทธิ์",
+      "kind": "page",
+      "name": "G2 · ผู้ใช้และสิทธิ์"
+    },
+    {
+      "path": "ScreenUserEdit.dc.html",
+      "title": "แก้ไขผู้ใช้และสิทธิ์",
+      "kind": "page",
+      "name": "G2b · แก้ไขผู้ใช้และสิทธิ์"
+    },
+    {
+      "path": "ScreenApps.dc.html",
+      "title": "แอปที่เชื่อมต่อ",
+      "kind": "page",
+      "name": "G3 · แอปที่เชื่อมต่อ (hub / TMS)"
+    },
+    {
+      "path": "ScreenMcp.dc.html",
+      "title": "MCP / OAuth client",
+      "kind": "page",
+      "name": "G6 · การเชื่อมต่อ MCP / OAuth client"
+    },
+    {
+      "path": "ScreenRevoke.dc.html",
+      "title": "เพิกถอนสิทธิ์การเข้าถึง",
+      "kind": "page",
+      "name": "G6b · เพิกถอนสิทธิ์ (MCP / ผู้ใช้ / ผู้สอบบัญชี)"
+    },
+    {
+      "path": "ScreenAudit.dc.html",
+      "title": "ประวัติการใช้งาน",
+      "kind": "page",
+      "name": "G4 · Audit log"
+    },
+    {
+      "path": "ScreenLogin.dc.html",
+      "title": "เข้าสู่ระบบ",
+      "kind": "page",
+      "name": "A1 · เข้าสู่ระบบ Innovera ID"
+    },
+    {
+      "path": "ScreenSignup.dc.html",
+      "title": "สมัครใช้งาน — Innovera ID",
+      "kind": "page",
+      "name": "A1b · สมัครใช้งาน Innovera ID"
+    },
+    {
+      "path": "ScreenPasswordReset.dc.html",
+      "title": "ลืมรหัสผ่าน / ตั้งรหัสผ่านใหม่",
+      "kind": "page",
+      "name": "A1c · ลืมรหัสผ่าน / ตั้งใหม่ (3 ขั้น)"
+    },
+    {
+      "path": "ScreenTwoFactor.dc.html",
+      "title": "ยืนยันตัวตน 2 ชั้น (2FA)",
+      "kind": "page",
+      "name": "A1d · ยืนยัน 2FA + ตั้งค่าครั้งแรก"
+    },
+    {
+      "path": "ScreenInviteAccept.dc.html",
+      "title": "รับคำเชิญเข้าบริษัท",
+      "kind": "page",
+      "name": "A1e · รับคำเชิญเข้าบริษัท"
+    },
+    {
+      "path": "ScreenProfile.dc.html",
+      "title": "บัญชีของฉัน — Innovera ID",
+      "kind": "page",
+      "name": "A6 · บัญชีของฉัน (โปรไฟล์ / ความปลอดภัย / อุปกรณ์)"
+    },
+    {
+      "path": "ScreenOrgMembers.dc.html",
+      "title": "องค์กรและสมาชิก — Innovera ID",
+      "kind": "page",
+      "name": "A7 · องค์กรและสมาชิก (ที่นั่ง / บทบาทองค์กร)"
+    },
+    {
+      "path": "ScreenCompanyPicker.dc.html",
+      "title": "เลือกบริษัท",
+      "kind": "page",
+      "name": "A2 · เลือกบริษัท (multi-company)"
+    },
+    {
+      "path": "ScreenCompanyCreate.dc.html",
+      "title": "สร้างบริษัทใหม่",
+      "kind": "page",
+      "name": "A3 · สร้างบริษัท 5 ขั้น"
+    },
+    {
+      "path": "ScreenOpeningBalance.dc.html",
+      "title": "ยอดยกมา",
+      "kind": "page",
+      "name": "A4 · ยอดยกมา"
+    },
+    {
+      "path": "ScreenPlan.dc.html",
+      "title": "แผนและการเรียกเก็บเงิน",
+      "kind": "page",
+      "name": "A5 · แผนและบิล (SaaS)"
+    },
+    {
+      "path": "ScreenSendDoc.dc.html",
+      "title": "หน้าเอกสารสำหรับลูกค้า",
+      "kind": "page",
+      "name": "S6 · หน้าเอกสารลูกค้า + ชำระเงิน"
+    },
+    {
+      "path": "ScreenCOA.dc.html",
+      "title": "ผังบัญชี",
+      "kind": "page",
+      "name": "B1 · ผังบัญชี"
+    },
+    {
+      "path": "ScreenJournal.dc.html",
+      "title": "บันทึกรายวัน",
+      "kind": "page",
+      "name": "B2 · บันทึกรายวัน"
+    },
+    {
+      "path": "ScreenFormula.dc.html",
+      "title": "สูตรลงบัญชี",
+      "kind": "page",
+      "name": "B3 · สูตรลงบัญชี"
+    },
+    {
+      "path": "ScreenLedger.dc.html",
+      "title": "แยกประเภท",
+      "kind": "page",
+      "name": "B4 · แยกประเภท"
+    },
+    {
+      "path": "ScreenAssets.dc.html",
+      "title": "ทะเบียนทรัพย์สิน",
+      "kind": "page",
+      "name": "B6 · ทะเบียนทรัพย์สิน + ค่าเสื่อม"
+    },
+    {
+      "path": "ScreenContacts.dc.html",
+      "title": "คู่ค้า",
+      "kind": "page",
+      "name": "C1 · คู่ค้า"
+    },
+    {
+      "path": "ScreenProducts.dc.html",
+      "title": "สินค้าและบริการ",
+      "kind": "page",
+      "name": "C2 · สินค้าและบริการ"
+    },
+    {
+      "path": "PrintInvoice.dc.html",
+      "title": "แบบพิมพ์ ใบแจ้งหนี้",
+      "kind": "page",
+      "name": "D1 · พิมพ์ ใบแจ้งหนี้ (ไม่ใช่ใบกำกับภาษี)"
+    },
+    {
+      "path": "PrintReceiptTax.dc.html",
+      "title": "แบบพิมพ์ ใบเสร็จรับเงิน/ใบกำกับภาษี",
+      "kind": "page",
+      "name": "D2 · พิมพ์ ใบเสร็จรับเงิน/ใบกำกับภาษี (ม.86/4)"
+    },
+    {
+      "path": "PrintCreditNote.dc.html",
+      "title": "แบบพิมพ์ ใบลดหนี้",
+      "kind": "page",
+      "name": "D3 · พิมพ์ ใบลดหนี้ (ม.86/10)"
+    },
+    {
+      "path": "PrintWht50.dc.html",
+      "title": "แบบพิมพ์ หนังสือรับรอง 50 ทวิ",
+      "kind": "page",
+      "name": "D4 · พิมพ์ หนังสือรับรอง 50 ทวิ"
+    },
+    {
+      "path": "PrintDebitNote.dc.html",
+      "title": "แบบพิมพ์ ใบเพิ่มหนี้",
+      "kind": "page",
+      "name": "D5 · พิมพ์ ใบเพิ่มหนี้ (ม.86/9)"
+    },
+    {
+      "path": "PrintBilling.dc.html",
+      "title": "แบบพิมพ์ ใบวางบิล",
+      "kind": "page",
+      "name": "D6 · พิมพ์ ใบวางบิล"
+    },
+    {
+      "path": "PrintPaymentVoucher.dc.html",
+      "title": "แบบพิมพ์ ใบสำคัญจ่าย",
+      "kind": "page",
+      "name": "D7 · พิมพ์ ใบสำคัญจ่าย"
+    },
+    {
+      "path": "PrintQuote.dc.html",
+      "title": "แบบพิมพ์ ใบเสนอราคา",
+      "kind": "page",
+      "name": "D8 · พิมพ์ ใบเสนอราคา"
+    },
+    {
+      "path": "PrintPurchaseOrder.dc.html",
+      "title": "แบบพิมพ์ ใบสั่งซื้อ",
+      "kind": "page",
+      "name": "D9 · พิมพ์ ใบสั่งซื้อ"
+    },
+    {
+      "path": "PrintReceiptNoVat.dc.html",
+      "title": "แบบพิมพ์ ใบเสร็จรับเงิน (ไม่มีภาษีมูลค่าเพิ่ม)",
+      "kind": "page",
+      "name": "D10 · พิมพ์ ใบเสร็จรับเงิน (ไม่มี VAT)"
+    },
+    {
+      "path": "PrintReceiptVoucher.dc.html",
+      "title": "แบบพิมพ์ ใบสำคัญรับ",
+      "kind": "page",
+      "name": "D11 · พิมพ์ ใบสำคัญรับ"
+    },
+    {
+      "path": "PrintVatSales.dc.html",
+      "title": "แบบพิมพ์ รายงานภาษีขาย",
+      "kind": "page",
+      "name": "D12 · พิมพ์ รายงานภาษีขาย (ยื่นสรรพากร)"
+    },
+    {
+      "path": "PrintVatPurchase.dc.html",
+      "title": "แบบพิมพ์ รายงานภาษีซื้อ",
+      "kind": "page",
+      "name": "D13 · พิมพ์ รายงานภาษีซื้อ (ยื่นสรรพากร)"
+    },
+    {
+      "path": "PrintPnd3Attach.dc.html",
+      "title": "แบบพิมพ์ ใบแนบ ภ.ง.ด.3",
+      "kind": "page",
+      "name": "D14 · พิมพ์ ใบแนบ ภ.ง.ด.3"
+    },
+    {
+      "path": "PrintPnd53Attach.dc.html",
+      "title": "แบบพิมพ์ ใบแนบ ภ.ง.ด.53",
+      "kind": "page",
+      "name": "D15 · พิมพ์ ใบแนบ ภ.ง.ด.53"
+    },
+    {
+      "path": "ConsoleOverview.dc.html",
+      "title": "Innovera Console — ภาพรวม",
+      "kind": "page",
+      "name": "X1 · Console ภาพรวมแพลตฟอร์ม"
+    },
+    {
+      "path": "ConsoleTenants.dc.html",
+      "title": "Innovera Console — องค์กร",
+      "kind": "page",
+      "name": "X2 · Console องค์กร (tenants)"
+    },
+    {
+      "path": "ConsoleBilling.dc.html",
+      "title": "Innovera Console — Subscription & billing",
+      "kind": "page",
+      "name": "X3 · Console Subscription & billing (Phase 2)"
+    },
+    {
+      "path": "ConsoleSupport.dc.html",
+      "title": "Innovera Console — Support",
+      "kind": "page",
+      "name": "X4 · Console Support / impersonate"
+    },
+    {
+      "path": "ConsoleFlags.dc.html",
+      "title": "Innovera Console — แอปและ feature flags",
+      "kind": "page",
+      "name": "X5 · Console แอปและ feature flags"
+    },
+    {
+      "path": "ConsoleReference.dc.html",
+      "title": "Innovera Console — ข้อมูลอ้างอิงกลาง",
+      "kind": "page",
+      "name": "X6 · Console ข้อมูลอ้างอิงกลาง"
+    },
+    {
+      "path": "ConsoleOps.dc.html",
+      "title": "Innovera Console — Ops",
+      "kind": "page",
+      "name": "X7 · Console Ops / งานค้าง"
+    },
+    {
+      "path": "ConsoleTeam.dc.html",
+      "title": "Innovera Console — ทีมและ Audit",
+      "kind": "page",
+      "name": "X8 · Console ทีม Innovera และ Audit"
+    },
+    {
+      "path": "ConsoleNav.dc.html",
+      "title": "Console nav",
+      "kind": "page",
+      "name": "Component · เมนู Console"
+    },
+    {
+      "path": "Sidebar.dc.html",
+      "title": "Side nav",
+      "kind": "page",
+      "name": "Component · เมนูด้านข้าง"
+    },
+    {
+      "path": "Blank.dc.html",
+      "title": "Blank",
+      "kind": "page"
+    }
+  ],
+  "migratorVersion": "artifact-migrator (claude-design-backend ed667f7ac9c1)",
+  "createdAt": "2026-11-09T06:07:43.085Z",
+  "source": {
+    "v": 1,
+    "app": "claude-design",
+    "url": "https://claude.ai/design/p/537f6dbf-629a-4def-bc44-d095b142377e",
+    "projectId": "537f6dbf-629a-4def-bc44-d095b142377e",
+    "exportedAt": "2026-11-09T06:07:43.085Z"
+  },
+  "report": {
+    "itemsVersion": 2,
+    "pages": {
+      "total": 1,
+      "ok": 1,
+      "partial": 0,
+      "notMigrated": 0
+    },
+    "items": [],
+    "truncated": 0,
+    "truncatedLeftOut": 0
+  }
+}

@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>Side nav</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.sn a{color:#161616;text-decoration:none}
+.sn .it:hover{background:#e8e8e8;color:#161616}
+.sn .gh:hover{background:#e8e8e8}
+.sn a:focus-visible,.sn button:focus-visible,.sn input:focus-visible{outline:2px solid #0f62fe;outline-offset:-2px}
+</style>
+</helmet>
+<nav class="sn" aria-label="เมนูหลัก" style="box-sizing: border-box; width: 100%; height: 100%; min-height: 1000px; background: #f4f4f4; border-right: 1px solid #e0e0e0; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 14px; display: flex; flex-direction: column">
+  <div style="height: 56px; display: flex; align-items: center; gap: 10px; padding: 0 16px; background: #ffffff; border-bottom: 1px solid #e0e0e0">
+    <span aria-hidden="true" style="width: 28px; height: 28px; border-radius: 6px; background: #0f62fe; color: #ffffff; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 13px">AS</span>
+    <span style="font-weight: 600; font-size: 15px">AccountSystem</span>
+  </div>
+  <a href="ScreenCompanyPicker.dc.html" aria-label="สลับบริษัท" style="display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 12px 12px 4px; padding: 8px 12px; border: 1px solid #e0e0e0; border-radius: 6px; background: #ffffff">
+    <span style="line-height: 1.35; min-width: 0"><span style="display: block; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{company}}</span><span style="font-size: 12px; color: #525252">{{branch}} · งวด 11/2569 เปิด</span></span>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#525252" stroke-width="1.5" aria-hidden="true"><path d="M5 6l3-3 3 3M5 10l3 3 3-3"/></svg>
+  </a>
+  <label style="display: flex; align-items: center; gap: 8px; margin: 8px 12px 4px; height: 36px; padding: 0 10px; border: 1px solid #c6c6c6; border-radius: 6px; background: #ffffff">
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="#525252" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="5"/><path d="M11 11l3.5 3.5"/></svg>
+    <span style="position: absolute; width: 1px; height: 1px; overflow: hidden">ค้นหาเมนูหรือเลขที่เอกสาร</span>
+    <input placeholder="ค้นหาเมนู / เลขที่เอกสาร" style="flex: 1; min-width: 0; border: 0; background: transparent; font-family: inherit; font-size: 13px; color: #161616; outline: none">
+    <kbd style="font-family: inherit; font-size: 11px; color: #525252; border: 1px solid #c6c6c6; border-radius: 4px; padding: 0 4px">⌘K</kbd>
+  </label>
+
+  <div style="display: flex; flex-direction: column; padding: 4px 8px 12px; overflow-y: auto">
+    <sc-for list="{{groups}}" as="g" hint-placeholder-count="9">
+      <!-- เมนูหลัก: ไอคอน + ชื่อกลุ่ม + ลูกศรพับ -->
+      <sc-if value="{{g.isTop}}" hint-placeholder-val="{{false}}">
+        <sc-for list="{{g.items}}" as="item" hint-placeholder-count="1">
+          <sc-if value="{{item.on}}" hint-placeholder-val="{{true}}">
+            <a href="{{item.href}}" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 36px; margin-top: 4px; padding: 0 10px; border-radius: 6px; background: #e5effe; color: #0043ce; font-weight: 600"><span aria-hidden="true" style="display: inline-flex; width: 20px; justify-content: center"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l6-5 6 5v6H10v-4H6v4H2z"/></svg></span><span style="flex: 1">{{item.label}}</span><sc-if value="{{item.badge}}" hint-placeholder-val="{{true}}"><span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: #0f62fe; color: #ffffff; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums">{{item.badge}}</span></sc-if></a>
+          </sc-if>
+          <sc-if value="{{item.off}}" hint-placeholder-val="{{false}}">
+            <a class="it" href="{{item.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 36px; margin-top: 4px; padding: 0 10px; border-radius: 6px; font-weight: 600"><span aria-hidden="true" style="display: inline-flex; width: 20px; justify-content: center; color: #525252"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 8l6-5 6 5v6H10v-4H6v4H2z"/></svg></span><span style="flex: 1">{{item.label}}</span><sc-if value="{{item.badge}}" hint-placeholder-val="{{true}}"><span title="{{item.hint}}" style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: {{item.badgeBg}}; color: {{item.badgeFg}}; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums">{{item.badge}}</span></sc-if></a>
+          </sc-if>
+        </sc-for>
+      </sc-if>
+
+      <sc-if value="{{g.titled}}" hint-placeholder-val="{{true}}">
+        <button class="gh" aria-expanded="{{g.expanded}}" onClick="{{g.toggle}}" style="display: flex; align-items: center; gap: 10px; width: 100%; min-height: 36px; margin-top: 6px; padding: 0 10px; border: 0; border-radius: 6px; background: {{g.bg}}; color: #161616; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer; text-align: left">
+          <span aria-hidden="true" style="display: inline-flex; width: 20px; justify-content: center; color: {{g.iconColor}}"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="{{g.icon}}"/></svg></span>
+          <span style="flex: 1">{{g.title}}</span>
+          <sc-if value="{{g.sumBadge}}" hint-placeholder-val="{{false}}"><span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: {{g.sumBg}}; color: {{g.sumFg}}; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums">{{g.sumBadge}}</span></sc-if>
+          <span aria-hidden="true" style="display: inline-flex; color: #6f6f6f; transform: {{g.chev}}; transition: transform .15s"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M4 6l4 4 4-4"/></svg></span>
+        </button>
+        <!-- เมนูย่อย: เยื้องเข้า มีเส้นนำแนวตั้ง -->
+        <sc-if value="{{g.expanded}}" hint-placeholder-val="{{true}}">
+          <div style="position: relative; margin: 2px 0 2px 19px; padding-left: 11px; border-left: 1px solid #c6c6c6; display: flex; flex-direction: column; gap: 1px">
+            <sc-for list="{{g.items}}" as="item" hint-placeholder-count="4">
+              <sc-if value="{{item.on}}" hint-placeholder-val="{{false}}">
+                <a href="{{item.href}}" aria-current="page" style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 0 10px; border-radius: 6px; background: #e5effe; color: #0043ce; font-weight: 600; font-size: 13.5px"><span aria-hidden="true" style="position: absolute; left: -12px; top: 50%; width: 10px; height: 1px; background: #0f62fe"></span><span aria-hidden="true" style="position: absolute; left: -14px; top: 50%; width: 5px; height: 5px; margin-top: -2px; border-radius: 999px; background: #0f62fe"></span>{{item.label}}<sc-if value="{{item.badge}}" hint-placeholder-val="{{false}}"><span style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: #0f62fe; color: #ffffff; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums">{{item.badge}}</span></sc-if></a>
+              </sc-if>
+              <sc-if value="{{item.off}}" hint-placeholder-val="{{true}}">
+                <a class="it" href="{{item.href}}" style="position: relative; display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; padding: 0 10px; border-radius: 6px; color: #393939; font-size: 13.5px"><span aria-hidden="true" style="position: absolute; left: -12px; top: 50%; width: 8px; height: 1px; background: #c6c6c6"></span>{{item.label}}<sc-if value="{{item.badge}}" hint-placeholder-val="{{false}}"><span title="{{item.hint}}" style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; background: {{item.badgeBg}}; color: {{item.badgeFg}}; font-size: 12px; font-weight: 500; font-variant-numeric: tabular-nums">{{item.badge}}</span></sc-if></a>
+              </sc-if>
+            </sc-for>
+          </div>
+        </sc-if>
+      </sc-if>
+    </sc-for>
+  </div>
+
+  <div style="margin-top: auto; display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-top: 1px solid #e0e0e0; background: #ffffff; font-size: 13px">
+    <span aria-hidden="true" style="width: 32px; height: 32px; border-radius: 999px; background: #d0e2ff; color: #0043ce; display: inline-flex; align-items: center; justify-content: center; font-weight: 600">ช</span>
+    <a href="ScreenProfile.dc.html" style="line-height: 1.35; flex: 1; min-width: 0">[ชื่อผู้ใช้]<br><span style="color: #525252">เจ้าของ · แผน Business</span></a>
+    <a href="ScreenLogin.dc.html" aria-label="ออกจากระบบ" style="display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border-radius: 6px"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="#525252" stroke-width="1.5" aria-hidden="true"><path d="M6 3H3v10h3M10 5l3 3-3 3M13 8H6"/></svg></a>
+  </div>
+</nav>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"active":{"editor":"enum","options":["home","quote","invoice","creditnote","deposit","po","purchase","purchasecn","expense","bn","receipt","payment","cheque","pettycash","bank","coa","journal","formula","ledger","assets","reports","aging","recon","tax","close","contacts","products","settings","docsettings","users","apps","mcp","audit"],"default":"home"},"company":{"editor":"text","default":"บจก. [ชื่อบริษัท]"},"branch":{"editor":"text","default":"สำนักงานใหญ่"},"$preview":{"width":256,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = { open: {} }; }
+  renderVals() {
+    const active = this.props.active ?? 'home';
+    // ไอคอนเส้นเดียว 16px ต่อกลุ่ม (path ใน viewBox 16)
+    const ICON = {
+      sales:  'M2 3h12v8H6l-3 3V3zM5 6h6M5 8.5h4',
+      buy:    'M2 3h2l2 8h7l1.5-6H5M7 14a1 1 0 100-2 1 1 0 000 2zM12 14a1 1 0 100-2 1 1 0 000 2z',
+      fin:    'M2 5h12v8H2zM2 7.5h12M5 11h3',
+      gl:     'M4 2h8v12H4zM6 5h4M6 7.5h4M6 10h2',
+      tax:    'M3 2h7l3 3v9H3zM10 2v3h3M5.5 9.5l5-3M6 7a.5.5 0 100-1 .5.5 0 000 1zM10 10a.5.5 0 100-1 .5.5 0 000 1z',
+      rep:    'M2 13h12M4 11V7M7.5 11V4M11 11V8.5',
+      master: 'M8 8a2.5 2.5 0 100-5 2.5 2.5 0 000 5zM3 14c0-2.5 2.2-4 5-4s5 1.5 5 4',
+      set:    'M8 10a2 2 0 100-4 2 2 0 000 4zM8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4'
+    };
+    // tone: 'act' = ต้องทำ (น้ำเงิน), 'warn' = ใกล้กำหนด (เหลือง)
+    const groups = [
+      { id: 'top', title: '', items: [
+        { id: 'home', label: 'หน้าแรก · งานที่ต้องทำ', href: 'Main.dc.html', badge: '8', tone: 'act', hint: 'รออนุมัติ 8 เอกสาร' } ] },
+      { id: 'sales', title: 'ขาย', icon: ICON.sales, items: [
+        { id: 'quote', label: 'ใบเสนอราคา / ใบสั่งขาย', href: 'ScreenQuote.dc.html' },
+        { id: 'invoice', label: 'ใบแจ้งหนี้ / ใบกำกับภาษี', href: 'ScreenDocList.dc.html', badge: '5', tone: 'act', hint: 'รออนุมัติ' },
+        { id: 'creditnote', label: 'ใบลดหนี้ / ใบเพิ่มหนี้', href: 'ScreenCreditNote.dc.html' },
+        { id: 'deposit', label: 'เงินมัดจำ', href: 'ScreenDeposit.dc.html' } ] },
+      { id: 'buy', title: 'ซื้อ', icon: ICON.buy, items: [
+        { id: 'po', label: 'ใบขอซื้อ / ใบสั่งซื้อ', href: 'ScreenPurchaseOrder.dc.html' },
+        { id: 'purchase', label: 'บิลซื้อ', href: 'ScreenPurchaseList.dc.html', badge: '3', tone: 'act', hint: 'รอตรวจ' },
+        { id: 'purchasecn', label: 'ใบลดหนี้ / ใบเพิ่มหนี้ (ซื้อ)', href: 'ScreenPurchaseCreditNote.dc.html' },
+        { id: 'expense', label: 'ค่าใช้จ่าย', href: 'ScreenExpense.dc.html' } ] },
+      { id: 'fin', title: 'การเงิน', icon: ICON.fin, items: [
+        { id: 'bn', label: 'วางบิล / รับวางบิล', href: 'ScreenBilling.dc.html' },
+        { id: 'receipt', label: 'รับชำระ', href: 'ScreenReceipt.dc.html' },
+        { id: 'payment', label: 'จ่ายชำระ', href: 'ScreenPayment.dc.html' },
+        { id: 'cheque', label: 'ทะเบียนเช็ค', href: 'ScreenCheque.dc.html', badge: '1', tone: 'warn', hint: 'เช็คถึงกำหนดนำฝากวันนี้ 30/11' },
+        { id: 'pettycash', label: 'เงินสดย่อย', href: 'ScreenPettyCash.dc.html' },
+        { id: 'bank', label: 'กระทบยอดธนาคาร', href: 'ScreenBankRecon.dc.html', badge: '12', tone: 'act', hint: 'รายการยังไม่จับคู่' } ] },
+      { id: 'gl', title: 'บัญชี', icon: ICON.gl, items: [
+        { id: 'journal', label: 'บันทึกรายวัน', href: 'ScreenJournal.dc.html' },
+        { id: 'ledger', label: 'บัญชีแยกประเภท', href: 'ScreenLedger.dc.html' },
+        { id: 'coa', label: 'ผังบัญชี', href: 'ScreenCOA.dc.html' },
+        { id: 'formula', label: 'สูตรลงบัญชี', href: 'ScreenFormula.dc.html' },
+        { id: 'assets', label: 'ทะเบียนทรัพย์สิน', href: 'ScreenAssets.dc.html' } ] },
+      { id: 'tax', title: 'ภาษีและปิดงวด', icon: ICON.tax, items: [
+        { id: 'tax', label: 'ภาษี ภ.พ.30 / ภ.ง.ด.', href: 'ScreenTax.dc.html', badge: '2', tone: 'warn', hint: 'เดือน พ.ย. ยื่น ภ.ง.ด. ภายใน 15 ธ.ค. · ภ.พ.30 ภายใน 23 ธ.ค.' },
+        { id: 'recon', label: 'ตรวจความถูกต้อง', href: 'ScreenReconReport.dc.html' },
+        { id: 'close', label: 'ปิดงวด / ปิดปี', href: 'ScreenPeriodClose.dc.html' } ] },
+      { id: 'rep', title: 'รายงาน', icon: ICON.rep, items: [
+        { id: 'reports', label: 'งบการเงิน', href: 'ScreenReports.dc.html' },
+        { id: 'aging', label: 'อายุลูกหนี้ / เจ้าหนี้', href: 'ScreenAging.dc.html' } ] },
+      { id: 'master', title: 'ข้อมูลหลัก', icon: ICON.master, items: [
+        { id: 'contacts', label: 'ลูกค้า / ผู้ขาย', href: 'ScreenContacts.dc.html' },
+        { id: 'products', label: 'สินค้า / บริการ', href: 'ScreenProducts.dc.html' } ] },
+      { id: 'set', title: 'ตั้งค่า', icon: ICON.set, collapsed: true, items: [
+        { id: 'settings', label: 'ข้อมูลบริษัท', href: 'ScreenSettings.dc.html' },
+        { id: 'docsettings', label: 'ตั้งค่าเอกสาร', href: 'ScreenDocSettings.dc.html' },
+        { id: 'users', label: 'ผู้ใช้และสิทธิ์', href: 'ScreenUsers.dc.html' },
+        { id: 'apps', label: 'แอปที่เชื่อมต่อ', href: 'ScreenApps.dc.html', badge: '1', tone: 'warn', hint: 'รอแม็ปคู่ค้า' },
+        { id: 'mcp', label: 'การเชื่อมต่อ AI (MCP)', href: 'ScreenMcp.dc.html' },
+        { id: 'audit', label: 'ประวัติการใช้งาน', href: 'ScreenAudit.dc.html' } ] }
+    ];
+    const tones = { act: ['#d0e2ff', '#0043ce'], warn: ['#fcf4d6', '#684e00'] };
+    const open = this.state.open;
+    return {
+      company: this.props.company ?? 'บจก. [ชื่อบริษัท]',
+      branch: this.props.branch ?? 'สำนักงานใหญ่',
+      groups: groups.map((g) => {
+        const hasActive = g.items.some((x) => x.id === active);
+        const expanded = !g.title || (open[g.id] ?? (hasActive || !g.collapsed));
+        // เมื่อกลุ่มพับอยู่ ให้รวมป้ายตัวเลขของเมนูย่อยมาแสดงที่หัวกลุ่ม
+        const badged = g.items.filter((x) => x.badge);
+        const sum = badged.reduce((a, x) => a + Number(x.badge), 0);
+        const sumTone = badged.some((x) => x.tone === 'act') ? 'act' : (badged.length ? 'warn' : '');
+        const st = tones[sumTone] || ['#e0e0e0', '#161616'];
+        return {
+          title: g.title, titled: !!g.title, isTop: !g.title, expanded,
+          icon: g.icon || '', iconColor: hasActive ? '#0f62fe' : '#525252',
+          bg: hasActive && !expanded ? '#e5effe' : 'transparent',
+          sumBadge: !expanded && sum ? String(sum) : '', sumBg: st[0], sumFg: st[1],
+          chev: expanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+          toggle: () => this.setState({ open: { ...open, [g.id]: !expanded } }),
+          items: g.items.map((x) => {
+            const t = tones[x.tone] || ['#e0e0e0', '#161616'];
+            return { ...x, badge: x.badge || '', hint: x.hint || '', badgeBg: t[0], badgeFg: t[1], on: x.id === active, off: x.id !== active };
+          })
+        };
+      })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ใบลดหนี้ / เพิ่มหนี้ (ซื้อ)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="purchasecn" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ซื้อ / ใบลดหนี้ (รับจากผู้ขาย) / CNR2611-0003</span><div style="display: flex; align-items: center; gap: 12px"><div role="group" style="display: inline-flex; border: 1px solid #8d8d8d; border-radius: 4px; overflow: hidden"><button aria-pressed="true" style="height: 32px; padding: 0 12px; border: 0; border-radius: 0; background: #0f62fe; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">ใบลดหนี้ (CNR)</button><button aria-pressed="false" style="height: 32px; padding: 0 12px; border: 0; border-radius: 0; background: #ffffff; color: #161616; font-family: inherit; font-size: 14px; font-weight: 400; cursor: pointer">ใบเพิ่มหนี้ (DNR)</button></div><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #edf5ff; color: #0043ce; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ร่าง</span></div></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ใบลดหนี้ที่ได้รับจากผู้ขาย CNR2611-0003</h1><span style="font-size: 13px; color: #525252">บันทึกตามใบลดหนี้ที่ผู้ขายออก · ต้องอ้างอิงบิลซื้อเดิม · ภาษีซื้อกลับรายการและเข้ารายงานภาษีซื้อเดือนที่ได้รับ</span></div>
+      <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px">
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ผู้ขาย<input value="V0210 · บจก. [ผู้ขาย ข.]" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เลขที่ใบลดหนี้ของผู้ขาย<input value="CN-2569/118" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">วันที่ในใบลดหนี้<input value="18/11/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">อ้างอิงบิลซื้อเดิม<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>AP2611-0079 · 05/11/2569 · ใบกำกับผู้ขาย INV-5521 · 160,500.00 · ค้างจ่าย 160,500.00</option><option>AP2610-0066 · 21/10/2569 · 32,100.00 · จ่ายแล้ว</option></select><span style="font-size: 13px; color: #525252">ยอดลดหนี้ต้องไม่เกินมูลค่าบิลเดิม · ถ้าบิลเดิมจ่ายแล้ว ระบบตั้งเป็นเครดิตคงเหลือกับผู้ขาย</span></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เหตุผล (ตาม ม.82/10)<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ลดราคาเนื่องจากบริการผิดข้อตกลง</option><option>คำนวณราคาผิดพลาดสูงกว่าที่เป็นจริง</option><option>ยกเลิกบริการบางส่วน</option><option>คืนสินค้า/ส่งคืน</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สูตรลงบัญชี<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>CNR[AP] ลดเจ้าหนี้ + กลับภาษีซื้อ</option><option>CNR[Credit] ตั้งเครดิตผู้ขาย</option></select></label>
+      </section>
+      <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <div style="padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 14px; display: flex; justify-content: space-between"><span>รายการในบิลเดิม — ระบุมูลค่าที่ถูกต้อง ระบบคำนวณผลต่างให้</span><span style="color: #525252">ปรับได้ทั้งราคา/หน่วย หรือจำนวน</span></div>
+        <table style="width: 100%; min-width: 900px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">รายการ (จาก AP2611-0079)</th><th style="padding: 0 12px; font-weight: 400">บัญชี</th><th style="padding: 0 12px; font-weight: 400">VAT</th><th style="padding: 0 12px; font-weight: 400; text-align: right">มูลค่าเดิม</th><th style="padding: 0 12px; font-weight: 400; text-align: right">มูลค่าที่ถูกต้อง</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ผลต่าง (ลดหนี้)</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ค่าบริการดูแลระบบ พ.ย. 2569</td><td style="padding: 0 12px">5301200 ค่าจ้างภายนอก</td><td style="padding: 0 12px">7%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">120,000.00</td><td style="padding: 0 12px; text-align: right"><input value="100,000.00" style="width: 130px; height: 32px; text-align: right; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 500">20,000.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ค่าลิขสิทธิ์ซอฟต์แวร์รายเดือน</td><td style="padding: 0 12px">5306100 ค่าซอฟต์แวร์</td><td style="padding: 0 12px">7%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">30,000.00</td><td style="padding: 0 12px; text-align: right"><input value="30,000.00" style="width: 130px; height: 32px; text-align: right; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td></tr>
+          </tbody>
+          <tfoot>
+            <tr style="border-top: 1px solid #8d8d8d"><td colspan="3" style="height: 36px; padding: 0 12px; color: #525252">มูลค่าก่อนภาษี</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">150,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">130,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">20,000.00</td></tr>
+            <tr><td colspan="3" style="height: 36px; padding: 0 12px; color: #525252">ภาษีมูลค่าเพิ่ม 7%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">10,500.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">9,100.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,400.00</td></tr>
+            <tr style="font-weight: 600"><td colspan="3" style="height: 40px; padding: 0 12px">รวม</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">160,500.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">139,100.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-size: 16px">21,400.00</td></tr>
+          </tfoot>
+        </table>
+      </section>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start">
+        <section style="flex: 1 1 400px; background: #f4f4f4; border: 1px solid #e0e0e0">
+          <div style="display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">ตัวอย่างการลงบัญชี</strong><span style="font-size: 13px; color: #525252">สูตร CNR[AP]</span></div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px"><tbody>
+            <tr><td style="height: 32px; padding: 0 16px">Dr 2110100 เจ้าหนี้การค้า</td><td style="width: 110px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">21,400.00</td><td style="width: 110px"></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 5301200 ค่าจ้างภายนอก (กลับรายการ)</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">20,000.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 1170100 ภาษีซื้อ (กลับรายการ)</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">1,400.00</td></tr>
+          </tbody></table>
+          <div style="padding: 8px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252">ถ้าบิลเดิมเป็นค่าใช้จ่ายงวดที่ปิดแล้ว ระบบยังกลับที่บัญชีเดิมในงวดปัจจุบัน (ไม่เปิดงวด) · หัก ณ ที่จ่ายไม่กระทบ เพราะยังไม่ได้จ่ายเงิน</div>
+        </section>
+        <section style="flex: 1 1 320px; border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px">
+          <strong>ผลต่อเอกสารและภาษี</strong>
+          <div style="display: flex; justify-content: space-between"><span>AP2611-0079 ค้างจ่าย</span><span style="font-variant-numeric: tabular-nums">160,500.00 → <strong>139,100.00</strong></span></div>
+          <div style="display: flex; justify-content: space-between"><span>รายงานภาษีซื้อ</span><span>พ.ย. 2569 · ลดภาษีซื้อ 1,400.00</span></div>
+          <div style="display: flex; justify-content: space-between"><span>หัก ณ ที่จ่ายเมื่อจ่าย (3%)</span><span style="font-variant-numeric: tabular-nums">3,900.00 (จากฐานใหม่ 130,000)</span></div>
+          <div style="display: flex; justify-content: space-between"><span>รอบจ่าย 28 พ.ย.</span><span style="color: #0e6027">ปรับยอดให้อัตโนมัติ</span></div>
+          <label style="display: flex; gap: 8px; align-items: center; margin-top: 4px"><input type="checkbox" checked> แนบไฟล์ใบลดหนี้ต้นฉบับจากผู้ขาย (บังคับสำหรับใช้สิทธิ์ภาษีซื้อ)</label>
+        </section>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: flex-end; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0"><div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">บันทึกร่าง</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">บันทึกและผ่านรายการ</button></div></div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

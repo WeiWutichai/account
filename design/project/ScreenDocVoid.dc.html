@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ยกเลิก / กลับรายการเอกสาร</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="invoice" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252"><a href="ScreenDocList.dc.html" style="text-decoration: none">ใบกำกับภาษี</a> / <a href="ScreenInvoice.dc.html" style="text-decoration: none">IV2611-0058</a> / ยกเลิกเอกสาร</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ผ่านรายการแล้ว</span></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ยกเลิกเอกสาร IV2611-0058</h1><span style="font-size: 13px; color: #525252">เอกสารที่ผ่านรายการแล้วไม่ถูกลบ — ระบบสร้างรายการกลับบัญชีและคงเลขที่ไว้เพื่อให้เลขเอกสารต่อเนื่อง</span></div>
+
+      <section style="border: 1px solid #e0e0e0; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 24px; font-size: 14px">
+        <div><span style="font-size: 13px; color: #525252">เอกสาร</span><div style="font-weight: 600">IV2611-0058 ใบแจ้งหนี้</div></div>
+        <div><span style="font-size: 13px; color: #525252">ลูกค้า</span><div>บจก. สยามพลาสติก</div></div>
+        <div><span style="font-size: 13px; color: #525252">ยอดรวม</span><div style="font-variant-numeric: tabular-nums">53,500.00</div></div>
+        <div><span style="font-size: 13px; color: #525252">สถานะ / งวด</span><div>ผ่านรายการ 08/11/2569 · งวด 11/2569 เปิด</div></div>
+      </section>
+      <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; align-items: start">
+        <section style="display: flex; flex-direction: column; gap: 16px">
+          <fieldset style="border: 1px solid #e0e0e0; padding: 16px; margin: 0; display: flex; flex-direction: column; gap: 12px; font-size: 14px">
+            <legend style="padding: 0 6px; font-weight: 600">วิธียกเลิก</legend>
+            <label style="display: flex; gap: 10px; align-items: flex-start"><input type="radio" name="how" checked style="margin-top: 5px"><span><strong>ยกเลิกเอกสาร (void)</strong><br><span style="color: #525252">เลขที่คงอยู่พร้อมสถานะ “ยกเลิก” · ระบบสร้างรายการกลับบัญชี (reversal) ลงวันที่วันนี้ · ใช้เมื่อเอกสารออกผิด/ซ้ำ และยังไม่ส่งลูกค้า หรือลูกค้าคืนต้นฉบับ</span></span></label>
+            <label style="display: flex; gap: 10px; align-items: flex-start"><input type="radio" name="how" style="margin-top: 5px"><span><strong>ออกใบลดหนี้แทน</strong><br><span style="color: #525252">กรณีลูกค้ารับใบกำกับภาษีไปแล้วหรืออยู่คนละเดือนภาษี — ต้องใช้ใบลดหนี้ตาม ม.86/10 ระบบจะพาไปหน้าใบลดหนี้พร้อมอ้างอิงเอกสารนี้</span></span></label>
+            <label style="display: flex; gap: 10px; align-items: flex-start; color: #6f6f6f"><input type="radio" name="how" disabled style="margin-top: 5px"><span><strong>ลบเอกสาร</strong><br><span>ทำได้เฉพาะสถานะ “ร่าง” เท่านั้น — เอกสารที่ผ่านรายการแล้วลบไม่ได้</span></span></label>
+          </fieldset>
+          <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เหตุผล (บังคับ · แสดงใน Audit log)<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616"><option>ออกซ้ำกับเอกสารอื่น</option><option>ข้อมูลลูกค้า/ยอดผิด ออกใหม่</option><option>ลูกค้ายกเลิกงานก่อนเริ่ม</option><option>อื่น ๆ (ระบุ)</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เอกสารที่ออกแทน (ถ้ามี)<input value="IV2611-0057" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616"><span style="font-size: 13px; color: #525252">ระบบจะเชื่อมโยงสองฉบับเข้าด้วยกัน</span></label>
+            <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">รายละเอียดเพิ่มเติม<textarea rows="3" style="padding: 8px 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616; resize: vertical">ออกซ้ำกับ IV2611-0057 ที่ออกไปก่อนหน้าในวันเดียวกัน ลูกค้ายังไม่ได้รับฉบับนี้</textarea></label>
+          </section>
+          <section style="background: #f4f4f4; border: 1px solid #e0e0e0"><div style="display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">ตัวอย่างรายการกลับบัญชีที่จะสร้าง (JV2611-0099R)</strong><span style="font-size: 13px; color: #525252">กลับทุกบรรทัดของ JV2611-0099 · ลงวันที่ 30/11/2569</span></div><table style="width: 100%; border-collapse: collapse; font-size: 14px"><tbody><tr><td style="height: 32px; padding: 0 16px">Dr 4100200 รายได้ค่าบริการ</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">50,000.00</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums"></td></tr><tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px">Dr 2150400 ภาษีขายยังไม่ถึงกำหนด</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">3,500.00</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums"></td></tr><tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 1130100 ลูกหนี้การค้า</td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums"></td><td style="width: 120px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">53,500.00</td></tr></tbody></table></section>
+        </section>
+        <aside style="display: flex; flex-direction: column; gap: 16px">
+          <section style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 10px">
+            <strong>ตรวจสอบก่อนยกเลิก</strong>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>งวด 11/2569</span><span style="color: #0e6027">เปิด · ยกเลิกได้</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>ใบกำกับภาษี</span><span style="color: #0e6027">ยังไม่ออก (ออกเมื่อรับเงิน)</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>รับชำระแล้ว</span><span style="color: #0e6027">0.00 · ไม่มี RV อ้างอิง</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>อยู่ในใบวางบิล</span><span style="color: #684e00">BN2611-0004 · จะถอดออกให้</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>ส่งให้ลูกค้าแล้ว</span><span style="color: #684e00">อีเมล 08/11 · ระบบจะส่งแจ้งยกเลิก</span></div>
+            <div style="display: flex; justify-content: space-between; gap: 8px"><span>มาจากแอปเชื่อมต่อ</span><span style="color: #525252">ไม่ · (ถ้ามาจาก TMS จะแจ้ง document.voided)</span></div>
+          </section>
+          <section style="background: #fff1f1; border: 1px solid #ffb3b8; padding: 12px 16px; font-size: 13px; color: #a2191f">การยกเลิกเอกสารที่ผ่านรายการต้องใช้สิทธิ์ผู้จัดการบัญชีขึ้นไป · บันทึกผู้ทำ เหตุผล และรายการกลับบัญชีใน Audit log แบบลบไม่ได้ · ถ้างวดปิดแข็งแล้วจะทำไม่ได้ ต้องใช้ใบลดหนี้ในงวดปัจจุบันแทน</section>
+          <section style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 6px"><strong>ใช้หน้านี้กับเอกสารประเภทใดบ้าง</strong><span style="color: #525252">IV, RV, CN/DN, AP, EXP, PV, JV — เงื่อนไขต่างกันตามประเภท เช่น RV ที่เช็คผ่านแล้วต้องทำรายการคืนเงินแทน · PV ที่โอนแล้วยกเลิกไม่ได้ ต้องบันทึกรับคืนจากผู้ขาย</span></section>
+        </aside>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0; flex-wrap: wrap"><span style="font-size: 13px; color: #525252">ต้องยืนยันด้วยรหัส 2FA เมื่อกดยกเลิก</span><div style="display: flex; gap: 8px; flex-wrap: wrap"><a href="ScreenInvoice.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">กลับ</a><a href="ScreenCreditNote.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ไปออกใบลดหนี้แทน</a><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #da1e28; color: #ffffff; border: 1px solid #da1e28">ยืนยันยกเลิกและกลับรายการ</button></div></div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

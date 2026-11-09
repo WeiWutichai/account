@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>สร้างบริษัทใหม่</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="min-height: 1000px; background: #f4f4f4; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column">
+  <header style="height: 48px; background: #161616; color: #f4f4f4; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; font-size: 14px"><div style="display: flex; align-items: center; gap: 12px"><span style="width: 24px; height: 24px; background: #0f62fe; display: inline-block"></span><span style="font-weight: 600">Innovera</span><span style="color: #a8a8a8">Accounting</span></div><a href="ScreenCompanyPicker.dc.html" style="color: #c6c6c6; text-decoration: none">← กลับไปเลือกบริษัท</a></header>
+  <main style="flex: 1; display: flex; justify-content: center; padding: 48px 32px 96px; box-sizing: border-box">
+    <div style="width: 100%; max-width: 880px; display: flex; flex-direction: column; gap: 24px">
+      <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">สร้างบริษัทใหม่</h1><span style="font-size: 13px; color: #525252">5 ขั้น · ใช้เวลาประมาณ 10 นาที · ออกจากหน้าไปก่อนได้ ระบบจำขั้นที่ค้างไว้</span></div>
+      <ol style="margin: 0; padding: 0; list-style: none; display: flex; gap: 0; font-size: 13px; counter-reset: s">
+        <li style="flex: 1; padding: 8px 12px 8px 0; border-top: 2px solid #0f62fe; color: #0f62fe">1 ข้อมูลบริษัท<br><span style="color: #525252">เสร็จ</span></li>
+        <li style="flex: 1; padding: 8px 12px 8px 0; border-top: 2px solid #0f62fe; font-weight: 600">2 ปีบัญชี &amp; ผังบัญชี<br><span style="color: #525252; font-weight: 400">กำลังทำ</span></li>
+        <li style="flex: 1; padding: 8px 12px 8px 0; border-top: 2px solid #e0e0e0; color: #525252">3 ยอดยกมา<br>&nbsp;</li>
+        <li style="flex: 1; padding: 8px 12px 8px 0; border-top: 2px solid #e0e0e0; color: #525252">4 ภาษี &amp; เลขที่เอกสาร<br>&nbsp;</li>
+        <li style="flex: 1; padding: 8px 0; border-top: 2px solid #e0e0e0; color: #525252">5 ทีมและแอปเชื่อมต่อ<br>&nbsp;</li>
+      </ol>
+      <section style="background: #ffffff; border: 1px solid #e0e0e0; padding: 24px; display: flex; flex-direction: column; gap: 24px">
+        <div><h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">ปีบัญชีและผังบัญชีเริ่มต้น</h2><span style="font-size: 13px; color: #525252">บริษัท: หจก. [กิจการ C] · เลขผู้เสียภาษี 0103xxxxxxxxx (ดึงจาก DBD แล้ว ✓)</span></div>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px">
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">รอบปีบัญชี<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>1 ม.ค. – 31 ธ.ค.</option><option>1 เม.ย. – 31 มี.ค.</option><option>กำหนดเอง</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เริ่มใช้ระบบตั้งแต่<input value="01/01/2570" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">งวดบัญชี<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>รายเดือน (12 งวด)</option><option>รายไตรมาส</option></select></label>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 12px">
+          <span style="font-size: 13px; color: #525252">ผังบัญชีเริ่มต้น — เลือกแม่แบบ ปรับแก้ทีหลังได้ทุกบัญชี</span>
+          <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+            <label style="border: 1px solid #0f62fe; background: #edf5ff; padding: 16px; display: flex; gap: 12px; cursor: pointer"><input type="radio" name="coa" checked style="margin-top: 4px"><div><div style="font-weight: 600">ธุรกิจบริการ / ขนส่ง (แนะนำ)</div><div style="font-size: 13px; color: #525252">186 บัญชี · มีบัญชีต้นทุนต่อรถ ผู้รับเหมาขนส่ง เงินทดรองคนขับ · พร้อมสูตรลงบัญชี 24 สูตร · รองรับ TMS</div></div></label>
+            <label style="border: 1px solid #e0e0e0; padding: 16px; display: flex; gap: 12px; cursor: pointer"><input type="radio" name="coa" style="margin-top: 4px"><div><div style="font-weight: 600">ซื้อมาขายไป / ค้าปลีก</div><div style="font-size: 13px; color: #525252">172 บัญชี · สินค้าคงเหลือ ต้นทุนขาย · เปิดโมดูลสต็อก</div></div></label>
+            <label style="border: 1px solid #e0e0e0; padding: 16px; display: flex; gap: 12px; cursor: pointer"><input type="radio" name="coa" style="margin-top: 4px"><div><div style="font-weight: 600">มาตรฐานกรมพัฒนาธุรกิจการค้า (ทั่วไป)</div><div style="font-size: 13px; color: #525252">ผังย่อตามรูปแบบงบ DBD · เหมาะกับสำนักงานบัญชี</div></div></label>
+            <label style="border: 1px solid #e0e0e0; padding: 16px; display: flex; gap: 12px; cursor: pointer"><input type="radio" name="coa" style="margin-top: 4px"><div><div style="font-weight: 600">นำเข้าจากระบบเดิม</div><div style="font-size: 13px; color: #525252">Excel / Express / FlowAccount / PEAK · ตัวช่วยแม็ปรหัสบัญชี</div></div></label>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+          <span style="font-size: 13px; color: #525252">โมดูลที่ต้องการ (เปิด–ปิดทีหลังได้)</span>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked disabled> บัญชีแยกประเภท ขาย ซื้อ การเงิน ภาษี รายงาน (หลัก)</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> สินทรัพย์ถาวรและค่าเสื่อมราคา</label>
+          <label style="display: flex; gap: 8px; align-items: center; color: #525252"><input type="checkbox" disabled> สินค้าคงคลัง (สต็อก) — เปิดให้ใน v2</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox"> เงินเดือน / ภ.ง.ด.1 / ประกันสังคม</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> มิติ: รถ / เที่ยว / โครงการ / สาขา</label>
+        </div>
+      </section>
+      <section style="background: #ffffff; border: 1px solid #e0e0e0; padding: 16px 24px; font-size: 14px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px"><span style="color: #525252">บริษัทนี้จะเป็นบริษัทที่ 3 ในแผน Business (3/3) · บริษัทถัดไปคิดเพิ่มตามแผน · <a href="ScreenPlan.dc.html" style="text-decoration: none">ดูราคา</a></span><span style="color: #525252">ฐานข้อมูลแยก schema ต่อบริษัท · สำรองข้อมูลรายวัน</span></section>
+    </div>
+  </main>
+  <div style="position: sticky; bottom: 0; display: flex; justify-content: center; background: #ffffff; border-top: 1px solid #e0e0e0"><div style="width: 100%; max-width: 880px; height: 64px; display: flex; justify-content: space-between; align-items: center; padding: 0 32px; box-sizing: border-box"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">← ย้อนกลับ</button><div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">บันทึกและทำต่อทีหลัง</button><a href="ScreenOpeningBalance.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">ถัดไป: ยอดยกมา</a></div></div></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

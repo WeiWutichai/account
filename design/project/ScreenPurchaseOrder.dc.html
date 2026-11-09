@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ใบขอซื้อ / ใบสั่งซื้อ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="po" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ซื้อ / ใบสั่งซื้อ / PO2611-0018</span><div style="display: flex; align-items: center; gap: 12px"><div role="group" style="display: inline-flex; border: 1px solid #8d8d8d; border-radius: 4px; overflow: hidden"><button aria-pressed="false" style="height: 32px; padding: 0 12px; border: 0; border-radius: 0; background: #ffffff; color: #161616; font-family: inherit; font-size: 14px; font-weight: 400; cursor: pointer">ใบขอซื้อ (PR)</button><button aria-pressed="true" style="height: 32px; padding: 0 12px; border: 0; border-radius: 0; background: #0f62fe; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">ใบสั่งซื้อ (PO)</button></div><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>รออนุมัติ</span></div></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px"><div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ใบสั่งซื้อ PO2611-0018</h1><span style="font-size: 13px; color: #525252">สร้างจากใบขอซื้อ PR2611-0022 (อนุมัติแล้ว) · ไม่ลงบัญชี · ใช้ควบคุมงบและเทียบกับบิลซื้อที่เข้ามา</span></div><div style="display: flex; gap: 8px"><a href="ScreenPurchaseOrder.dc.html" style="height: 40px; display: inline-flex; align-items: center; padding: 0 16px; border: 1px solid #0f62fe; color: #0f62fe; text-decoration: none; font-size: 14px">ดู PR2611-0022</a><a href="PrintPurchaseOrder.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ดูตัวอย่างพิมพ์</a><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ส่ง PO ให้ผู้ขาย (อีเมล/PDF)</button></div></div>
+      <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px">
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ผู้ขาย<input value="V0210 · บจก. [ผู้ขาย ข.]" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><span style="font-size: 13px; color: #525252">เครดิต 30 วัน · ภ.ง.ด.53 · ผู้ติดต่อ [ชื่อ] sales@…</span></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">วันที่สั่งซื้อ<input value="09/11/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">กำหนดส่งมอบ / เริ่มบริการ<input value="01/12/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ผู้ขอซื้อ / แผนก<input value="[หัวหน้าฝ่ายปฏิบัติการ] · ปฏิบัติการ" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">โครงการ (มิติ)<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>PRJ-07 [ลูกค้า A] ระบบจอง</option><option>ส่วนกลาง</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">งบประมาณที่ใช้<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>5301200 ค่าจ้างภายนอก · ใช้แล้ว 72% ของงบ Q4</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เงื่อนไขชำระ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>เครดิต 30 วันหลังรับบิล</option><option>มัดจำ 30% + ที่เหลือเมื่อส่งมอบ</option><option>จ่ายทันที</option></select></label>
+      </section>
+      <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 900px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">รายการ</th><th style="padding: 0 12px; font-weight: 400">บัญชีค่าใช้จ่าย (ตั้งต้นให้ AP)</th><th style="padding: 0 12px; font-weight: 400; text-align: right">จำนวน</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ราคา/หน่วย</th><th style="padding: 0 12px; font-weight: 400">VAT</th><th style="padding: 0 12px; font-weight: 400; text-align: right">จำนวนเงิน</th><th style="padding: 0 12px; font-weight: 400; text-align: right">รับบิลแล้ว</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">บริการพัฒนาโมดูลชำระเงิน (งวด 1/2)</td><td style="padding: 0 12px">5301200 ค่าจ้างภายนอก</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">150,000.00</td><td style="padding: 0 12px">7%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">150,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ค่าบริการดูแลระบบ ธ.ค. 2569 – ก.พ. 2570</td><td style="padding: 0 12px">5301200 ค่าจ้างภายนอก</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">20,000.00</td><td style="padding: 0 12px">7%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">60,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td colspan="7" style="padding: 0 12px"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: transparent; color: #0f62fe; border: 1px solid transparent">+ เพิ่มรายการ</button></td></tr>
+          </tbody>
+        </table>
+      </section>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; justify-content: space-between">
+        <section style="flex: 1 1 400px; display: flex; flex-direction: column; gap: 16px">
+          <div style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px"><strong>สายอนุมัติ (ตามวงเงิน PO)</strong><div style="display: flex; justify-content: space-between"><span>1. หัวหน้าแผนก (PR)</span><span style="color: #0e6027">อนุมัติ · 08/11</span></div><div style="display: flex; justify-content: space-between"><span>2. ผู้จัดการบัญชี (PO ≤ 300,000)</span><span style="color: #684e00">รอ</span></div><div style="display: flex; justify-content: space-between; color: #525252"><span>3. กรรมการ (PO &gt; 300,000)</span><span>ไม่ต้อง</span></div><span style="font-size: 13px; color: #525252">เตือน: งบ 5301200 Q4 จะใช้ถึง 91% หลังอนุมัติ PO นี้</span></div>
+          <div style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 6px"><strong>เมื่อบิลซื้อเข้ามา</strong><span style="color: #525252">· สร้าง AP จาก PO นี้ได้บางส่วน (ยอดค้างรับแสดงในคอลัมน์ "รับบิลแล้ว") · บัญชี/VAT/มิติ ถูกเติมให้จาก PO · ถ้ายอด AP เกิน PO มากกว่า 5% ต้องให้ผู้อนุมัติ PO ยืนยัน · PO ปิดอัตโนมัติเมื่อรับบิลครบหรือกดปิดเอง</span></div>
+        </section>
+        <table style="flex: 0 1 340px; border-collapse: collapse; font-size: 15px"><tbody>
+          <tr><td style="height: 32px">รวมก่อนภาษี</td><td style="text-align: right; font-variant-numeric: tabular-nums">210,000.00</td></tr>
+          <tr><td style="height: 32px">ภาษีมูลค่าเพิ่ม 7%</td><td style="text-align: right; font-variant-numeric: tabular-nums">14,700.00</td></tr>
+          <tr style="border-top: 1px solid #8d8d8d"><td style="height: 40px; font-weight: 600; font-size: 16px">มูลค่าสั่งซื้อ</td><td style="text-align: right; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums">224,700.00</td></tr>
+          <tr style="color: #525252; font-size: 13px"><td style="height: 28px">หัก ณ ที่จ่ายที่คาดไว้ (3%) — รับรู้ตอนจ่ายจริง</td><td style="text-align: right; font-variant-numeric: tabular-nums">6,300.00</td></tr>
+        </tbody></table>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: flex-end; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0"><div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">บันทึกร่าง</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">ส่งขออนุมัติ</button></div></div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

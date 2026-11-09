@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>เพิกถอนสิทธิ์การเข้าถึง</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="mcp" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252"><a href="ScreenMcp.dc.html" style="text-decoration: none">การเชื่อมต่อ AI (MCP)</a> / Claude — ผู้ช่วยบัญชี / เพิกถอน</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ใช้งานอยู่</span></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">เพิกถอนสิทธิ์: Claude (Anthropic) — ผู้ช่วยบัญชี</h1><span style="font-size: 13px; color: #525252">ใช้หน้าเดียวกันสำหรับ MCP client, OAuth app, API key, ผู้สอบบัญชีภายนอก และผู้ใช้ในบริษัท</span></div>
+
+      <section style="border: 1px solid #e0e0e0; padding: 16px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px 24px; font-size: 14px">
+        <div><span style="font-size: 13px; color: #525252">ประเภท</span><div style="font-weight: 600">MCP client</div></div>
+        <div><span style="font-size: 13px; color: #525252">ชื่อ</span><div>Claude (Anthropic) — ผู้ช่วยบัญชี</div></div>
+        <div><span style="font-size: 13px; color: #525252">อนุญาตโดย</span><div>[ผู้จัดการบัญชี] · 12/10/2569</div></div>
+        <div><span style="font-size: 13px; color: #525252">ใช้ล่าสุด</span><div>วันนี้ 10:12 · 1,284 ครั้ง/7 วัน</div></div>
+      </section>
+      <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; align-items: start">
+        <section style="display: flex; flex-direction: column; gap: 16px">
+          <fieldset style="border: 1px solid #e0e0e0; padding: 16px; margin: 0; display: flex; flex-direction: column; gap: 12px; font-size: 14px">
+            <legend style="padding: 0 6px; font-weight: 600">ขอบเขตการเพิกถอน</legend>
+            <label style="display: flex; gap: 10px; align-items: flex-start"><input type="radio" name="scope" checked style="margin-top: 5px"><span><strong>เพิกถอนทั้งหมดทันที</strong><br><span style="color: #525252">ยกเลิก access token และ refresh token ทุกตัว · การเรียกครั้งถัดไปถูกปฏิเสธ · ต้องขออนุญาตใหม่ตั้งแต่ต้นหากจะกลับมาใช้</span></span></label>
+            <label style="display: flex; gap: 10px; align-items: flex-start"><input type="radio" name="scope" style="margin-top: 5px"><span><strong>ลดสิทธิ์เป็นอ่านอย่างเดียว</strong><br><span style="color: #525252">ตัด documents:draft และ contacts:draft ออก คงเหลือ read เท่านั้น — เหมาะเมื่อยังอยากให้ตอบคำถามจากข้อมูลได้</span></span></label>
+            <label style="display: flex; gap: 10px; align-items: flex-start"><input type="radio" name="scope" style="margin-top: 5px"><span><strong>ระงับชั่วคราว 7 วัน</strong><br><span style="color: #525252">ปิดการเรียกใช้โดยไม่ลบการอนุญาต · เปิดกลับได้โดยไม่ต้องขอใหม่</span></span></label>
+          </fieldset>
+          <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เหตุผล (บังคับ)<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616"><option>เลิกใช้งาน</option><option>สงสัยการเข้าถึงผิดปกติ</option><option>เปลี่ยนผู้รับผิดชอบ</option><option>พนักงานลาออก / สิ้นสุดสัญญา</option><option>อื่น ๆ (ระบุ)</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">แจ้งผู้เกี่ยวข้อง<input value="เจ้าของบริษัท + ผู้อนุญาตเดิม" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616"><span style="font-size: 13px; color: #525252">อีเมลสรุปการเพิกถอนและเหตุผล</span></label>
+          </section>
+          <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+            <div style="padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">สิ่งที่ client นี้สร้างไว้และยังค้างอยู่</strong></div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px">
+              <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">รายการ</th><th style="height: 40px; padding: 0 12px; font-weight: 400">สถานะ</th><th style="height: 40px; padding: 0 12px; font-weight: 400">จัดการ</th></tr></thead>
+              <tbody>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">EXP2611-0023 ค่าใช้จ่าย (ร่าง) 1,284.00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ร่าง รอตรวจ</span></td><td style="padding: 0 12px"><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> คงไว้ให้คนตรวจต่อ</label></td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">EXP2611-0024 ค่าใช้จ่าย (ร่าง) 4,280.00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ร่าง รอตรวจ</span></td><td style="padding: 0 12px"><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> คงไว้ให้คนตรวจต่อ</label></td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">คู่ค้าที่เสนอใหม่ 2 ราย</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>รออนุมัติ</span></td><td style="padding: 0 12px"><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox"> ลบข้อเสนอ</label></td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Webhook ที่ลงทะเบียนไว้</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #e0e0e0; color: #161616; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ไม่มี</span></td><td style="padding: 0 12px" style="padding: 0 12px; color: #525252">—</td></tr>
+              </tbody>
+            </table>
+          </section>
+        </section>
+        <aside style="display: flex; flex-direction: column; gap: 16px">
+          <section style="background: #fff1f1; border: 1px solid #ffb3b8; padding: 12px 16px; font-size: 13px; color: #a2191f">การเพิกถอนมีผลทันทีและย้อนกลับไม่ได้ (ต้องขออนุญาตใหม่) · บันทึกใน Audit log พร้อมผู้ทำและเหตุผล · ใช้สิทธิ์ Owner หรือผู้ที่อนุญาตไว้เดิม</section>
+          <section style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px"><strong>หน้านี้ใช้กับ</strong><div style="display: flex; justify-content: space-between; gap: 8px"><span>MCP / OAuth client</span><span style="color: #525252">token + scopes</span></div><div style="display: flex; justify-content: space-between; gap: 8px"><span>ผู้สอบบัญชีภายนอก</span><span style="color: #525252">ปิดการเข้าถึงก่อนกำหนด</span></div><div style="display: flex; justify-content: space-between; gap: 8px"><span>ผู้ใช้ในบริษัท</span><span style="color: #525252">ถอดออกจากบริษัทนี้ · Innovera ID ยังอยู่</span></div><div style="display: flex; justify-content: space-between; gap: 8px"><span>API key</span><span style="color: #525252">ยกเลิกคีย์ · สร้างใหม่ได้</span></div></section>
+          <section style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px"><strong>กิจกรรม 24 ชม. ล่าสุดของ client นี้</strong><div style="display: flex; justify-content: space-between; color: #525252"><span>run_report / get_ledger</span><span style="font-variant-numeric: tabular-nums">142 ครั้ง</span></div><div style="display: flex; justify-content: space-between; color: #525252"><span>create_draft_document</span><span style="font-variant-numeric: tabular-nums">6 ครั้ง</span></div><div style="display: flex; justify-content: space-between; color: #a2191f"><span>ถูกปฏิเสธ (ไม่มี scope)</span><span style="font-variant-numeric: tabular-nums">1 ครั้ง · post_document</span></div><a href="ScreenAudit.dc.html" style="font-size: 13px; text-decoration: none">ดูทั้งหมดใน Audit log</a></section>
+        </aside>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0; flex-wrap: wrap"><span style="font-size: 13px; color: #525252">ต้องยืนยันด้วยรหัส 2FA</span><div style="display: flex; gap: 8px; flex-wrap: wrap"><a href="ScreenMcp.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">กลับ</a><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #da1e28; color: #ffffff; border: 1px solid #da1e28">ยืนยันเพิกถอน</button></div></div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

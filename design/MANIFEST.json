@@ -1,0 +1,332 @@
+{
+ "artifact": "https://claude.ai/artifact/LQTTxmYPCna8EntkntYCCQ",
+ "design_version": 26,
+ "published_version_id": "1794239284-7b59",
+ "exported": "2026-11-09",
+ "files": {
+  "project/Blank.dc.html": {
+   "bytes": 411,
+   "sha256": "01e8be5241cdf48a78b53339eb465b0c803cc51716e29959ce3bed655c81e4df"
+  },
+  "project/ConsoleBilling.dc.html": {
+   "bytes": 18561,
+   "sha256": "4929ad4f1e473e3af6fee514e61d1f27dddd9a716862a66cbcbd49f5e50297ca"
+  },
+  "project/ConsoleFlags.dc.html": {
+   "bytes": 16437,
+   "sha256": "2b403d1289102a1e44c5218db652400df02acdb5105d8d762df90d0d9271a333"
+  },
+  "project/ConsoleNav.dc.html": {
+   "bytes": 6042,
+   "sha256": "20d43d2250cbf12463d0e8d0108299b653d0551e3881a6475c06e80d943cb74b"
+  },
+  "project/ConsoleOps.dc.html": {
+   "bytes": 15366,
+   "sha256": "6bcff1b7ce91a255c879d7027fd619e9c6906600e577e7cc924b88dececc8004"
+  },
+  "project/ConsoleOverview.dc.html": {
+   "bytes": 10321,
+   "sha256": "861d4fe1f575b0288713897bdfd9800356b4dbd8daec41cc92f70e6085b360a1"
+  },
+  "project/ConsoleReference.dc.html": {
+   "bytes": 17902,
+   "sha256": "1f2a88efec76dc6b10bb574c13afd742ed26bb89e415f9991c8d6d34cbe78e4f"
+  },
+  "project/ConsoleSupport.dc.html": {
+   "bytes": 19972,
+   "sha256": "7399a6bbc404f0fc27c482134aa6aa1658a74f483ce0b8924acfe3fd366aef43"
+  },
+  "project/ConsoleTeam.dc.html": {
+   "bytes": 15583,
+   "sha256": "434d9845fb1fe4c7e0809fe6b6092bb3b9f2aad451178287e5329601bbb90e5e"
+  },
+  "project/ConsoleTenants.dc.html": {
+   "bytes": 21318,
+   "sha256": "2348dc6ba15e3296eb95f752685fde4e7a33b3d1ce4f1fca607a1e23ca61ac74"
+  },
+  "project/Main.dc.html": {
+   "bytes": 13847,
+   "sha256": "9a5907542e85971d85b6d60f7e62a428d000927eddf1cf4be80cff240037eea6"
+  },
+  "project/PrintBilling.dc.html": {
+   "bytes": 6636,
+   "sha256": "9c78856cefb0c8a54535afe6c72a0bfa06500016b092dedc62ca7b2c3feea190"
+  },
+  "project/PrintCreditNote.dc.html": {
+   "bytes": 6251,
+   "sha256": "dd174b0aa6526841b8a689f47353dce2770d93d1f72fd355faff3d86bc5c462a"
+  },
+  "project/PrintDebitNote.dc.html": {
+   "bytes": 6420,
+   "sha256": "b8a0abb0bd2298adbd04442ed7af51cd5320b2918056395408098e944482b5d1"
+  },
+  "project/PrintInvoice.dc.html": {
+   "bytes": 6888,
+   "sha256": "2ec48365a5c00141c5acd68db3f24bf3a0c2b2ec9e10cf8348c01ce10fb968cc"
+  },
+  "project/PrintPaymentVoucher.dc.html": {
+   "bytes": 7578,
+   "sha256": "79d358e2335783ee2c7a36ba58ae345cf32fcf1b0238e52c832d5393a5924743"
+  },
+  "project/PrintPnd3Attach.dc.html": {
+   "bytes": 8340,
+   "sha256": "0384b565f030efc602d221871dee7f5c3e22f48a3428cbbec12255d2dafa2904"
+  },
+  "project/PrintPnd53Attach.dc.html": {
+   "bytes": 9024,
+   "sha256": "c7c69511aa0189bc2dd193b92ef0b6900d98510a09f0403302a92955485d60fd"
+  },
+  "project/PrintPurchaseOrder.dc.html": {
+   "bytes": 7269,
+   "sha256": "bf917914f8c428295bfe650cb0ba14928b3b2e321e2698aed246d6964c3567e0"
+  },
+  "project/PrintQuote.dc.html": {
+   "bytes": 7810,
+   "sha256": "3870ad9461021b3f9410df2075dce4478cc8cea59b3fd607f32c75dbaa7b11ad"
+  },
+  "project/PrintReceiptNoVat.dc.html": {
+   "bytes": 6971,
+   "sha256": "d2ac741c246d2469bce3d120c9580112f98c3f664fff285db4dbdd1e849d14ab"
+  },
+  "project/PrintReceiptTax.dc.html": {
+   "bytes": 7454,
+   "sha256": "03ca1b617b60bbd11dfe67ca4259868213ea87a10229d2c1e62cac5b61d79fc3"
+  },
+  "project/PrintReceiptVoucher.dc.html": {
+   "bytes": 8132,
+   "sha256": "9e3d4d7118c1f1e3fa2526515d042d1872811c9ff0e4c99f73b4a92b0df017d9"
+  },
+  "project/PrintVatPurchase.dc.html": {
+   "bytes": 6897,
+   "sha256": "d832876f7622ea07505285d61fb387d5950cc11bce81f97a297cb1ef650f4274"
+  },
+  "project/PrintVatSales.dc.html": {
+   "bytes": 6570,
+   "sha256": "8001848a139abf229035a097c4f3f66c390b141e43bcedd955d1ed5d6691d53e"
+  },
+  "project/PrintWht50.dc.html": {
+   "bytes": 9731,
+   "sha256": "ba1e01957d9d9b655aaca90fd7000109858aeb9c82b7b6e6126795f6bcdf6de5"
+  },
+  "project/ScreenAging.dc.html": {
+   "bytes": 16321,
+   "sha256": "ef16dccb036c243feef555480b36359563685e12bd3b3da3c5b56df36c119b66"
+  },
+  "project/ScreenApps.dc.html": {
+   "bytes": 15410,
+   "sha256": "20f795dc81308b6e584da73a241fa4fe1ce2def6605b9ba120f86142ccc93dc5"
+  },
+  "project/ScreenAssets.dc.html": {
+   "bytes": 24878,
+   "sha256": "61ca0b3de55b2d9628fa9fa7c226ef5ddca8006bb3d4e717122e9a0ff378e95d"
+  },
+  "project/ScreenAudit.dc.html": {
+   "bytes": 14586,
+   "sha256": "66b4da3c4c133db79085ca0ba081786159df0276f78b3f298dd88184f0abd2b2"
+  },
+  "project/ScreenBankRecon.dc.html": {
+   "bytes": 14534,
+   "sha256": "44df3a39067a543e11217c354ebaa41a8442a62f525e3b268137cb09abcfd12b"
+  },
+  "project/ScreenBilling.dc.html": {
+   "bytes": 11569,
+   "sha256": "82a079816c0cd6068dc13fa901219df88117ef692c185b317143bff2bbbdea41"
+  },
+  "project/ScreenCOA.dc.html": {
+   "bytes": 12695,
+   "sha256": "e501f15663b2d1ddb00647aa221ec90c50eaff429052f1a4c753cb3c970d7204"
+  },
+  "project/ScreenCheque.dc.html": {
+   "bytes": 15154,
+   "sha256": "6755b8b0a1db50c6ef05b7414d53c5bc2df5c0340f6f0ae21e8148305b854ca0"
+  },
+  "project/ScreenCompanyCreate.dc.html": {
+   "bytes": 10947,
+   "sha256": "de7152aa09ffc914953fe57d70496082996bb5f25f27e8110d03f067388c4b33"
+  },
+  "project/ScreenCompanyPicker.dc.html": {
+   "bytes": 10108,
+   "sha256": "0dc59e2438e4d0bfae84f8ecd97ef3b2063cffd85a7d9ee4cfb6a6cac8c04bce"
+  },
+  "project/ScreenContacts.dc.html": {
+   "bytes": 13580,
+   "sha256": "6397ff520fba1fc9b602051f56e9cf2bc3fde3f3edd0f09ba02f9febf2abe824"
+  },
+  "project/ScreenCreditNote.dc.html": {
+   "bytes": 13075,
+   "sha256": "f6012800c1158ad03a0f1c1605c919ab88da540d7ac8b51ed08f97b821808af4"
+  },
+  "project/ScreenDeposit.dc.html": {
+   "bytes": 17408,
+   "sha256": "81c1523dcb3f278aa256d77d6ce86c0f87e6a5c4079b1f0a40e1602deaa88fd8"
+  },
+  "project/ScreenDocEdit.dc.html": {
+   "bytes": 15240,
+   "sha256": "3010175ccbcf791e46cb4adaa4d4b6416058d7454ee52d39e04ee8cc1acce94f"
+  },
+  "project/ScreenDocList.dc.html": {
+   "bytes": 16401,
+   "sha256": "e98394302ea294b37d4d78b56edbc11860ec5616e9e263065c5635faa6016c42"
+  },
+  "project/ScreenDocSeriesEdit.dc.html": {
+   "bytes": 13568,
+   "sha256": "0f4a1ffb8c8927b029d3eb9d988db3890a1983d3ed99abd1d9c47989785204a5"
+  },
+  "project/ScreenDocSettings.dc.html": {
+   "bytes": 29556,
+   "sha256": "267c6d5f84d78229997df81f128b4e7c2a39ae18ba727f5b7a184b1231d9ddc1"
+  },
+  "project/ScreenDocVoid.dc.html": {
+   "bytes": 13928,
+   "sha256": "76a8a42924f68cd3a2c64daac41e8c03f4291a872883d9315405559382fea7dd"
+  },
+  "project/ScreenExpense.dc.html": {
+   "bytes": 12347,
+   "sha256": "1f2aca2d1e03ed47c2cf218cf92126d5bd42687b6dca99185f63fc700ceafe66"
+  },
+  "project/ScreenFormula.dc.html": {
+   "bytes": 12565,
+   "sha256": "d2478e9623e506a3e1563e4440727eca028b439bd82f0c9622ec037c851ef4d9"
+  },
+  "project/ScreenInviteAccept.dc.html": {
+   "bytes": 7808,
+   "sha256": "8fe2d0b46f768131a2fd7c9eb75993252a6bf3362ef6073e685c94a44a64b74e"
+  },
+  "project/ScreenInvoice.dc.html": {
+   "bytes": 15423,
+   "sha256": "e558c5ee8baa4ffd561d51a449e6d2d6da41d563439536682f90f7489893e12d"
+  },
+  "project/ScreenJournal.dc.html": {
+   "bytes": 10983,
+   "sha256": "4f2849b108545a048277fd2b075073408141034e13ebcb6e3dd052806f101107"
+  },
+  "project/ScreenLedger.dc.html": {
+   "bytes": 11141,
+   "sha256": "e2a3f660fbbb516eaa08695a458b715956fe12577bcd6661351fffc9c517caa1"
+  },
+  "project/ScreenLogin.dc.html": {
+   "bytes": 6893,
+   "sha256": "ef46a913df05ad825d9d1957cd9ac503f996f062548463ebee122068b694cfcb"
+  },
+  "project/ScreenMcp.dc.html": {
+   "bytes": 18763,
+   "sha256": "3b09a427c0594d4466537b811f1f704661bc16745864e9f35105d5cf3f256e9d"
+  },
+  "project/ScreenOpeningBalance.dc.html": {
+   "bytes": 17170,
+   "sha256": "866350b2f1602294bc50fa62dcb7a1af9189f9ab51ab4a5ff12b88b5a91fc91a"
+  },
+  "project/ScreenOrgMembers.dc.html": {
+   "bytes": 23638,
+   "sha256": "62bf6d343d09576f090fe51e6f37f97492befb66fe60ba4ecf11140bad338f4f"
+  },
+  "project/ScreenPasswordReset.dc.html": {
+   "bytes": 8369,
+   "sha256": "63bfacd52ef857a7e438d5dcb38813e0becf4bbf2442eb1f8cbc2d3facb6a4eb"
+  },
+  "project/ScreenPayment.dc.html": {
+   "bytes": 15421,
+   "sha256": "af544307c526e062a4e7f433a769c9336853f4611ab1c96f3301433dcaf406b7"
+  },
+  "project/ScreenPeriodClose.dc.html": {
+   "bytes": 21410,
+   "sha256": "e970bf1926104db83f7274a40d4ff8aff9ce2ccaef9559dfbb3d58fc9d7e1068"
+  },
+  "project/ScreenPettyCash.dc.html": {
+   "bytes": 13532,
+   "sha256": "ee4e50f096fd7f3b872c25e566096c158d85125a339d354ba90192a3119e8320"
+  },
+  "project/ScreenPlan.dc.html": {
+   "bytes": 12373,
+   "sha256": "db0593489bd5727cd13af1fa21fc66aeb3e823c16bdd05cbaaf3673e6516a4b7"
+  },
+  "project/ScreenProducts.dc.html": {
+   "bytes": 11078,
+   "sha256": "cd28187c9fc9f8489421c77c3cf37c2f4fab9ca52cce271acdda242d9f3fd31e"
+  },
+  "project/ScreenProfile.dc.html": {
+   "bytes": 19368,
+   "sha256": "8e8c290c6cb4225579d638f63b8b57a5285c5101c21fcad37d8e6146c73f7874"
+  },
+  "project/ScreenPurchaseBill.dc.html": {
+   "bytes": 13105,
+   "sha256": "1ec7e123d1894715fe17675065daa2f842bc9b815ee2c473a4029443e4e715c9"
+  },
+  "project/ScreenPurchaseCreditNote.dc.html": {
+   "bytes": 15104,
+   "sha256": "9d3c43c82caa4b3f57d78b9e9b1946cacee6c65ff791e40826fe82b28a35ed73"
+  },
+  "project/ScreenPurchaseList.dc.html": {
+   "bytes": 14513,
+   "sha256": "48c0bd5dfef252f53f98bef217251660118b2c93393209318e2b7a0c417b7536"
+  },
+  "project/ScreenPurchaseOrder.dc.html": {
+   "bytes": 14232,
+   "sha256": "fbeb7cd546797e69d1c258ff13e5d6a9ed453264524f9996aaf1c99245ea00ae"
+  },
+  "project/ScreenQuote.dc.html": {
+   "bytes": 14132,
+   "sha256": "755de39f19cb45bcaa5b02f133d0599871aad8d5c0a0cc7c80140fdc3206ac64"
+  },
+  "project/ScreenReceipt.dc.html": {
+   "bytes": 15636,
+   "sha256": "23fd42e9c0b1ae3051705954fcff7aa63e51ccb64e0231c42710cfde7ac61a2d"
+  },
+  "project/ScreenReconReport.dc.html": {
+   "bytes": 20827,
+   "sha256": "b22af1d799a60d8aac6614d322359724e80aca6ab91efb432c2f78dbaf28407e"
+  },
+  "project/ScreenReportBuilder.dc.html": {
+   "bytes": 20799,
+   "sha256": "703ee38901b7d18063102b094a9d787ac0a47410b39b029e4fae942fcd29e442"
+  },
+  "project/ScreenReports.dc.html": {
+   "bytes": 22038,
+   "sha256": "5a4a51746964ccd7da45c5ec7cf97280775aa8aa1a30f1eab938180992dd31ed"
+  },
+  "project/ScreenRevoke.dc.html": {
+   "bytes": 13993,
+   "sha256": "64b082df34d5190ad752882b9837aa5498a2242f7bc33f9aa9e4965ea5f6d528"
+  },
+  "project/ScreenSendDoc.dc.html": {
+   "bytes": 14050,
+   "sha256": "7ea5832c2d129b2a700297acebce06b9d182d108d420cf4b0761888f096655b5"
+  },
+  "project/ScreenSettings.dc.html": {
+   "bytes": 14341,
+   "sha256": "eb8e0d2956e015880ede0a7bc8f45b1ffcad89f2aebd72d4761effa0bec1437c"
+  },
+  "project/ScreenSignup.dc.html": {
+   "bytes": 9093,
+   "sha256": "37a6fc14090ef668c1c508d0902d0f0e236717d2965c50467dd80adafc425f6b"
+  },
+  "project/ScreenTax.dc.html": {
+   "bytes": 23270,
+   "sha256": "7afe7fecc1fbba4682f2fb1ee6337acaeae54fd3e90abc4be5d904ec6aac8da5"
+  },
+  "project/ScreenTwoFactor.dc.html": {
+   "bytes": 9598,
+   "sha256": "bfb23577bd1dd21071907e96a98a412e1b082c7d20569241d97ca0766ed7f136"
+  },
+  "project/ScreenUserEdit.dc.html": {
+   "bytes": 20349,
+   "sha256": "1f88d5d7a6c536a7041c6524ca9e3da513fad329ca718c9b7ec39019dfc8b999"
+  },
+  "project/ScreenUsers.dc.html": {
+   "bytes": 16261,
+   "sha256": "b71c2f66e107dbc77771a6779c3279d353fe6070ce97124e666e322dedd234c4"
+  },
+  "project/Sidebar.dc.html": {
+   "bytes": 18778,
+   "sha256": "81020aa48861c172a1793cadf30a2c96b3a9e35f4fd9db1de880c59047d8dce6"
+  },
+  "project/compat.json": {
+   "bytes": 17850,
+   "sha256": "93703b835a29e4ed0598e812adf4265ac0eae175ad9807d48d480deffe45940f"
+  },
+  "project/support.js": {
+   "bytes": 69150,
+   "sha256": "8fe7df74405f3c55f49b7249c74ea1397e65d07dea2b1bd3b4a489bec2e28cbe"
+  }
+ }
+}

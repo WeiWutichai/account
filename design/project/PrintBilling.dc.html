@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>แบบพิมพ์ ใบวางบิล</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#ffffff}
+.pg table{border-collapse:collapse}
+.pg td,.pg th{border:1px solid #393939;padding:4px 8px;vertical-align:top}
+.pg .n{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.pg .lbl{color:#525252;font-size:12px}
+.pg .box{display:inline-block;width:12px;height:12px;border:1px solid #161616;vertical-align:-2px;margin-right:4px;text-align:center;line-height:12px;font-size:11px}
+</style>
+</helmet>
+<div class="pg" style="width: 794px; height: 1123px; box-sizing: border-box; padding: 40px 48px; background: #ffffff; color: #161616; font-family: 'Sarabun', 'IBM Plex Sans Thai', sans-serif; font-size: 13px; line-height: 1.45; display: flex; flex-direction: column; gap: 12px; overflow: hidden">
+
+<div style="display: flex; justify-content: space-between; gap: 24px; align-items: flex-start">
+  <div style="display: flex; gap: 12px; align-items: flex-start">
+    <div aria-hidden="true" style="width: 56px; height: 56px; border: 1px solid #8d8d8d; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #525252">โลโก้</div>
+    <div><div style="font-size: 16px; font-weight: 700">[ชื่อบริษัท] จำกัด <span style="font-weight: 400">(สำนักงานใหญ่)</span></div>
+    <div>[ที่อยู่ตามทะเบียน ภพ.20]</div>
+    <div>เลขประจำตัวผู้เสียภาษีอากร 0105xxxxxxxxx · โทร [เบอร์โทร]</div></div>
+  </div>
+  <div style="text-align: right; flex: 0 0 auto">
+    <div style="font-size: 22px; font-weight: 700; line-height: 1.2">ใบวางบิล</div>
+    <div style="font-size: 13px">BILLING NOTE</div>
+    <div style="display: inline-block; margin-top: 6px; padding: 2px 10px; border: 1px solid #161616; font-weight: 600">ต้นฉบับ</div>
+  </div>
+</div>
+<div style="display: flex; gap: 12px">
+  <div style="flex: 1 1 auto; border: 1px solid #393939; padding: 8px 12px">
+    <div class="lbl">ลูกค้า</div>
+    <div style="font-weight: 600">บจก. สยามพลาสติก <span style="font-weight: 400">(สำนักงานใหญ่)</span></div>
+    <div>[ที่อยู่ลูกค้า]</div>
+    <div>เลขประจำตัวผู้เสียภาษีอากร 0105xxxxxxxxx</div>
+  </div>
+  <div style="flex: 0 0 250px; border: 1px solid #393939; padding: 8px 12px; display: grid; grid-template-columns: 96px 1fr; row-gap: 2px">
+    <span class="lbl">เลขที่</span><span style="font-weight: 600">BN2611-0004</span><span class="lbl">วันที่</span><span style="font-weight: 600">16/11/2569</span><span class="lbl">นัดรับเงิน</span><span style="font-weight: 600">27/11/2569</span><span class="lbl">เครดิต</span><span style="font-weight: 600">30 วัน</span>
+  </div>
+</div>
+<table style="width: 100%">
+<thead><tr style="background: #f4f4f4"><th style="width: 36px">ลำดับ</th><th style="text-align: left">เลขที่เอกสาร</th><th>วันที่</th><th>ครบกำหนด</th><th style="text-align: left">อ้างอิง</th><th class="n" style="width: 110px">จำนวนเงิน</th></tr></thead>
+<tbody>
+<tr><td style="text-align: center">1</td><td>IV2611-0053 ใบแจ้งหนี้</td><td style="text-align: center">05/11/2569</td><td style="text-align: center">05/12/2569</td><td>ใบส่งของ 5 ใบ (TMS)</td><td class="n">31,200.00</td></tr>
+<tr><td style="text-align: center">2</td><td>IV2611-0056 ใบแจ้งหนี้</td><td style="text-align: center">10/11/2569</td><td style="text-align: center">10/12/2569</td><td>ใบส่งของ 8 ใบ (TMS)</td><td class="n">281,200.00</td></tr>
+<tr><td style="height: 300px"></td><td></td><td></td><td></td><td></td><td></td></tr>
+<tr style="font-weight: 700"><td colspan="5" style="text-align: right">รวม 2 ฉบับ เป็นเงินทั้งสิ้น</td><td class="n">312,400.00</td></tr>
+</tbody></table>
+<div style="border: 1px solid #393939; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px">
+<div><span class="lbl">จำนวนเงิน (ตัวอักษร)</span><br><strong>(สามแสนหนึ่งหมื่นสองพันสี่ร้อยบาทถ้วน)</strong></div>
+<div><span class="lbl">การชำระเงิน</span><br>นัดรับเช็ควันพฤหัสบดีที่ 27/11/2569 หรือโอนเข้าบัญชี [ธนาคาร A] เลขที่ xxx-x-xxxxx-x ชื่อบัญชี [ชื่อบริษัท] จำกัด<br>ค่าบริการมีภาษีมูลค่าเพิ่ม 7% · ใบกำกับภาษีจะออกให้เมื่อได้รับชำระ · หัก ณ ที่จ่าย 3% กรุณาแนบหนังสือรับรอง 50 ทวิ</div></div>
+<div class="lbl">ใบวางบิลไม่ใช่ใบเสร็จรับเงินและไม่ใช่ใบกำกับภาษี</div>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-top: auto; text-align: center"><div><div style="height: 48px; border-bottom: 1px dotted #161616"></div><div>ผู้วางบิล</div><div class="lbl">วันที่ ____/____/______</div></div><div><div style="height: 48px; border-bottom: 1px dotted #161616"></div><div>ผู้รับวางบิล</div><div class="lbl">วันที่ ____/____/______ · นัดรับเงินวันที่ ____/____/______</div></div></div><div class="lbl" style="display: flex; justify-content: space-between; border-top: 1px solid #c6c6c6; padding-top: 6px"><span>พิมพ์จาก AccountSystem · BN2611-0004 · ไม่ลงบัญชี</span><span>หน้า 1/1</span></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":794,"height":1123}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

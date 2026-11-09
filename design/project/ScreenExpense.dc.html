@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ค่าใช้จ่าย</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="expense" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ซื้อ / ค่าใช้จ่าย / EXP2611-0019</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #edf5ff; color: #0043ce; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ร่าง</span></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px"><div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ค่าใช้จ่าย EXP2611-0019</h1><span style="font-size: 13px; color: #525252">จ่ายทันที · ออกหนังสือรับรองหัก ณ ที่จ่ายอัตโนมัติ</span></div><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">อัปโหลดบิล (OCR เติมให้)</button></div>
+      <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px">
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">จ่ายให้<input value="[ฟรีแลนซ์ นาย ก.] · บุคคลธรรมดา" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><span style="font-size: 13px; color: #525252">ภ.ง.ด.3 · เลขประจำตัว 1xxxxxxxxxxxx</span></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">วันที่จ่าย<input value="05/11/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">จ่ายจาก<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>1100100 ออมทรัพย์ [ธนาคาร]</option><option>1000200 เงินสดย่อย</option><option>เช็ค</option></select></label>
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เอกสารอ้างอิงจากผู้รับเงิน<input value="ใบแจ้งหนี้ INV-011 (ไม่มี VAT)" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">โครงการ (มิติ)<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>PRJ-07 [ลูกค้า A] ระบบจอง</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สูตรลงบัญชี<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>Cash[EXP] จ่ายทันที</option><option>Credit[EXP] ตั้งค้างจ่าย</option></select></label>
+      </section>
+      <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 820px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">รายการ</th><th style="padding: 0 12px; font-weight: 400">บัญชีค่าใช้จ่าย</th><th style="padding: 0 12px; font-weight: 400">ภาษีซื้อ</th><th style="padding: 0 12px; font-weight: 400">หัก ณ ที่จ่าย</th><th style="padding: 0 12px; font-weight: 400; text-align: right">จำนวนเงิน</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ค่าจ้างพัฒนา UI หน้าจอง งวด 2</td><td style="padding: 0 12px">5301200 ค่าจ้างภายนอก</td><td style="padding: 0 12px">ไม่มี</td><td style="padding: 0 12px"><select aria-label="อัตราหัก" style="height: 32px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"><option>3% ม.40(2) ค่ารับทำงานให้ (บุคคลธรรมดา)</option><option>3% ม.40(8) ค่าจ้างทำของ/ค่าบริการ (ท.ป.4/2528)</option><option>ไม่หัก</option></select></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">20,000.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ค่าเดินทางไปประชุมลูกค้า</td><td style="padding: 0 12px">5302100 ค่าเดินทาง</td><td style="padding: 0 12px">ไม่มี</td><td style="padding: 0 12px; color: #525252">ไม่หัก</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">850.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td colspan="5" style="padding: 0 12px"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: transparent; color: #0f62fe; border: 1px solid transparent">+ เพิ่มรายการ</button></td></tr>
+          </tbody>
+        </table>
+      </section>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; justify-content: space-between">
+        <section style="flex: 1 1 380px; border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px">
+          <strong>หนังสือรับรองหัก ณ ที่จ่าย (50 ทวิ)</strong>
+          <span style="color: #525252">เลขที่ WHT2611-0007 ออกอัตโนมัติเมื่อบันทึก · ภ.ง.ด.3 · ม.40(2) · 3% ของ 20,000.00 = 600.00 · รวมใน ภ.ง.ด.3 เดือน 11/2569 ยื่นออนไลน์ภายใน 15 ธ.ค.</span>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> ส่ง PDF ให้ผู้รับเงินทางอีเมล</label>
+          <a href="PrintWht50.dc.html" style="font-size: 14px; text-decoration: none">ดูตัวอย่างหนังสือรับรอง 50 ทวิ</a>
+        </section>
+        <table style="flex: 0 1 340px; border-collapse: collapse; font-size: 15px"><tbody>
+          <tr><td style="height: 32px">รวมค่าใช้จ่าย</td><td style="text-align: right; font-variant-numeric: tabular-nums">20,850.00</td></tr>
+          <tr><td style="height: 32px">หัก ณ ที่จ่าย 3%</td><td style="text-align: right; font-variant-numeric: tabular-nums">(600.00)</td></tr>
+          <tr style="border-top: 1px solid #8d8d8d"><td style="height: 40px; font-weight: 600; font-size: 16px">จ่ายจริง</td><td style="text-align: right; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums">20,250.00</td></tr>
+        </tbody></table>
+      </div>
+      <section style="background: #f4f4f4; border: 1px solid #e0e0e0; max-width: 560px">
+        <div style="display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">ตัวอย่างการลงบัญชี</strong><span style="font-size: 13px; color: #525252">สูตร Cash[EXP]</span></div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px"><tbody>
+          <tr><td style="height: 32px; padding: 0 16px">Dr 5301200 ค่าจ้างภายนอก</td><td style="width: 110px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">20,000.00</td><td style="width: 110px"></td></tr>
+          <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px">Dr 5302100 ค่าเดินทาง</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">850.00</td><td></td></tr>
+          <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 1100100 เงินฝากธนาคาร</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">20,250.00</td></tr>
+          <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 2150300 WHT ค้างนำส่ง</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">600.00</td></tr>
+        </tbody></table>
+      </section>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: flex-end; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0">
+      <div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">บันทึกร่าง</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">บันทึกและจ่าย</button></div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

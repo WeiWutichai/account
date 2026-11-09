@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>บิลซื้อ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="purchase" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252"><a href="ScreenPurchaseList.dc.html" style="text-decoration: none">บิลซื้อ</a> / AP2611-0042 · จาก TMS Settlement SA-S2611-0010</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>รอตรวจ</span></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px">
+        <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">บิลซื้อ AP2611-0042</h1><span style="font-size: 13px; color: #525252">รับเข้าจาก TMS 3 พ.ย. 10:14 · ยอดแก้ได้ที่ TMS เท่านั้น แก้ได้เฉพาะบัญชี/ภาษี/มิติ</span></div>
+        <div role="tablist" style="display: flex; border-bottom: 1px solid #e0e0e0; font-size: 14px"><button role="tab" aria-selected="true" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 2px solid #0f62fe; background: transparent; color: #161616; font-family: inherit; font-size: 14px; font-weight: 600">เอกสาร</button><button role="tab" aria-selected="false" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #525252; font-family: inherit; font-size: 14px">สำหรับนักบัญชี</button><button role="tab" aria-selected="false" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #525252; font-family: inherit; font-size: 14px">ไฟล์แนบ 1</button></div>
+      </div>
+      <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px">
+        <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ผู้ขาย<input value="V0008 · หจก. ทรัพย์สมบูรณ์ขนส่ง" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><span style="font-size: 13px; color: #525252">นิติบุคคล · ภ.ง.ด.53 · WHT ตั้งต้น 1% ค่าขนส่ง / 3% ค่าติดตั้ง</span></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">วันที่บิล<input value="31/10/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ครบกำหนด<input value="15/11/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เลขใบกำกับของผู้ขาย<input value="TS-2569/0188" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><span style="font-size: 13px; color: #0e6027">ไม่ซ้ำกับบิลเดิมของผู้ขายรายนี้</span></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เดือนที่ใช้ภาษีซื้อ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>10/2569 (ตามบิล)</option><option>11/2569</option></select><span style="font-size: 13px; color: #525252">เลื่อนได้ไม่เกิน 6 เดือน</span></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สูตรลงบัญชี<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>Credit[AP] ซื้อเชื่อ</option><option>Cash[AP] ซื้อสด</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">รับรู้ WHT เมื่อ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>จ่ายเงิน (นโยบายบริษัท)</option><option>ตั้งหนี้</option></select></label>
+      </section>
+      <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">รายการ</th><th style="padding: 0 12px; font-weight: 400">บัญชี</th><th style="padding: 0 12px; font-weight: 400">มิติ</th><th style="padding: 0 12px; font-weight: 400; text-align: right">จำนวน</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ราคา</th><th style="padding: 0 12px; font-weight: 400">ภาษีซื้อ</th><th style="padding: 0 12px; font-weight: 400">WHT</th><th style="padding: 0 12px; font-weight: 400; text-align: right">จำนวนเงิน</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 48px; padding: 4px 12px">ค่าขนส่งอุปกรณ์ไปติดตั้งที่ไซต์ลูกค้า งวด 1–15 ต.ค.<br><span style="font-size: 13px; color: #525252">DO-2611-00025, 00030, 00031, 00033</span></td><td style="padding: 0 12px">5301300 ค่าขนส่งและติดตั้ง</td><td style="padding: 0 12px; color: #525252">PRJ-07 · 4 เที่ยว</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">4</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">6,482.50</td><td style="padding: 0 12px">ยกเว้น</td><td style="padding: 0 12px">1%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">25,930.00</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; justify-content: space-between">
+        <section style="flex: 1 1 360px; border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 6px">
+          <strong>สิ่งที่ระบบตรวจแล้ว</strong>
+          <span style="color: #0e6027">เลขใบกำกับผู้ขายไม่ซ้ำ ✓</span><span style="color: #0e6027">งวด 10/2569 ยังเปิด (soft close) ✓</span><span style="color: #0e6027">ผู้ขายนิติบุคคล → ภ.ง.ด.53 ✓</span><span style="color: #684e00">ผู้ขายยังไม่มีบัญชีธนาคารสำหรับโอน — <a href="ScreenContacts.dc.html">เพิ่ม</a></span>
+        </section>
+        <table style="flex: 0 1 340px; border-collapse: collapse; font-size: 15px"><tbody>
+          <tr><td style="height: 32px">มูลค่าก่อนภาษี</td><td style="text-align: right; font-variant-numeric: tabular-nums">25,930.00</td></tr>
+          <tr><td style="height: 32px">ภาษีซื้อ</td><td style="text-align: right; font-variant-numeric: tabular-nums"></td></tr>
+          <tr style="border-top: 1px solid #8d8d8d"><td style="height: 40px; font-weight: 600; font-size: 16px">ยอดตั้งหนี้</td><td style="text-align: right; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums">25,930.00</td></tr>
+          <tr><td style="height: 28px; font-size: 13px; color: #525252">หัก ณ ที่จ่าย 1% ตอนจ่าย</td><td style="text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums">(259.30)</td></tr>
+          <tr><td style="height: 28px; font-size: 13px; color: #525252">จ่ายจริง</td><td style="text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums">25,670.70</td></tr>
+        </tbody></table>
+      </div>
+      <section style="background: #f4f4f4; border: 1px solid #e0e0e0; max-width: 560px">
+        <div style="display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">ตัวอย่างการลงบัญชี</strong><span style="font-size: 13px; color: #525252">สูตร Credit[AP]</span></div>
+        <table style="width: 100%; border-collapse: collapse; font-size: 14px"><tbody>
+          <tr><td style="height: 32px; padding: 0 16px">Dr 5301300 ค่าขนส่งและติดตั้ง</td><td style="width: 110px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">25,930.00</td><td style="width: 110px"></td></tr>
+          <tr style="border-top: 1px solid #e0e0e0"><td style="height: 32px; padding: 0 16px 0 32px">Cr 2110100 เจ้าหนี้การค้า</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">25,930.00</td></tr>
+        </tbody></table>
+      </section>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0; flex-wrap: wrap; gap: 8px">
+      <span style="font-size: 13px; color: #525252">อนุมัติแล้ว TMS จะเห็นสถานะ "ตั้งหนี้แล้ว" ทันที</span>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #da1e28; border: 1px solid #da1e28">ส่งกลับ TMS แก้ไข</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">บันทึกร่าง</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">อนุมัติและตั้งหนี้</button></div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

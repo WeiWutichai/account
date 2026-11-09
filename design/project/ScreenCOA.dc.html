@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ผังบัญชี</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="coa" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">บัญชี / ผังบัญชี</span><span style="color: #525252">84 บัญชี · template ธุรกิจบริการ</span></header>
+    <div style="padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px">
+        <h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ผังบัญชี</h1>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">นำเข้า Excel</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d; border-left: 0">ส่งออก</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">เพิ่มบัญชี</button></div>
+      </div>
+      <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap">
+        <label style="display: flex; flex: 1 1 280px; max-width: 400px; height: 40px; background: #f4f4f4; border-bottom: 1px solid #8d8d8d; align-items: center; padding: 0 16px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden">ค้นหา</span><input placeholder="ค้นหารหัสหรือชื่อบัญชี" style="flex: 1; border: 0; background: transparent; font-family: inherit; font-size: 14px; outline: none"></label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 14px"><input type="checkbox"> แสดงเฉพาะที่มีรายการ</label>
+        <label style="display: flex; gap: 8px; align-items: center; font-size: 14px"><input type="checkbox" checked> ย่อหมวดที่ไม่ใช้</label>
+      </div>
+      <div style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 900px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">รหัส</th><th style="padding: 0 12px; font-weight: 400">ชื่อบัญชี</th><th style="padding: 0 12px; font-weight: 400">ประเภท</th><th style="padding: 0 12px; font-weight: 400">คุม / ผูกกับ</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ยอดคงเหลือ 11/2569</th><th style="padding: 0 12px; font-weight: 400">สถานะ</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0; background: #f4f4f4"><td style="height: 40px; padding: 0 12px; font-weight: 600">1</td><td style="padding: 0 12px; font-weight: 600">สินทรัพย์</td><td style="padding: 0 12px" colspan="2"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600">4,120,088.95</td><td></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">1100100</td><td style="padding: 0 12px">เงินฝากออมทรัพย์ [ธนาคาร]</td><td style="padding: 0 12px">สินทรัพย์หมุนเวียน</td><td style="padding: 0 12px; color: #525252">บัญชีธนาคาร xxx-x-x1234-x</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">2,297,170.15</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">1130100</td><td style="padding: 0 12px">ลูกหนี้การค้า</td><td style="padding: 0 12px">สินทรัพย์หมุนเวียน</td><td style="padding: 0 12px; color: #525252">บัญชีคุม · ต้องระบุคู่ค้า</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,780,016.00</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน · ล็อกประเภท</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">1160100</td><td style="padding: 0 12px">ภาษีถูกหัก ณ ที่จ่าย</td><td style="padding: 0 12px">สินทรัพย์หมุนเวียน</td><td style="padding: 0 12px; color: #525252">รายงานภาษีถูกหัก</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">42,902.80</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0; background: #f4f4f4"><td style="height: 40px; padding: 0 12px; font-weight: 600">2</td><td style="padding: 0 12px; font-weight: 600">หนี้สิน</td><td colspan="2"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600">(1,187,624.16)</td><td></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">2110100</td><td style="padding: 0 12px">เจ้าหนี้การค้า</td><td style="padding: 0 12px">หนี้สินหมุนเวียน</td><td style="padding: 0 12px; color: #525252">บัญชีคุม · ต้องระบุคู่ค้า</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">(1,029,010.00)</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน · ล็อกประเภท</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">2150100</td><td style="padding: 0 12px">ภาษีขาย</td><td style="padding: 0 12px">หนี้สินหมุนเวียน</td><td style="padding: 0 12px; color: #525252">รายงานภาษีขาย · ภ.พ.30</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">(134,794.16)</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">2150300</td><td style="padding: 0 12px">ภาษีหัก ณ ที่จ่ายค้างนำส่ง</td><td style="padding: 0 12px">หนี้สินหมุนเวียน</td><td style="padding: 0 12px; color: #525252">ภ.ง.ด.3/53</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">(23,820.00)</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0; background: #f4f4f4"><td style="height: 40px; padding: 0 12px; font-weight: 600">4</td><td style="padding: 0 12px; font-weight: 600">รายได้</td><td colspan="2"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600">(19,704,600.00)</td><td></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">4100100</td><td style="padding: 0 12px">รายได้จากการให้บริการ</td><td style="padding: 0 12px">รายได้</td><td style="padding: 0 12px; color: #525252">ค่าเริ่มต้นสูตร IV</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">(18,420,600.00)</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">4101100</td><td style="padding: 0 12px">รายได้ค่าฝึกอบรม / ที่ปรึกษา</td><td style="padding: 0 12px">รายได้</td><td style="padding: 0 12px; color: #525252">mapping TMS</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">(1,284,000.00)</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0; background: #f4f4f4"><td style="height: 40px; padding: 0 12px; font-weight: 600">5</td><td style="padding: 0 12px; font-weight: 600">ค่าใช้จ่าย</td><td colspan="2"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; font-weight: 600">16,879,950.00</td><td></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px">5301200</td><td style="padding: 0 12px">ค่าจ้างภายนอก</td><td style="padding: 0 12px">ค่าใช้จ่ายในการบริหาร</td><td style="padding: 0 12px; color: #525252">WHT 3% ตั้งต้น</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">8,840,000.00</td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ใช้งาน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px 0 28px; color: #525252">5990100</td><td style="padding: 0 12px; color: #525252">ค่าใช้จ่ายเบ็ดเตล็ด (เก่า · โอนไป 5304100)</td><td style="padding: 0 12px; color: #525252">ค่าใช้จ่าย</td><td style="padding: 0 12px; color: #525252">—</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252"></td><td style="padding: 0 12px"><span style="font-size: 13px; color: #525252">ปิดใช้ · มีประวัติ ลบไม่ได้</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin: 0; font-size: 13px; color: #525252">บัญชีที่มีรายการแล้วเปลี่ยนประเภทไม่ได้และลบไม่ได้ ทำได้เพียงปิดใช้ · บัญชีคุม (ลูกหนี้/เจ้าหนี้) เลือกลงรายวันตรงๆ ไม่ได้ ต้องผ่านเอกสารที่ระบุคู่ค้า</p>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

@@ -1,0 +1,3349 @@
+{
+ "$schema": "./sample-company.schema.json",
+ "_meta": {
+  "source": "แบบร่าง Claude Design LQTTxmYPCna8EntkntYCCQ เวอร์ชัน 26 (2026-11-09) · ปิดรายการขัดกัน 11 ข้อตามข้อตัดสินของ Wei",
+  "rule": "ตัวเลขทุกตัวในหน้าจอ แบบพิมพ์ รายงานภาษี และ golden tests ต้องมาจากไฟล์นี้เท่านั้น",
+  "currency": "THB",
+  "vat_rate": 0.07,
+  "period": "2569-11",
+  "today": "2569-11-30",
+  "view": "มุมมองสิ้นเดือน — ทุกหน้าในแบบร่างแสดง ณ วันจันทร์ 30 พ.ย. 2569",
+  "coverage": "ทุกยอดเงินในหน้าบัญชี (ไม่รวม Console) อยู่ในไฟล์นี้ · ยอดที่ขัดกันอยู่ใน conflicts_pending_wei"
+ },
+ "company": {
+  "code": "co_sample",
+  "name_th": "บริษัท [ชื่อบริษัท] จำกัด",
+  "name_en": "[Company Name] Co., Ltd.",
+  "tax_id": "0105xxxxxxxxx",
+  "branch": "00000",
+  "business_type": "service",
+  "vat_registered": true,
+  "service_tax_point": "on_payment",
+  "wht_recognition": "on_payment",
+  "fiscal_year": {
+   "start": "01-01",
+   "end": "12-31",
+   "periods": 12,
+   "adjustment_period": 13
+  },
+  "price_default": "exclude_vat",
+  "rounding": "last_line",
+  "modules": {
+   "stock": false,
+   "payroll": false,
+   "fixed_assets": true,
+   "dimensions": true
+  },
+  "bank_accounts": [
+   {
+    "account": "1100100",
+    "name": "ออมทรัพย์ [ธนาคาร A]",
+    "number": "xxx-x-x1234-x",
+    "statement_balance_2569_11_30": "2318420.15",
+    "gl_balance_2569_11_30": "2297170.15",
+    "unexplained_diff": "21250.00",
+    "balance_2569_11_28_before_payrun": "3212710.00",
+    "balance_2569_11_28_after_payrun": "2317210.00",
+    "statement_30_11_derivation": "2317210.00 + ดอกเบี้ย 1230.15 − ค่าธรรมเนียม 20.00 = 2318420.15",
+    "recon_2569_11": {
+     "interest": {
+      "gross": "1447.23",
+      "wht_15pct": "217.08",
+      "net": "1230.15",
+      "journal": [
+       [
+        "Dr",
+        "1100100",
+        "1230.15"
+       ],
+       [
+        "Dr",
+        "1160100",
+        "217.08"
+       ],
+       [
+        "Cr",
+        "4200100",
+        "1447.23"
+       ]
+      ]
+     },
+     "bank_fee": "20.00",
+     "outstanding_cheques": {
+      "count": 3,
+      "total": "118400.00",
+      "note": "เช็คค้างจ่าย — ปกติ"
+     },
+     "unexplained_diff": "21250.00"
+    }
+   },
+   {
+    "account": "1100200",
+    "name": "กระแสรายวัน [ธนาคาร B]",
+    "number": "xxx-x-x5678-x"
+   }
+  ]
+ },
+ "chart_of_accounts": [
+  {
+   "code": "1000100",
+   "name": "เงินสด",
+   "type": "asset"
+  },
+  {
+   "code": "1000200",
+   "name": "เงินสดย่อย",
+   "type": "asset",
+   "imprest": "30000.00"
+  },
+  {
+   "code": "1100100",
+   "name": "เงินฝากธนาคาร ออมทรัพย์ [ธนาคาร A]",
+   "type": "asset"
+  },
+  {
+   "code": "1100200",
+   "name": "เงินฝากธนาคาร กระแสรายวัน [ธนาคาร B]",
+   "type": "asset"
+  },
+  {
+   "code": "1130100",
+   "name": "ลูกหนี้การค้า",
+   "type": "asset",
+   "control": "ar"
+  },
+  {
+   "code": "1140100",
+   "name": "เงินมัดจำจ่ายล่วงหน้า",
+   "type": "asset"
+  },
+  {
+   "code": "1150100",
+   "name": "เช็ครับรอเรียกเก็บ",
+   "type": "asset"
+  },
+  {
+   "code": "1150200",
+   "name": "เช็ครับรอเรียกเก็บ-นำฝาก",
+   "type": "asset"
+  },
+  {
+   "code": "1160100",
+   "name": "ภาษีถูกหัก ณ ที่จ่าย",
+   "type": "asset"
+  },
+  {
+   "code": "1170100",
+   "name": "ภาษีซื้อ",
+   "type": "asset"
+  },
+  {
+   "code": "1190100",
+   "name": "เงินทดรองพนักงาน",
+   "type": "asset"
+  },
+  {
+   "code": "1510100",
+   "name": "อุปกรณ์สำนักงาน",
+   "type": "asset"
+  },
+  {
+   "code": "1510190",
+   "name": "ค่าเสื่อมราคาสะสม-อุปกรณ์สำนักงาน",
+   "type": "contra_asset"
+  },
+  {
+   "code": "1520100",
+   "name": "คอมพิวเตอร์",
+   "type": "asset"
+  },
+  {
+   "code": "1520190",
+   "name": "ค่าเสื่อมราคาสะสม-คอมพิวเตอร์",
+   "type": "contra_asset"
+  },
+  {
+   "code": "1530100",
+   "name": "ยานพาหนะ",
+   "type": "asset"
+  },
+  {
+   "code": "1530190",
+   "name": "ค่าเสื่อมราคาสะสม-ยานพาหนะ",
+   "type": "contra_asset"
+  },
+  {
+   "code": "1540100",
+   "name": "ส่วนปรับปรุงอาคารเช่า",
+   "type": "asset"
+  },
+  {
+   "code": "1540190",
+   "name": "ค่าเสื่อมราคาสะสม-ส่วนปรับปรุงอาคารเช่า",
+   "type": "contra_asset"
+  },
+  {
+   "code": "2110100",
+   "name": "เจ้าหนี้การค้า",
+   "type": "liability",
+   "control": "ap"
+  },
+  {
+   "code": "2140100",
+   "name": "เงินมัดจำรับล่วงหน้า",
+   "type": "liability"
+  },
+  {
+   "code": "2150100",
+   "name": "ภาษีขาย",
+   "type": "liability"
+  },
+  {
+   "code": "2150200",
+   "name": "ภาษีมูลค่าเพิ่มค้างจ่าย",
+   "type": "liability"
+  },
+  {
+   "code": "2150300",
+   "name": "ภาษีหัก ณ ที่จ่ายค้างนำส่ง",
+   "type": "liability"
+  },
+  {
+   "code": "2150400",
+   "name": "ภาษีขายยังไม่ถึงกำหนด",
+   "type": "liability"
+  },
+  {
+   "code": "2160100",
+   "name": "ภาษีเงินได้ค้างจ่าย",
+   "type": "liability"
+  },
+  {
+   "code": "2190100",
+   "name": "เงินรับรอตรวจสอบ",
+   "type": "liability",
+   "suspense": true
+  },
+  {
+   "code": "3000100",
+   "name": "ทุน",
+   "type": "equity"
+  },
+  {
+   "code": "3200100",
+   "name": "กำไรสะสมยังไม่จัดสรร",
+   "type": "equity"
+  },
+  {
+   "code": "3300100",
+   "name": "สำรองตามกฎหมาย",
+   "type": "equity"
+  },
+  {
+   "code": "3900100",
+   "name": "กำไรขาดทุน (ปิดบัญชี)",
+   "type": "equity",
+   "closing": true
+  },
+  {
+   "code": "4100100",
+   "name": "รายได้จากการให้บริการ",
+   "type": "revenue"
+  },
+  {
+   "code": "4100200",
+   "name": "รายได้ค่าบริการ",
+   "type": "revenue"
+  },
+  {
+   "code": "4101100",
+   "name": "รายได้ค่าฝึกอบรม / ที่ปรึกษา",
+   "type": "revenue"
+  },
+  {
+   "code": "4150100",
+   "name": "รับคืน/ส่วนลดจ่าย",
+   "type": "contra_revenue"
+  },
+  {
+   "code": "4200100",
+   "name": "ดอกเบี้ยรับ / รายได้อื่น",
+   "type": "revenue"
+  },
+  {
+   "code": "4900100",
+   "name": "กำไร(ขาดทุน)จากส่วนต่าง",
+   "type": "revenue"
+  },
+  {
+   "code": "5100100",
+   "name": "เงินเดือนพนักงานปฏิบัติการ",
+   "type": "expense"
+  },
+  {
+   "code": "5150100",
+   "name": "ค่าเสื่อมราคา-อุปกรณ์สำนักงาน",
+   "type": "expense"
+  },
+  {
+   "code": "5150200",
+   "name": "ค่าเสื่อมราคา-คอมพิวเตอร์",
+   "type": "expense"
+  },
+  {
+   "code": "5150300",
+   "name": "ค่าเสื่อมราคา-ยานพาหนะ / ส่วนปรับปรุง",
+   "type": "expense"
+  },
+  {
+   "code": "5200100",
+   "name": "เงินเดือนและสวัสดิการสำนักงาน",
+   "type": "expense"
+  },
+  {
+   "code": "5301200",
+   "name": "ค่าจ้างภายนอก / ผู้รับเหมา",
+   "type": "expense"
+  },
+  {
+   "code": "5301300",
+   "name": "ค่าขนส่งและติดตั้ง",
+   "type": "expense"
+  },
+  {
+   "code": "5302100",
+   "name": "ค่าเดินทาง / ค่ารับรอง",
+   "type": "expense"
+  },
+  {
+   "code": "5303100",
+   "name": "ค่าเช่าและสาธารณูปโภค / ค่าไปรษณีย์",
+   "type": "expense"
+  },
+  {
+   "code": "5304100",
+   "name": "ค่าของใช้สำนักงาน",
+   "type": "expense"
+  },
+  {
+   "code": "5305100",
+   "name": "ค่าซ่อมบำรุง",
+   "type": "expense"
+  },
+  {
+   "code": "5306100",
+   "name": "ค่าซอฟต์แวร์",
+   "type": "expense"
+  },
+  {
+   "code": "5401100",
+   "name": "ค่าธรรมเนียมธนาคาร",
+   "type": "expense"
+  },
+  {
+   "code": "5900100",
+   "name": "ต้นทุนทางการเงิน",
+   "type": "expense"
+  },
+  {
+   "code": "5910100",
+   "name": "ขาดทุนจากการจำหน่ายทรัพย์สิน",
+   "type": "expense"
+  },
+  {
+   "code": "5950100",
+   "name": "ภาษีเงินได้นิติบุคคล",
+   "type": "expense"
+  }
+ ],
+ "wht_rates": {
+  "transport_domestic": {
+   "rate": 0.01,
+   "pnd": "53"
+  },
+  "advertising": {
+   "rate": 0.02,
+   "pnd": "53"
+  },
+  "service": {
+   "rate": 0.03,
+   "pnd": "3|53"
+  },
+  "hire_of_work": {
+   "rate": 0.03,
+   "pnd": "3|53"
+  },
+  "professional": {
+   "rate": 0.03,
+   "pnd": "3|53"
+  },
+  "rent": {
+   "rate": 0.05,
+   "pnd": "3|53"
+  },
+  "interest_received": {
+   "rate": 0.15,
+   "pnd": "-"
+  },
+  "freelance_software_dev": {
+   "rate": 0.03,
+   "income_section": "40(2)",
+   "status": "PENDING_AUDITOR",
+   "alternatives": [
+    "40(8)"
+   ]
+  }
+ },
+ "filing_calendar": {
+  "pnd_1_3_53": {
+   "paper_day": 7,
+   "online_day": 15
+  },
+  "pp30": {
+   "paper_day": 15,
+   "online_day": 23
+  },
+  "online_extension": {
+   "enabled": true,
+   "status": "PENDING_AUDITOR",
+   "valid_until": "2570-01-31"
+  }
+ },
+ "contacts": [
+  {
+   "code": "C0012",
+   "name": "[ลูกค้า A] จำกัด",
+   "type": "customer",
+   "tax_id": "0105xxxxxxx05",
+   "credit_days": 30,
+   "credit_limit_remaining": "452920.00",
+   "ar_outstanding_2569_11_30": "42800.00",
+   "ar_open_docs": [
+    "IVS2610-0008 32100.00 (เกินกำหนด)",
+    "IV2611-0001 10700.00"
+   ],
+   "note": "IV2611-0052 รออนุมัติ ยังไม่เป็นลูกหนี้"
+  },
+  {
+   "code": "C0031",
+   "name": "บจก. สยามพลาสติก",
+   "type": "customer",
+   "tax_id": "0105yyyyyyyyy",
+   "credit_days": 30,
+   "credit_limit": "3000000.00",
+   "billing_cycle": [
+    1,
+    16
+   ],
+   "cheque_day": "thu",
+   "external": {
+    "source": "tms",
+    "ref": "CUST-0031"
+   },
+   "ar_outstanding_2569_11_30": "282400.00"
+  },
+  {
+   "code": "C0044",
+   "name": "[ลูกค้า D] จำกัด",
+   "type": "customer",
+   "tax_id": "0105xxxxxxx02",
+   "credit_days": 45,
+   "ar_outstanding_2569_11_30": "464326.00"
+  },
+  {
+   "code": "C0067",
+   "name": "[ลูกค้า F]",
+   "type": "customer",
+   "over_limit": true,
+   "ar_outstanding_2569_11_30": "156450.00"
+  },
+  {
+   "code": "C0081",
+   "name": "[ลูกค้า H] หจก.",
+   "type": "customer",
+   "tax_id": "0103xxxxxxx04",
+   "ar_outstanding_2569_11_30": "38520.00"
+  },
+  {
+   "code": "V0008",
+   "name": "หจก. ทรัพย์สมบูรณ์ขนส่ง",
+   "type": "vendor",
+   "tax_id": "0103xxxxxxx08",
+   "default_wht": "transport_domestic",
+   "external": {
+    "source": "tms",
+    "ref": "SUB-0008"
+   },
+   "ap_due_7d_2569_11_30": {
+    "total": "63193.40",
+    "bills": [
+     "AP2611-0042",
+     "AP2611-0043"
+    ]
+   }
+  },
+  {
+   "code": "V0102",
+   "name": "บจก. ขนส่ง ก.",
+   "type": "vendor",
+   "tax_id": "0105xxxxxxx12",
+   "default_wht": "transport_domestic",
+   "bank": "xxx-x-x1234-x",
+   "external": {
+    "source": "tms",
+    "ref": "SUB-0102"
+   }
+  },
+  {
+   "code": "V0210",
+   "name": "บจก. [ผู้ขาย ข.]",
+   "type": "vendor",
+   "tax_id": "0105xxxxxxx11",
+   "default_wht": "service",
+   "bank": "xxx-x-x5678-x",
+   "credit_days": 30
+  },
+  {
+   "code": "V0330",
+   "name": "[ผู้ให้เช่าอาคาร]",
+   "type": "vendor",
+   "tax_id": "0105xxxxxxx17",
+   "default_wht": "rent",
+   "bank": "xxx-x-x9012-x"
+  },
+  {
+   "code": "V0415",
+   "name": "[อู่ซ่อม]",
+   "type": "vendor",
+   "tax_id": "0105xxxxxxx19",
+   "default_wht": "hire_of_work",
+   "bank": null
+  },
+  {
+   "code": "P0001",
+   "name": "[ฟรีแลนซ์ นาย ก.]",
+   "type": "vendor",
+   "person": true,
+   "tax_id": "1xxxxxxxxxx01",
+   "default_wht": "freelance_software_dev"
+  },
+  {
+   "code": "C0055",
+   "name": "[ลูกค้า E] จำกัด",
+   "type": "customer",
+   "tax_id": "0105xxxxxxx03",
+   "credit_days": 30,
+   "ar_outstanding_2569_11_30": "0.00",
+   "note": "IV2611-0059 ชำระด้วยเช็ค 30/11 (RV2611-0025) รอเรียกเก็บ"
+  },
+  {
+   "code": "C0088",
+   "name": "[ลูกค้า G] หจก.",
+   "type": "customer",
+   "tax_id": "0103xxxxxxx09",
+   "note": "เช็ค 55012098 นำฝาก 25/11 รอผ่าน (RV2611-0019)"
+  },
+  {
+   "code": "C0063",
+   "name": "[ลูกค้า C] จำกัด",
+   "type": "customer",
+   "tax_id": "0105xxxxxxx06"
+  }
+ ],
+ "products": [
+  {
+   "code": "S-0001",
+   "name": "พัฒนาซอฟต์แวร์",
+   "unit": "ชั่วโมง",
+   "price": "1500.00",
+   "revenue_account": "4100100",
+   "vat": true,
+   "price_2": "1200.00",
+   "est_cost": "800.00",
+   "est_cost_source": "QO2611-0014 est_cost 96000.00 ÷ 120 ชม."
+  },
+  {
+   "code": "S-0003",
+   "name": "ดูแลระบบรายเดือน",
+   "unit": "ครั้ง",
+   "price": "400.00",
+   "revenue_account": "4100100",
+   "vat": true
+  },
+  {
+   "code": "S-0010",
+   "name": "ค่าติดตั้ง on-site (จาก TMS)",
+   "unit": "งาน",
+   "revenue_account": "4100100",
+   "vat": true,
+   "external_source": "tms",
+   "note": "ScreenProducts เดิมแสดง \"ยกเว้น\" — แก้เป็น VAT 7% ในเวอร์ชัน 26 (มีแค่ขนส่ง/ค่าเช่าอสังหาฯ ที่ยกเว้น)"
+  },
+  {
+   "code": "S-0020",
+   "name": "ค่าฝึกอบรม / ที่ปรึกษา",
+   "unit": "วัน",
+   "revenue_account": "4101100",
+   "vat": true
+  },
+  {
+   "code": "S-0002",
+   "name": "ค่าดูแลระบบ (รายเดือน)",
+   "unit": "เดือน",
+   "price": "8000.00",
+   "revenue_account": "4100100",
+   "vat": true
+  },
+  {
+   "code": "P-1001",
+   "name": "[สินค้า A]",
+   "type": "goods",
+   "unit": "ชิ้น",
+   "price": "400.00",
+   "cost": "360.00",
+   "revenue_account": "4100200",
+   "vat": true
+  },
+  {
+   "code": "P-1002",
+   "name": "[สินค้า B]",
+   "type": "goods",
+   "unit": "ชิ้น",
+   "price": "400.00",
+   "revenue_account": "4100200",
+   "vat": true
+  }
+ ],
+ "documents": {
+  "IV2611-0052": {
+   "type": "IV",
+   "date": "2569-11-04",
+   "due": "2569-12-04",
+   "contact": "C0012",
+   "from": "SO2610-0021",
+   "status": "pending_approval",
+   "rule": "Service[IV]",
+   "lines": [
+    {
+     "product": "S-0001",
+     "desc": "พัฒนาซอฟต์แวร์ระบบจอง (งวดที่ 2)",
+     "qty": "4",
+     "price": "1500.00",
+     "amount": "6000.00",
+     "account": "4100100",
+     "vat": true
+    },
+    {
+     "product": "S-0003",
+     "desc": "ดูแลระบบรายเดือน พ.ย. 2569",
+     "qty": "10",
+     "price": "400.00",
+     "amount": "4000.00",
+     "account": "4100100",
+     "vat": true
+    }
+   ],
+   "subtotal": "10000.00",
+   "vat": "700.00",
+   "grand_total": "10700.00",
+   "amount_text": "หนึ่งหมื่นเจ็ดร้อยบาทถ้วน",
+   "expected_journal": [
+    [
+     "Dr",
+     "1130100",
+     "10700.00"
+    ],
+    [
+     "Cr",
+     "4100200",
+     "10000.00"
+    ],
+    [
+     "Cr",
+     "2150400",
+     "700.00"
+    ]
+   ],
+   "wht_if_deducted_3pct": "300.00"
+  },
+  "IV2610-0049": {
+   "type": "IV",
+   "date": "2569-10-28",
+   "due": "2569-11-27",
+   "contact": "C0031",
+   "desc": "ค่าบริการดูแลระบบ ต.ค. 2569",
+   "status": "posted",
+   "billed_in": "BN2611-0002",
+   "subtotal": "1430093.46",
+   "vat": "100106.54",
+   "grand_total": "1530200.00"
+  },
+  "IV2611-0053": {
+   "type": "IV",
+   "date": "2569-11-05",
+   "due": "2569-12-05",
+   "contact": "C0031",
+   "desc": "ค่าติดตั้ง on-site ×5 (TMS)",
+   "status": "posted",
+   "grand_total": "31200.00",
+   "external": {
+    "source": "tms",
+    "ref": "TRIP-BATCH-0553"
+   },
+   "subtotal": "29158.88",
+   "vat": "2041.12",
+   "outstanding_2569_11_30": "1200.00",
+   "status_2569_11_30": "partially_paid"
+  },
+  "IV2611-0056": {
+   "type": "IV",
+   "date": "2569-11-10",
+   "due": "2569-12-10",
+   "contact": "C0031",
+   "desc": "ค่าติดตั้ง on-site ×8 (TMS)",
+   "status": "posted",
+   "subtotal": "262803.74",
+   "vat": "18396.26",
+   "grand_total": "281200.00",
+   "external": {
+    "source": "tms",
+    "ref": "TRIP-BATCH-0556"
+   },
+   "lines": [
+    {
+     "product": "S-0010",
+     "desc": "ค่าติดตั้ง on-site (TMS) ×8 งาน · ใบส่งของ 8 ใบ",
+     "qty": "8",
+     "price_incl_vat": "35150.00",
+     "amount": "281200.00"
+    }
+   ],
+   "discount": "0.00",
+   "refs": "SO2611-0031 / BN2611-0004",
+   "price_incl_vat": true,
+   "vat_formula": "281200.00 × 7/107 = 18396.26 · base = 281200.00 − 18396.26"
+  },
+  "IV2611-0058": {
+   "type": "IV",
+   "contact": "C0031",
+   "status": "voided",
+   "grand_total": "53500.00",
+   "void_reason": "ออกซ้ำกับ IV2611-0057",
+   "reversal": "JV2611-0099R",
+   "expected_reversal": [
+    [
+     "Dr",
+     "4100200",
+     "50000.00"
+    ],
+    [
+     "Dr",
+     "2150400",
+     "3500.00"
+    ],
+    [
+     "Cr",
+     "1130100",
+     "53500.00"
+    ]
+   ]
+  },
+  "BN2611-0004": {
+   "type": "BN",
+   "date": "2569-11-16",
+   "collect_date": "2569-11-27",
+   "contact": "C0031",
+   "invoices": [
+    "IV2611-0053",
+    "IV2611-0056"
+   ],
+   "total": "312400.00",
+   "amount_text": "สามแสนหนึ่งหมื่นสองพันสี่ร้อยบาทถ้วน",
+   "posts_journal": false
+  },
+  "RV2611-0021": {
+   "type": "RV",
+   "date": "2569-11-27",
+   "contact": "C0031",
+   "ref": "BN2611-0002",
+   "bank_account": "1100100",
+   "rule": "RV[Bank]",
+   "applications": [
+    {
+     "doc": "IV2610-0049",
+     "outstanding": "1530200.00",
+     "wht_base": "1430093.46",
+     "wht_rate": 0.03,
+     "wht": "42902.80",
+     "applied": "1487297.20",
+     "remaining": "0.00"
+    },
+    {
+     "doc": "IV2611-0053",
+     "outstanding": "31200.00",
+     "wht": "0.00",
+     "applied": "30000.00",
+     "remaining": "1200.00"
+    }
+   ],
+   "wht_cert_received": {
+    "number": "0045/2569",
+    "rate": 0.03,
+    "amount": "42902.80"
+   },
+   "bank_fee": "20.00",
+   "fee_account": "5401100",
+   "total_applied": "1517297.20",
+   "total_wht": "42902.80",
+   "cash_in": "1517277.20",
+   "vat_transfer": {
+    "base": "1458130.84",
+    "vat": "102069.16"
+   },
+   "amount_text": "หนึ่งล้านห้าแสนหนึ่งหมื่นเจ็ดพันสองร้อยเจ็ดสิบเจ็ดบาทยี่สิบสตางค์",
+   "expected_journal": [
+    [
+     "Dr",
+     "1100100",
+     "1517277.20"
+    ],
+    [
+     "Dr",
+     "1160100",
+     "42902.80"
+    ],
+    [
+     "Dr",
+     "5401100",
+     "20.00"
+    ],
+    [
+     "Dr",
+     "2150400",
+     "102069.16"
+    ],
+    [
+     "Cr",
+     "1130100",
+     "1560200.00"
+    ],
+    [
+     "Cr",
+     "2150100",
+     "102069.16"
+    ]
+   ],
+   "expected_journal_total": "1662269.16",
+   "bank_statement_match": {
+    "date": "2569-11-27",
+    "desc": "TRF 2711 ref 889120 SIAM PLASTIC CO",
+    "amount": "1517277.20"
+   },
+   "applied_gross_total": "1561400.00",
+   "applied_gross_formula": "1530200.00 (IV2610-0049) + 31200.00 (IV2611-0053 ตัดบางส่วน) · ตัดจริง 1560200.00"
+  },
+  "RV2611-0024": {
+   "type": "RV",
+   "date": "2569-11-28",
+   "contact": "C0081",
+   "ref": "IV2611-0063",
+   "desc": "ค่าเช่าพื้นที่สำนักงาน (ยกเว้น VAT ม.81(1)(ฑ))",
+   "vat": false,
+   "amount": "24000.00",
+   "wht_rate": 0.05,
+   "wht": "1200.00",
+   "cash_in": "22800.00",
+   "amount_text": "สองหมื่นสี่พันบาทถ้วน",
+   "print": "D10"
+  },
+  "EXP2611-0019": {
+   "type": "EXP",
+   "date": "2569-11-05",
+   "contact": "P0001",
+   "pay_now": true,
+   "pay_from": "1100100",
+   "rule": "Cash[EXP]",
+   "dimension": {
+    "project": "PRJ-07"
+   },
+   "lines": [
+    {
+     "desc": "ค่าจ้างพัฒนา UI หน้าจอง งวด 2",
+     "account": "5301200",
+     "amount": "20000.00",
+     "vat": false,
+     "wht": "freelance_software_dev"
+    },
+    {
+     "desc": "ค่าเดินทางไปประชุมลูกค้า",
+     "account": "5302100",
+     "amount": "850.00",
+     "vat": false,
+     "wht": null
+    }
+   ],
+   "total": "20850.00",
+   "wht": "600.00",
+   "paid": "20250.00",
+   "wht_cert": "WHT2611-0007",
+   "pnd": "3",
+   "expected_journal": [
+    [
+     "Dr",
+     "5301200",
+     "20000.00"
+    ],
+    [
+     "Dr",
+     "5302100",
+     "850.00"
+    ],
+    [
+     "Cr",
+     "1100100",
+     "20250.00"
+    ],
+    [
+     "Cr",
+     "2150300",
+     "600.00"
+    ]
+   ]
+  },
+  "AP2611-0079": {
+   "type": "AP",
+   "date": "2569-11-05",
+   "contact": "V0210",
+   "vendor_invoice": "INV-5521",
+   "due": "2569-11-25",
+   "dimension": {
+    "project": "PRJ-07"
+   },
+   "lines": [
+    {
+     "desc": "ค่าบริการดูแลระบบ พ.ย. 2569",
+     "account": "5301200",
+     "amount": "120000.00",
+     "vat": true
+    },
+    {
+     "desc": "ค่าลิขสิทธิ์ซอฟต์แวร์รายเดือน",
+     "account": "5306100",
+     "amount": "30000.00",
+     "vat": true
+    }
+   ],
+   "subtotal": "150000.00",
+   "vat": "10500.00",
+   "grand_total": "160500.00",
+   "wht_on_payment": {
+    "rate": 0.03,
+    "base_after_cnr": "130000.00",
+    "amount": "3900.00"
+   }
+  },
+  "CNR2611-0003": {
+   "type": "CNR",
+   "date": "2569-11-18",
+   "contact": "V0210",
+   "vendor_cn": "CN-2569/118",
+   "ref": "AP2611-0079",
+   "reason": "ลดราคาเนื่องจากบริการผิดข้อตกลง (ม.82/10)",
+   "lines": [
+    {
+     "ref_line": 0,
+     "original": "120000.00",
+     "corrected": "100000.00",
+     "diff": "20000.00"
+    },
+    {
+     "ref_line": 1,
+     "original": "30000.00",
+     "corrected": "30000.00",
+     "diff": "0.00"
+    }
+   ],
+   "subtotal": "20000.00",
+   "vat": "1400.00",
+   "total": "21400.00",
+   "ap_after": "139100.00",
+   "expected_journal": [
+    [
+     "Dr",
+     "2110100",
+     "21400.00"
+    ],
+    [
+     "Cr",
+     "5301200",
+     "20000.00"
+    ],
+    [
+     "Cr",
+     "1170100",
+     "1400.00"
+    ]
+   ],
+   "vat_corrected": "9100.00",
+   "ap_after_detail": {
+    "subtotal": "130000.00",
+    "vat": "9100.00",
+    "grand_total": "139100.00",
+    "from": "160500.00"
+   }
+  },
+  "AP2611-0088": {
+   "type": "AP",
+   "contact": "V0102",
+   "vendor_invoice": "TS-2569/0201",
+   "due": "2569-11-30",
+   "desc": "ค่าขนส่งผู้รับเหมา (TMS)",
+   "vat_exempt": "81(1)(ต)",
+   "subtotal": "600000.00",
+   "vat": "0.00",
+   "grand_total": "600000.00",
+   "external": {
+    "source": "tms",
+    "ref": "SUB-BILL-7701"
+   },
+   "expected_journal": [
+    [
+     "Dr",
+     "5301300",
+     "600000.00"
+    ],
+    [
+     "Cr",
+     "2110100",
+     "600000.00"
+    ]
+   ]
+  },
+  "AP2611-0091": {
+   "type": "AP",
+   "contact": "V0102",
+   "vendor_invoice": "TS-2569/0214",
+   "due": "2569-11-30",
+   "vat_exempt": "81(1)(ต)",
+   "grand_total": "120000.00",
+   "external": {
+    "source": "tms",
+    "ref": "SUB-BILL-7714"
+   }
+  },
+  "AP2611-0080": {
+   "type": "AP",
+   "contact": "V0330",
+   "desc": "ค่าเช่าอาคาร ธ.ค.",
+   "due": "2569-12-01",
+   "vat_exempt": "81(1)(ฑ)",
+   "subtotal": "50000.00",
+   "vat": "0.00",
+   "grand_total": "50000.00",
+   "wht_on_payment": {
+    "rate": 0.05,
+    "amount": "2500.00"
+   },
+   "expected_journal": [
+    [
+     "Dr",
+     "5303100",
+     "50000.00"
+    ],
+    [
+     "Cr",
+     "2110100",
+     "50000.00"
+    ]
+   ]
+  },
+  "AP2611-0094": {
+   "type": "AP",
+   "contact": "V0415",
+   "due": "2569-12-05",
+   "grand_total": "24610.00",
+   "wht_on_payment": {
+    "rate": 0.03,
+    "amount": "690.00"
+   },
+   "external": {
+    "source": "tms",
+    "ref": "SUB-BILL-7731"
+   },
+   "status": "draft",
+   "note": "ผู้ขายยังไม่มีบัญชีธนาคาร"
+  },
+  "PV2611-0031": {
+   "type": "PV",
+   "date": "2569-11-28",
+   "contact": "V0102",
+   "pay_from": "1100100",
+   "method": "bulk_transfer",
+   "bills": [
+    "AP2611-0088",
+    "AP2611-0091"
+   ],
+   "outstanding": "720000.00",
+   "wht_rate": 0.01,
+   "wht": "7200.00",
+   "paid": "712800.00",
+   "wht_cert": "WHT2611-0012",
+   "pnd": "53",
+   "amount_text": "เจ็ดแสนหนึ่งหมื่นสองพันแปดร้อยบาทถ้วน",
+   "expected_journal": [
+    [
+     "Dr",
+     "2110100",
+     "720000.00"
+    ],
+    [
+     "Cr",
+     "1100100",
+     "712800.00"
+    ],
+    [
+     "Cr",
+     "2150300",
+     "7200.00"
+    ]
+   ],
+   "webhook": "payment.paid"
+  },
+  "PAYRUN-2569-11-28": {
+   "type": "payment_batch",
+   "bank_account": "1100100",
+   "selected_bills": [
+    "AP2611-0088",
+    "AP2611-0091",
+    "AP2611-0079",
+    "AP2611-0080"
+   ],
+   "selected_total": "909100.00",
+   "total_wht": "13600.00",
+   "paid_total": "895500.00",
+   "vouchers": [
+    "PV2611-0031",
+    "PV2611-0032",
+    "PV2611-0033"
+   ],
+   "approval": {
+    "l1": "accounting",
+    "l2_limit": "1000000.00",
+    "l3": "director_above_l2_limit"
+   },
+   "bank_statement_match": {
+    "date": "2569-11-28",
+    "desc": "BULK 2811 batch 0042",
+    "amount": "-895500.00"
+   },
+   "lines": [
+    {
+     "bill": "AP2611-0088",
+     "outstanding": "600000.00",
+     "wht": "6000.00",
+     "paid": "594000.00"
+    },
+    {
+     "bill": "AP2611-0091",
+     "outstanding": "120000.00",
+     "wht": "1200.00",
+     "paid": "118800.00"
+    },
+    {
+     "bill": "AP2611-0079",
+     "outstanding": "139100.00",
+     "wht": "3900.00",
+     "paid": "135200.00"
+    },
+    {
+     "bill": "AP2611-0080",
+     "outstanding": "50000.00",
+     "wht": "2500.00",
+     "paid": "47500.00"
+    }
+   ],
+   "not_selected": [
+    {
+     "bill": "AP2611-0094",
+     "outstanding": "24610.00",
+     "wht": "690.00",
+     "paid_if_selected": "23920.00",
+     "reason": "ผู้ขายยังไม่มีบัญชีธนาคาร"
+    }
+   ],
+   "status_2569_11_30": "paid",
+   "approved": {
+    "by": "accounting_manager",
+    "at": "2569-11-28 09:40"
+   }
+  },
+  "PO2611-0018": {
+   "type": "PO",
+   "date": "2569-11-09",
+   "contact": "V0210",
+   "from": "PR2611-0022",
+   "delivery": "2569-12-01",
+   "lines": [
+    {
+     "desc": "บริการพัฒนาโมดูลชำระเงิน (งวด 1/2) · PRJ-07",
+     "account": "5301200",
+     "qty": "1",
+     "unit": "งาน",
+     "price": "150000.00",
+     "vat": true,
+     "amount": "150000.00",
+     "received": "0.00"
+    },
+    {
+     "desc": "ค่าบริการดูแลระบบ ธ.ค. 2569 – ก.พ. 2570",
+     "account": "5301200",
+     "qty": "3",
+     "unit": "เดือน",
+     "price": "20000.00",
+     "vat": true,
+     "amount": "60000.00",
+     "received": "0.00"
+    }
+   ],
+   "subtotal": "210000.00",
+   "vat": "14700.00",
+   "grand_total": "224700.00",
+   "expected_wht_on_payment": "6300.00",
+   "approval_limit_l2": "300000.00",
+   "discount": "0.00",
+   "expected_wht_3pct": "6300.00",
+   "expected_wht_formula": "210000.00 × 0.03 — รับรู้ตอนจ่ายจริง",
+   "pr_ref": "PR2611-0022",
+   "delivery_due": "2569-12-01"
+  },
+  "QO2611-0030": {
+   "type": "QO",
+   "date": "2569-11-20",
+   "valid_until": "2569-12-20",
+   "contact": "C0044",
+   "lines": [
+    {
+     "desc": "พัฒนาระบบจองออนไลน์ (เฟส 1)",
+     "qty": "1",
+     "unit": "งาน",
+     "price": "300000.00",
+     "amount": "300000.00"
+    },
+    {
+     "desc": "ดูแลระบบและซัพพอร์ตรายเดือน (12 เดือน)",
+     "qty": "12",
+     "unit": "เดือน",
+     "price": "8000.00",
+     "amount": "96000.00"
+    },
+    {
+     "desc": "ค่าลิขสิทธิ์ซอฟต์แวร์บุคคลที่สาม (ตามจริง)",
+     "qty": "1",
+     "unit": "ชุด",
+     "price": "24000.00",
+     "amount": "24000.00"
+    }
+   ],
+   "subtotal": "420000.00",
+   "vat": "29400.00",
+   "grand_total": "449400.00",
+   "deposit_pct": 0.3,
+   "discount": "0.00"
+  },
+  "DP2610-0006": {
+   "type": "DP",
+   "date": "2569-10-08",
+   "contact": "C0031",
+   "ref": "QO2610-0022",
+   "deposit_base": "300000.00",
+   "vat": "21000.00",
+   "total": "321000.00",
+   "received_via": "RV2610-0012",
+   "applied_total": "107000.00",
+   "remaining": "214000.00",
+   "receive_journal": [
+    [
+     "Dr",
+     "1100100",
+     "321000.00"
+    ],
+    [
+     "Cr",
+     "2140100",
+     "300000.00"
+    ],
+    [
+     "Cr",
+     "2150100",
+     "21000.00"
+    ]
+   ],
+   "apply_example": {
+    "invoice": "IV2611-0062",
+    "work_value": "150000.00",
+    "deposit_applied": "100000.00",
+    "taxable_now": "50000.00",
+    "vat_now": "3500.00",
+    "customer_pays": "53500.00",
+    "journal": [
+     [
+      "Dr",
+      "2140100",
+      "100000.00"
+     ],
+     [
+      "Dr",
+      "1130100",
+      "53500.00"
+     ],
+     [
+      "Cr",
+      "4100100",
+      "150000.00"
+     ],
+     [
+      "Cr",
+      "2150100",
+      "3500.00"
+     ]
+    ]
+   }
+  },
+  "IV2611-0059": {
+   "type": "IV",
+   "date": "2569-11-14",
+   "due": "2569-12-14",
+   "contact": "C0055",
+   "desc": "ค่าบริการดูแลระบบ พ.ย. 2569",
+   "status": "posted",
+   "subtotal": "90000.00",
+   "vat": "6300.00",
+   "grand_total": "96300.00",
+   "paid_by": "RV2611-0025"
+  },
+  "RV2611-0025": {
+   "type": "RV",
+   "date": "2569-11-30",
+   "contact": "C0055",
+   "ref": "IV2611-0059",
+   "method": "cheque",
+   "cheque": "10456789",
+   "amount": "96300.00",
+   "rule": "RV[Cheque]",
+   "expected_journal": [
+    [
+     "Dr",
+     "1150100",
+     "96300.00"
+    ],
+    [
+     "Dr",
+     "2150400",
+     "6300.00"
+    ],
+    [
+     "Cr",
+     "1130100",
+     "96300.00"
+    ],
+    [
+     "Cr",
+     "2150100",
+     "6300.00"
+    ]
+   ],
+   "note": "รับเช็คลงวันที่ 30/11 · จุดภาษีเกิดวันที่รับเช็ค · นำฝากวันนี้ → Dr 1150200 / Cr 1150100 · ผ่านแล้ว → Dr 1100100 / Cr 1150200"
+  },
+  "IV2611-0051": {
+   "type": "IV",
+   "date": "2569-11-03",
+   "due": "2569-12-03",
+   "contact": "C0063",
+   "status": "paid",
+   "subtotal": "4000.00",
+   "vat": "280.00",
+   "grand_total": "4280.00",
+   "outstanding_2569_11_30": "0.00"
+  },
+  "IVS2610-0008": {
+   "type": "IV",
+   "date": "2569-10-16",
+   "due": "2569-11-15",
+   "contact": "C0012",
+   "status": "overdue",
+   "overdue_days_2569_11_30": 15,
+   "subtotal": "30000.00",
+   "vat": "2100.00",
+   "grand_total": "32100.00",
+   "outstanding_2569_11_30": "32100.00"
+  },
+  "IV2610-0048": {
+   "type": "IV",
+   "date": "2569-10-01",
+   "due": "2569-11-05",
+   "contact": "C0044",
+   "status": "overdue",
+   "overdue_days_2569_11_30": 25,
+   "subtotal": "321800.00",
+   "vat": "22526.00",
+   "grand_total": "344326.00",
+   "outstanding_2569_11_30": "344326.00",
+   "billed_in": "BN2611-0003"
+  },
+  "IV2611-0054": {
+   "type": "IV",
+   "date": "2569-11-09",
+   "contact": "[หจก. ลูกค้าใหม่]",
+   "status": "draft",
+   "subtotal": "8500.00",
+   "vat": "595.00",
+   "grand_total": "9095.00"
+  },
+  "AP2611-0042": {
+   "type": "AP",
+   "date": "2569-11-29",
+   "due": "2569-12-05",
+   "contact": "V0008",
+   "desc": "ค่าขนส่ง/ติดตั้งอุปกรณ์ (TMS Settlement) 4 เที่ยว × 6,482.50",
+   "vat_exempt": "81(1)(ต)",
+   "grand_total": "25930.00",
+   "status": "pending_approval",
+   "external": {
+    "source": "tms",
+    "ref": "SETTLE-2611-0042"
+   },
+   "wht_on_payment": {
+    "rate": 0.01,
+    "amount": "259.30"
+   },
+   "vendor_invoice": "TS-2569/0188",
+   "net_pay_expected": "25670.70",
+   "net_pay_formula": "25930.00 − WHT 1% 259.30"
+  },
+  "AP2611-0043": {
+   "type": "AP",
+   "date": "2569-11-26",
+   "due": "2569-12-03",
+   "contact": "V0008",
+   "vat_exempt": "81(1)(ต)",
+   "grand_total": "37263.40",
+   "status": "posted",
+   "external": {
+    "source": "tms",
+    "ref": "SETTLE-2611-0043"
+   },
+   "vendor_invoice": "TS-2569/0192",
+   "desc": "ค่าขนส่ง/ติดตั้งอุปกรณ์ (TMS Settlement)"
+  },
+  "AP2610-0038": {
+   "type": "AP",
+   "date": "2569-10-20",
+   "due": "2569-11-04",
+   "contact": "[เจ้าของอาคาร] จำกัด",
+   "vendor_invoice": "0045/2569",
+   "grand_total": "37450.00",
+   "status": "overdue",
+   "overdue_days_2569_11_30": 26
+  },
+  "DP2605-0001": {
+   "type": "DP",
+   "date": "2569-05-03",
+   "contact": "C0067",
+   "ref": "QO2605-0003",
+   "total": "32100.00",
+   "received": "32100.00",
+   "applied": "0.00",
+   "remaining": "32100.00",
+   "age_days_2569_11_30": 190,
+   "flag": "stale_over_180d"
+  },
+  "PV2611-0032": {
+   "type": "PV",
+   "date": "2569-11-28",
+   "contact": "V0210",
+   "pay_from": "1100100",
+   "bills": [
+    "AP2611-0079"
+   ],
+   "outstanding_after_cnr": "139100.00",
+   "wht_base": "130000.00",
+   "wht_rate": 0.03,
+   "wht": "3900.00",
+   "paid": "135200.00",
+   "wht_cert": "WHT2611-0013",
+   "pnd": "53",
+   "expected_journal": [
+    [
+     "Dr",
+     "2110100",
+     "139100.00"
+    ],
+    [
+     "Cr",
+     "1100100",
+     "135200.00"
+    ],
+    [
+     "Cr",
+     "2150300",
+     "3900.00"
+    ]
+   ]
+  },
+  "PV2611-0033": {
+   "type": "PV",
+   "date": "2569-11-28",
+   "contact": "V0330",
+   "pay_from": "1100100",
+   "bills": [
+    "AP2611-0080"
+   ],
+   "outstanding": "50000.00",
+   "wht_base": "50000.00",
+   "wht_rate": 0.05,
+   "wht": "2500.00",
+   "paid": "47500.00",
+   "wht_cert": "WHT2611-0014",
+   "pnd": "53",
+   "expected_journal": [
+    [
+     "Dr",
+     "2110100",
+     "50000.00"
+    ],
+    [
+     "Cr",
+     "1100100",
+     "47500.00"
+    ],
+    [
+     "Cr",
+     "2150300",
+     "2500.00"
+    ]
+   ]
+  },
+  "QO2611-0014": {
+   "type": "QO",
+   "date": "2569-11-08",
+   "valid_until": "2569-11-30",
+   "contact": "C0012",
+   "status": "accepted",
+   "accepted_at": "2569-11-08 14:02",
+   "salesperson": "[พนักงานขาย ก.]",
+   "dimension": {
+    "project": "PRJ-09 ระบบจองห้อง"
+   },
+   "payment_terms": "มัดจำ 30% · ส่วนที่เหลือเครดิต 30 วัน",
+   "price_level": 1,
+   "lines": [
+    {
+     "product": "S-0001",
+     "desc": "พัฒนาซอฟต์แวร์ · ระบบจองห้อง เฟส 1",
+     "qty": "120",
+     "price": "1500.00",
+     "discount": "10% + 5%",
+     "est_cost": "96000.00",
+     "gross_margin_pct": "37.6",
+     "amount": "153900.00",
+     "amount_formula": "120 × 1500 × 0.90 × 0.95 = 153900.00"
+    },
+    {
+     "product": "S-0002",
+     "desc": "ค่าดูแลระบบ 12 เดือน",
+     "qty": "12",
+     "price": "8000.00",
+     "est_cost": "24000.00",
+     "gross_margin_pct": "75.0",
+     "amount": "96000.00"
+    },
+    {
+     "product": null,
+     "desc": "อบรมผู้ใช้ 1 วัน ของแถม",
+     "qty": "1",
+     "price": "0.00",
+     "est_cost": "6000.00",
+     "gross_margin_pct": "below_cost",
+     "amount": "0.00"
+    }
+   ],
+   "est_cost_total": "126000.00",
+   "subtotal": "249900.00",
+   "gross_margin_pct_total": "49.6",
+   "vat": "17493.00",
+   "grand_total": "267393.00",
+   "deposit_30pct": "80217.90",
+   "deposit_formula": "267393.00 × 0.30 = 80217.90",
+   "posts_journal": false
+  },
+  "IV2611-0001": {
+   "type": "IV",
+   "contact": "C0012",
+   "status": "posted",
+   "subtotal": "10000.00",
+   "vat": "700.00",
+   "grand_total": "10700.00",
+   "credit_note": "CN2611-0003",
+   "outstanding_after_cn": "9844.00",
+   "lines": [
+    {
+     "product": "P-1001",
+     "desc": "[สินค้า A]",
+     "qty": "20",
+     "price": "400.00",
+     "amount": "8000.00"
+    },
+    {
+     "product": "P-1002",
+     "desc": "[สินค้า B]",
+     "qty": "5",
+     "price": "400.00",
+     "amount": "2000.00"
+    }
+   ],
+   "date": "2569-11-01"
+  },
+  "CN2611-0003": {
+   "type": "CN",
+   "ref": "IV2611-0001",
+   "contact": "C0012",
+   "status": "draft",
+   "apply": "immediate",
+   "reason": "รับคืนสินค้าเนื่องจากชำรุด (ม.82/10 · พิมพ์ตาม ม.86/10)",
+   "lines": [
+    {
+     "product": "P-1001",
+     "original_qty": "20",
+     "returned_qty": "0",
+     "price": "400.00",
+     "amount": "0.00"
+    },
+    {
+     "product": "P-1002",
+     "original_qty": "5",
+     "returned_qty": "2",
+     "price": "400.00",
+     "amount": "800.00",
+     "stock_module": "off"
+    }
+   ],
+   "original_value": "10000.00",
+   "corrected_value": "9200.00",
+   "diff": "800.00",
+   "vat": "56.00",
+   "total": "856.00",
+   "iv_outstanding_after": "9844.00",
+   "iv_outstanding_formula": "IV2611-0001.grand_total 10700.00 − 856.00",
+   "expected_journal": [
+    [
+     "Dr",
+     "4100100",
+     "800.00"
+    ],
+    [
+     "Dr",
+     "2150100",
+     "56.00"
+    ],
+    [
+     "Cr",
+     "1130100",
+     "856.00"
+    ]
+   ]
+  },
+  "DN2612-0001": {
+   "type": "DN",
+   "date": "2569-12-05",
+   "status": "draft",
+   "original_value": "10000.00",
+   "corrected_value": "12000.00",
+   "diff": "2000.00",
+   "vat": "140.00",
+   "total": "2140.00",
+   "note": "ม.86/9 · ภาษีขายรวมในเดือนที่ออกใบเพิ่มหนี้ (ม.82/9) · ตัวอย่างเดือน ธ.ค.",
+   "contact": "C0012",
+   "ref": "RV2611-0022",
+   "ref_date": "2569-11-28",
+   "lines": [
+    {
+     "product": "S-0003",
+     "desc": "งานนอกเวลา (on-call) เพิ่มเติมตามที่ลูกค้าอนุมัติ",
+     "qty": "5",
+     "price": "400.00",
+     "amount": "2000.00"
+    }
+   ]
+  },
+  "EXP2611-0023": {
+   "type": "EXP",
+   "status": "draft",
+   "created_by": "mcp:claude",
+   "source": "รูปใบเสร็จ",
+   "grand_total": "1284.00",
+   "note": "สร้างผ่าน MCP create_draft_document · รอตรวจ (ScreenMcp, ScreenRevoke)"
+  },
+  "AP2611-0090": {
+   "type": "AP",
+   "date": "2569-11-12",
+   "contact": "[ผู้ขายคอมพิวเตอร์]",
+   "contact_tax_id": "0105xxxxxxx14",
+   "vendor_invoice": "IV-66120",
+   "desc": "โน้ตบุ๊ก [รุ่น] 14\" × 2 → FA-0017",
+   "subtotal": "72897.20",
+   "vat": "5102.80",
+   "grand_total": "78000.00",
+   "capitalized_to": "FA-0017",
+   "note": "ราคาทุน FA-0017 = 78,000 รวม VAT (ใบกำกับระบุรวมภาษี) · ยอดใน รายงานภาษีซื้อ พ.ย."
+  },
+  "AP2610-0071": {
+   "type": "AP",
+   "date": "2569-10-20",
+   "contact": "[ผู้ให้บริการคลาวด์]",
+   "contact_tax_id": "0105xxxxxxx15",
+   "vendor_invoice": "INV-4409",
+   "subtotal": "32000.00",
+   "vat": "2240.00",
+   "grand_total": "34240.00",
+   "input_vat_claimed_in": "2569-11",
+   "note": "ใช้สิทธิ์ภาษีซื้อข้ามเดือน (ภายใน 6 เดือน) · จ่าย 20/11 หัก 3% 960.00 (ภ.ง.ด.53 ลำดับ 5)",
+   "wht_on_payment": {
+    "rate": 0.03,
+    "amount": "960.00",
+    "paid_on": "2569-11-20"
+   }
+  },
+  "EXP2611-0021": {
+   "type": "EXP",
+   "date": "2569-11-25",
+   "contact": "[สำนักงานกฎหมาย]",
+   "contact_tax_id": "0105xxxxxxx16",
+   "vendor_invoice": "INV-7781",
+   "subtotal": "30000.00",
+   "vat": "2100.00",
+   "grand_total": "32100.00",
+   "wht": {
+    "rate": 0.03,
+    "amount": "900.00",
+    "type": "ค่าบริการวิชาชีพ"
+   },
+   "note": "ภ.ง.ด.53 ลำดับ 4 · รายงานภาษีซื้อ พ.ย. ลำดับ 6"
+  },
+  "JV2611-0077": {
+   "type": "JV",
+   "status": "posted",
+   "manual": true,
+   "amount": "2000.00",
+   "note": "คีย์มือ ไม่มีเอกสารอ้างอิง → ผลต่างในรายงานตรวจความถูกต้อง ข้อ 1 (AP+EXP เทียบ GL)"
+  },
+  "JV2611-0098": {
+   "type": "JV",
+   "status": "posted",
+   "manual": true,
+   "amount": "20000.00",
+   "note": "ลงบัญชีคุม 2110100 โดยตรง ไม่ผูกผู้ขาย → ผลต่าง sub-ledger ↔ GL"
+  },
+  "AP2611-0085": {
+   "type": "AP",
+   "status": "posted",
+   "vat_recorded": "1250.00",
+   "vat_claimable": "0.00",
+   "note": "ตั้ง VAT 1,250 แต่ใบกำกับไม่ถูกต้องตาม ม.86/4 → ผลต่าง 1170100 รายงานภาษีซื้อ (18,724.80) เทียบ GL (19,974.80)"
+  },
+  "BN2611-0002": {
+   "type": "BN",
+   "contact": "C0031",
+   "collect_date": "2569-11-27",
+   "invoices": [
+    "IV2610-0049",
+    "IV2611-0053",
+    "IV2611-0056"
+   ],
+   "total": "1842600.00",
+   "total_formula": "1530200.00 + 31200.00 + 281200.00",
+   "received_by": "RV2611-0021",
+   "posts_journal": false
+  },
+  "IV2610-0047": {
+   "type": "IV",
+   "date": "2569-10-28",
+   "due": "2569-11-27",
+   "contact": "C0012",
+   "status": "paid",
+   "rule": "Service[IV]",
+   "lines": [
+    {
+     "product": "S-0002",
+     "desc": "ค่าดูแลระบบรายเดือน ต.ค. 2569",
+     "qty": "1",
+     "price": "8000.00",
+     "amount": "8000.00",
+     "account": "4100100",
+     "vat": true
+    },
+    {
+     "product": "S-0003",
+     "desc": "งานนอกเวลา (on-call) ต.ค. 2569",
+     "qty": "5",
+     "price": "400.00",
+     "amount": "2000.00",
+     "account": "4100100",
+     "vat": true
+    }
+   ],
+   "subtotal": "10000.00",
+   "vat": "700.00",
+   "grand_total": "10700.00",
+   "paid_by": "RV2611-0022",
+   "outstanding_2569_11_30": "0.00"
+  },
+  "RV2611-0022": {
+   "type": "RV",
+   "date": "2569-11-28",
+   "contact": "C0012",
+   "ref": "IV2610-0047",
+   "method": "bank_transfer",
+   "pay_to": "1100100",
+   "print": "PrintReceiptTax (D2) ใบเสร็จรับเงิน/ใบกำกับภาษี",
+   "cash_in": "10400.00",
+   "wht": "300.00",
+   "wht_rate": 0.03,
+   "amount_text": "หนึ่งหมื่นเจ็ดร้อยบาทถ้วน",
+   "expected_journal": [
+    [
+     "Dr",
+     "1100100",
+     "10400.00"
+    ],
+    [
+     "Dr",
+     "1160100",
+     "300.00"
+    ],
+    [
+     "Dr",
+     "2150400",
+     "700.00"
+    ],
+    [
+     "Cr",
+     "1130100",
+     "10700.00"
+    ],
+    [
+     "Cr",
+     "2150100",
+     "700.00"
+    ]
+   ],
+   "vat_sales_report_row": 7
+  }
+ },
+ "cheques_received": [
+  {
+   "number": "10456789",
+   "bank": "[ธนาคาร B] พระราม 9",
+   "date": "2569-11-30",
+   "payer": "C0055",
+   "ref": "RV2611-0025",
+   "amount": "96300.00",
+   "status": "on_hand",
+   "note": "ถึงกำหนดนำฝากวันนี้ 30/11 · ชำระ IV2611-0059"
+  },
+  {
+   "number": "00881234",
+   "bank": "[ธนาคาร C] บางนา",
+   "date": "2569-12-15",
+   "payer": "[ลูกค้า B]",
+   "ref": "RV2611-0018",
+   "amount": "214000.00",
+   "status": "on_hand_postdated"
+  },
+  {
+   "number": "55012098",
+   "bank": "[ธนาคาร A] ลาดพร้าว",
+   "date": "2569-11-24",
+   "payer": "C0088",
+   "ref": "RV2611-0019",
+   "amount": "344326.00",
+   "status": "deposited",
+   "deposited_on": "2569-11-25",
+   "note": "รอผ่านเกิน 3 วันทำการ"
+  },
+  {
+   "number": "77100456",
+   "bank": "[ธนาคาร D] รังสิต",
+   "date": "2569-11-10",
+   "payer": "C0067",
+   "ref": "RV2611-0009",
+   "amount": "12000.00",
+   "status": "bounced",
+   "reason": "เงินไม่พอ"
+  },
+  {
+   "number": "10234501",
+   "bank": "[ธนาคาร A] สีลม",
+   "date": "2569-10-30",
+   "payer": "C0031",
+   "ref": "RV2610-0017",
+   "amount": "1284000.00",
+   "status": "cleared",
+   "cleared_on": "2569-10-31"
+  }
+ ],
+ "petty_cash": {
+  "fund": "office",
+  "imprest": "30000.00",
+  "spent_pending": "23418.00",
+  "on_hand": "6582.00",
+  "items": 11,
+  "input_vat_in_items": "182.00",
+  "expenses_total": "23236.00",
+  "last_count": "2569-11-03",
+  "reimburse_journal": [
+   [
+    "Dr",
+    "53xxxxx",
+    "23236.00"
+   ],
+   [
+    "Dr",
+    "1170100",
+    "182.00"
+   ],
+   [
+    "Cr",
+    "1100100",
+    "23418.00"
+   ]
+  ],
+  "items_shown": [
+   {
+    "date": "2569-11-04",
+    "no": "PC2611-001",
+    "desc": "ค่าส่งเอกสาร EMS",
+    "account": "5303100",
+    "by": "[ธุรการ]",
+    "vat": "none",
+    "amount": "186.00",
+    "evidence": "ใบเสร็จ"
+   },
+   {
+    "date": "2569-11-05",
+    "no": "PC2611-002",
+    "desc": "น้ำดื่ม กาแฟ สำนักงาน",
+    "account": "5304100",
+    "by": "[ธุรการ]",
+    "vat": "abbreviated_no_claim",
+    "amount": "1284.00",
+    "evidence": "ใบเสร็จ"
+   },
+   {
+    "date": "2569-11-07",
+    "no": "PC2611-003",
+    "desc": "ค่าแท็กซี่ไปกรมสรรพากร",
+    "account": "5302100",
+    "by": "[พนักงานบัญชี]",
+    "vat": "none",
+    "amount": "320.00",
+    "evidence": "ใบรับรองแทนใบเสร็จ"
+   },
+   {
+    "date": "2569-11-12",
+    "no": "PC2611-004",
+    "desc": "หมึกพิมพ์ 2 ตลับ",
+    "account": "5304100",
+    "by": "[ธุรการ]",
+    "vat": "full_invoice",
+    "input_vat": "182.00",
+    "amount": "2782.00",
+    "evidence": "ใบกำกับ"
+   },
+   {
+    "date": "2569-11-18",
+    "no": "PC2611-005",
+    "desc": "ค่าซ่อมแอร์ห้องประชุม",
+    "account": "5305100",
+    "by": "[ธุรการ]",
+    "vat": "none",
+    "amount": "1500.00",
+    "wht": "บุคคลธรรมดา หัก 3% = 45.00 (ภ.ง.ด.3 ลำดับ 2)",
+    "evidence": "ใบเสร็จ"
+   },
+   {
+    "no": "others_6",
+    "count": 6,
+    "amount": "17346.00",
+    "amount_formula": "23418.00 − (186 + 1284 + 320 + 2782 + 1500)"
+   }
+  ],
+  "count_sheet": {
+   "cash_counted": "30000.00",
+   "vouchers": "0.00",
+   "note": "หลังเบิกชดเชย · วงเงินกอง 1000200 คงที่"
+  }
+ },
+ "fixed_assets": [
+  {
+   "code": "FA-0017",
+   "name": "โน้ตบุ๊ก [รุ่น] 14\" ×2",
+   "account": "1520100",
+   "accum": "1520190",
+   "expense": "5150200",
+   "start": "2569-11-12",
+   "life_years": 3,
+   "cost": "78000.00",
+   "salvage": "1.00",
+   "annual": "25999.67",
+   "first_month_days": 19,
+   "first_month_dep": "1353.41",
+   "from": "AP2611-0090"
+  },
+  {
+   "code": "FA-0012",
+   "name": "เครื่องปรับอากาศ 24,000 BTU",
+   "account": "1510100",
+   "start": "2567-03-01",
+   "life_years": 5,
+   "cost": "42800.00",
+   "salvage": "1.00",
+   "monthly": "713.32",
+   "accum_2569_10": "22826.17",
+   "accum_2569_11": "22826.17",
+   "nbv_2569_11": "19973.83",
+   "nbv_formula": "42800.00 − 22826.17"
+  },
+  {
+   "code": "FA-0008",
+   "name": "ส่วนปรับปรุงสำนักงานเช่า ชั้น 3",
+   "account": "1540100",
+   "start": "2566-06-15",
+   "life_years": 5,
+   "cost": "1250000.00",
+   "salvage": "0.00",
+   "monthly": "20833.33",
+   "accum_2569_10": "845890.41",
+   "accum_2569_11": "845890.41",
+   "nbv_2569_11": "404109.59",
+   "nbv_formula": "1250000.00 − 845890.41",
+   "life_note": "ตามสัญญาเช่า"
+  },
+  {
+   "code": "FA-0005",
+   "name": "รถยนต์นั่ง [ทะเบียน]",
+   "account": "1530100",
+   "start": "2566-01-20",
+   "life_years": 5,
+   "cost": "1180000.00",
+   "tax_cost_cap": "1000000.00",
+   "salvage": "1.00",
+   "monthly": "15844.42",
+   "accum_2569_10": "342893.21",
+   "nbv_2569_11": "837106.79",
+   "nbv_formula": "1180000.00 − 342893.21"
+  },
+  {
+   "code": "FA-0003",
+   "name": "เครื่องถ่ายเอกสาร",
+   "account": "1510100",
+   "start": "2565-02-01",
+   "life_years": 5,
+   "cost": "96300.00",
+   "salvage": "1.00",
+   "disposed": "2569-11-18",
+   "sale_price": "5000.00",
+   "sale_vat": "350.00",
+   "last_month_days": 18,
+   "accum_at_disposal": "73232.43",
+   "disposal_journal": [
+    [
+     "Dr",
+     "1100100",
+     "5350.00"
+    ],
+    [
+     "Dr",
+     "1510190",
+     "73232.43"
+    ],
+    [
+     "Dr",
+     "5910100",
+     "18067.57"
+    ],
+    [
+     "Cr",
+     "1510100",
+     "96300.00"
+    ],
+    [
+     "Cr",
+     "2150100",
+     "350.00"
+    ]
+   ],
+   "monthly": "1604.98",
+   "monthly_formula": "(96300.00 − 1.00) ÷ 5 ÷ 12",
+   "dep_2569_11": "963.00",
+   "dep_2569_11_formula": "1604.98 × 18 ÷ 30 (เดือนสุดท้าย 18 วัน)",
+   "accum_at_sale": "73232.43",
+   "nbv_at_sale": "23067.57",
+   "nbv_2569_11": "0.00",
+   "disposal": {
+    "date": "2569-11-18",
+    "doc": "IV2611-0060",
+    "price": "5000.00",
+    "vat": "350.00",
+    "cash": "5350.00",
+    "loss_5910100": "18067.57",
+    "loss_formula": "23067.57 − 5000.00",
+    "journal": [
+     [
+      "Dr",
+      "1100100",
+      "5350.00"
+     ],
+     [
+      "Dr",
+      "1510190",
+      "73232.43"
+     ],
+     [
+      "Dr",
+      "5910100",
+      "18067.57"
+     ],
+     [
+      "Cr",
+      "1510100",
+      "96300.00"
+     ],
+     [
+      "Cr",
+      "2150100",
+      "350.00"
+     ]
+    ]
+   }
+  },
+  {
+   "code": "FA-0001",
+   "name": "เซิร์ฟเวอร์สำนักงาน",
+   "account": "1520100",
+   "start": "2563-09-01",
+   "life_years": 3,
+   "cost": "145000.00",
+   "salvage": "1.00",
+   "fully_depreciated": true,
+   "accum_2569_11": "144999.00",
+   "nbv_2569_11": "1.00",
+   "status": "fully_depreciated"
+  }
+ ],
+ "depreciation_2569_11": {
+  "total": "38744.48",
+  "by_expense": {
+   "5150100": "4212.40",
+   "5150200": "7854.33",
+   "5150300": "26677.75"
+  },
+  "assets_total": 17,
+  "cost_total": "2864500.00",
+  "accum_total": "1218374.52",
+  "nbv_total": "1646125.48",
+  "tax_max_rates_rd145_pct": {
+   "building": 5,
+   "vehicle_equipment": 20,
+   "computer": 33.33
+  },
+  "journal": [
+   [
+    "Dr",
+    "5150100",
+    "4212.40"
+   ],
+   [
+    "Dr",
+    "5150200",
+    "7854.33"
+   ],
+   [
+    "Dr",
+    "5150300",
+    "26677.75"
+   ],
+   [
+    "Cr",
+    "1510190",
+    "4212.40"
+   ],
+   [
+    "Cr",
+    "1520190",
+    "7854.33"
+   ],
+   [
+    "Cr",
+    "1530190",
+    "26677.75"
+   ]
+  ]
+ },
+ "tax_2569_11": {
+  "pp30": {
+   "sales_total": "1949630.84",
+   "exempt_sales": "24000.00",
+   "taxable_sales": "1925630.84",
+   "output_vat": "134794.16",
+   "purchases_creditable": "267497.20",
+   "input_vat": "18724.80",
+   "input_vat_prior_month_claims": [
+    {
+     "invoice": "INV-4409",
+     "vat": "2240.00"
+    }
+   ],
+   "net_payable": "116069.36",
+   "due_online": "2569-12-23",
+   "post_on_filed": [
+    [
+     "Dr",
+     "2150100",
+     "134794.16"
+    ],
+    [
+     "Cr",
+     "1170100",
+     "18724.80"
+    ],
+    [
+     "Cr",
+     "2150200",
+     "116069.36"
+    ]
+   ]
+  },
+  "pnd3": {
+   "certs": 6,
+   "base": "78000.00",
+   "tax": "2460.00",
+   "due_online": "2569-12-15",
+   "rdprep_file": "PND3_2569_11.txt",
+   "rows": [
+    {
+     "no": 1,
+     "payee": "[ฟรีแลนซ์ นาย ก.]",
+     "contact": "P0001",
+     "id": "1xxxxxxxxxx01",
+     "paid": "2569-11-05",
+     "income_type": "ค่ารับทำงานให้ (พัฒนาซอฟต์แวร์) ม.40(2)*",
+     "rate_pct": 3,
+     "base": "20000.00",
+     "tax": "600.00",
+     "condition": 1,
+     "source": "EXP2611-0019",
+     "status": "รอผู้สอบบัญชี (40(2)/40(8) · flat/progressive)"
+    },
+    {
+     "no": 2,
+     "payee": "[นาย ข. ช่างซ่อม]",
+     "id": "3xxxxxxxxxx02",
+     "paid": "2569-11-18",
+     "income_type": "ค่าซ่อมแซม ม.40(8)",
+     "rate_pct": 3,
+     "base": "1500.00",
+     "tax": "45.00",
+     "condition": 1,
+     "source": "PC2611-005"
+    },
+    {
+     "no": 3,
+     "payee": "[นาง ค. ผู้ให้เช่า]",
+     "id": "3xxxxxxxxxx03",
+     "paid": "2569-11-25",
+     "income_type": "ค่าเช่าที่จอดรถ ม.40(5)",
+     "rate_pct": 5,
+     "base": "6000.00",
+     "tax": "300.00",
+     "condition": 1
+    },
+    {
+     "no": 4,
+     "payee": "[นาย ง. วิทยากร]",
+     "id": "1xxxxxxxxxx04",
+     "paid": "2569-11-26",
+     "income_type": "ค่าวิทยากร ม.40(2)",
+     "rate_pct": 3,
+     "base": "15000.00",
+     "tax": "450.00",
+     "condition": 1
+    },
+    {
+     "no": 5,
+     "payee": "[นาย จ. ที่ปรึกษา]",
+     "id": "3xxxxxxxxxx05",
+     "paid": "2569-11-27",
+     "income_type": "ค่าที่ปรึกษา ม.40(2)",
+     "rate_pct": 3,
+     "base": "25000.00",
+     "tax": "750.00",
+     "condition": 1
+    },
+    {
+     "no": 6,
+     "payee": "[น.ส. ฉ. นักแปล]",
+     "id": "1xxxxxxxxxx06",
+     "paid": "2569-11-28",
+     "income_type": "ค่าแปลเอกสาร ม.40(2)",
+     "rate_pct": 3,
+     "base": "10500.00",
+     "tax": "315.00",
+     "condition": 1
+    }
+   ],
+   "totals_formula": "base = Σ rows.base = 78000.00 · tax = Σ rows.tax = 2460.00"
+  },
+  "pnd53": {
+   "certs": 8,
+   "base": "1227000.00",
+   "tax": "21360.00",
+   "due_online": "2569-12-15",
+   "rdprep_file": "PND53_2569_11.txt",
+   "rows": [
+    {
+     "no": 1,
+     "payee": "บจก. ขนส่ง ก.",
+     "contact": "V0102",
+     "tax_id": "0105xxxxxxx12",
+     "paid": "2569-11-28",
+     "income_type": "ค่าขนส่ง",
+     "rate_pct": 1,
+     "base": "720000.00",
+     "tax": "7200.00",
+     "condition": 1,
+     "cert": "WHT2611-0012",
+     "source": "PV2611-0031 (AP2611-0088 600000 + AP2611-0091 120000)"
+    },
+    {
+     "no": 2,
+     "payee": "บจก. [ผู้ขาย ข.]",
+     "contact": "V0210",
+     "tax_id": "0105xxxxxxx11",
+     "paid": "2569-11-28",
+     "income_type": "ค่าบริการ",
+     "rate_pct": 3,
+     "base": "130000.00",
+     "tax": "3900.00",
+     "condition": 1,
+     "cert": "WHT2611-0013",
+     "source": "PV2611-0032"
+    },
+    {
+     "no": 3,
+     "payee": "[ผู้ให้เช่าอาคาร] จำกัด",
+     "contact": "V0330",
+     "tax_id": "0105xxxxxxx17",
+     "paid": "2569-11-28",
+     "income_type": "ค่าเช่า",
+     "rate_pct": 5,
+     "base": "50000.00",
+     "tax": "2500.00",
+     "condition": 1,
+     "cert": "WHT2611-0014",
+     "source": "PV2611-0033"
+    },
+    {
+     "no": 4,
+     "payee": "[สำนักงานกฎหมาย] จำกัด",
+     "tax_id": "0105xxxxxxx16",
+     "paid": "2569-11-25",
+     "income_type": "ค่าบริการวิชาชีพ",
+     "rate_pct": 3,
+     "base": "30000.00",
+     "tax": "900.00",
+     "condition": 1,
+     "source": "EXP2611-0021"
+    },
+    {
+     "no": 5,
+     "payee": "[ผู้ให้บริการคลาวด์] จำกัด",
+     "tax_id": "0105xxxxxxx15",
+     "paid": "2569-11-20",
+     "income_type": "ค่าบริการ",
+     "rate_pct": 3,
+     "base": "32000.00",
+     "tax": "960.00",
+     "condition": 1,
+     "source": "AP2610-0071"
+    },
+    {
+     "no": 6,
+     "payee": "[บริษัทโฆษณา] จำกัด",
+     "tax_id": "0105xxxxxxx18",
+     "paid": "2569-11-15",
+     "income_type": "ค่าโฆษณา",
+     "rate_pct": 2,
+     "base": "45000.00",
+     "tax": "900.00",
+     "condition": 1
+    },
+    {
+     "no": 7,
+     "payee": "[ผู้รับเหมาติดตั้ง] จำกัด",
+     "tax_id": "0105xxxxxxx20",
+     "paid": "2569-11-30",
+     "income_type": "ค่าจ้างทำของ",
+     "rate_pct": 3,
+     "base": "140000.00",
+     "tax": "4200.00",
+     "condition": 1
+    },
+    {
+     "no": 8,
+     "payee": "[บริษัทประกันภัย] จำกัด (มหาชน)",
+     "tax_id": "0107xxxxxxx21",
+     "paid": "2569-11-30",
+     "income_type": "ค่าเบี้ยประกันวินาศภัย",
+     "rate_pct": 1,
+     "base": "80000.00",
+     "tax": "800.00",
+     "condition": 1
+    }
+   ],
+   "totals_formula": "base = Σ rows.base = 1227000.00 · tax = Σ rows.tax = 21360.00"
+  },
+  "wht_received_1160100": "42902.80",
+  "etax": {
+   "issued": 61,
+   "submitted": 58,
+   "failed": 3
+  },
+  "payable_total_shown_on_home": "139889.36",
+  "vat_sales_report": {
+   "rows": [
+    {
+     "no": 1,
+     "date": "2569-11-01",
+     "doc": "RV2611-0015",
+     "customer": "บจก. [ลูกค้า B]",
+     "tax_id": "0105xxxxxxx01",
+     "branch": "สนญ.",
+     "base": "214000.00",
+     "vat": "14980.00"
+    },
+    {
+     "no": 2,
+     "date": "2569-11-05",
+     "doc": "RV2611-0016",
+     "customer": "[ลูกค้า D] จำกัด",
+     "tax_id": "0105xxxxxxx02",
+     "branch": "สนญ.",
+     "base": "120000.00",
+     "vat": "8400.00"
+    },
+    {
+     "no": 3,
+     "date": "2569-11-10",
+     "doc": "RV2611-0017",
+     "customer": "บจก. [ลูกค้า E]",
+     "tax_id": "0105xxxxxxx03",
+     "branch": "00001",
+     "base": "90000.00",
+     "vat": "6300.00"
+    },
+    {
+     "no": 4,
+     "date": "2569-11-14",
+     "doc": "RV2611-0018",
+     "customer": "[ลูกค้า G] หจก.",
+     "tax_id": "0103xxxxxxx04",
+     "branch": "สนญ.",
+     "base": "53500.00",
+     "vat": "3745.00"
+    },
+    {
+     "no": 5,
+     "date": "2569-11-18",
+     "doc": "CN2569-00011",
+     "customer": "บจก. [ลูกค้า B] (ลดหนี้ อ้างอิง RV2611-0015)",
+     "tax_id": "0105xxxxxxx01",
+     "branch": "สนญ.",
+     "base": "-20000.00",
+     "vat": "-1400.00"
+    },
+    {
+     "no": 6,
+     "date": "2569-11-27",
+     "doc": "RV2611-0021",
+     "customer": "บจก. สยามพลาสติก",
+     "tax_id": "0105yyyyyyyyy",
+     "branch": "สนญ.",
+     "base": "1458130.84",
+     "vat": "102069.16"
+    },
+    {
+     "no": 7,
+     "date": "2569-11-28",
+     "doc": "RV2611-0022",
+     "customer": "[ลูกค้า A] จำกัด",
+     "tax_id": "0105xxxxxxx05",
+     "branch": "สนญ.",
+     "base": "10000.00",
+     "vat": "700.00"
+    }
+   ],
+   "total_base": "1925630.84",
+   "total_vat": "134794.16",
+   "formula": "Σ rows = pp30.taxable_sales / pp30.output_vat · บันทึกตามจุดความรับผิด ม.78/1"
+  },
+  "vat_purchase_report": {
+   "rows": [
+    {
+     "no": 1,
+     "date": "2569-11-03",
+     "vendor_invoice": "INV-5521",
+     "vendor": "บจก. [ผู้ขาย ข.]",
+     "tax_id": "0105xxxxxxx11",
+     "branch": "สนญ.",
+     "doc": "AP2611-0079",
+     "base": "150000.00",
+     "vat": "10500.00"
+    },
+    {
+     "no": 2,
+     "date": "2569-11-12",
+     "vendor_invoice": "0004512",
+     "vendor": "[ร้านค้าอุปกรณ์]",
+     "tax_id": "0105xxxxxxx13",
+     "branch": "สนญ.",
+     "doc": "PC2611-004",
+     "base": "2600.00",
+     "vat": "182.00"
+    },
+    {
+     "no": 3,
+     "date": "2569-11-12",
+     "vendor_invoice": "IV-66120",
+     "vendor": "[ผู้ขายคอมพิวเตอร์]",
+     "tax_id": "0105xxxxxxx14",
+     "branch": "สนญ.",
+     "doc": "AP2611-0090",
+     "base": "72897.20",
+     "vat": "5102.80"
+    },
+    {
+     "no": 4,
+     "date": "2569-11-18",
+     "vendor_invoice": "CN-2569/118",
+     "vendor": "บจก. [ผู้ขาย ข.] (ลดหนี้ อ้างอิง INV-5521)",
+     "tax_id": "0105xxxxxxx11",
+     "branch": "สนญ.",
+     "doc": "CNR2611-0003",
+     "base": "-20000.00",
+     "vat": "-1400.00"
+    },
+    {
+     "no": 5,
+     "date": "2569-10-20",
+     "vendor_invoice": "INV-4409",
+     "vendor": "[ผู้ให้บริการคลาวด์] — ใช้สิทธิ์ข้ามเดือน",
+     "tax_id": "0105xxxxxxx15",
+     "branch": "สนญ.",
+     "doc": "AP2610-0071",
+     "base": "32000.00",
+     "vat": "2240.00"
+    },
+    {
+     "no": 6,
+     "date": "2569-11-25",
+     "vendor_invoice": "INV-7781",
+     "vendor": "[สำนักงานกฎหมาย]",
+     "tax_id": "0105xxxxxxx16",
+     "branch": "สนญ.",
+     "doc": "EXP2611-0021",
+     "base": "30000.00",
+     "vat": "2100.00"
+    }
+   ],
+   "total_base": "267497.20",
+   "total_vat": "18724.80",
+   "formula": "Σ rows = pp30.purchases_creditable / pp30.input_vat",
+   "disallowed_input_vat_entertainment": {
+    "items": 2,
+    "amount": "1820.00",
+    "treatment": "ภาษีซื้อต้องห้าม → รวมเป็นค่าใช้จ่าย (ScreenTax)"
+   }
+  }
+ },
+ "aging_ar_2569_11_30": {
+  "buckets_days": [
+   30,
+   60,
+   90,
+   120
+  ],
+  "total": "1780016.00",
+  "current": "1116600.00",
+  "b1_30": "459046.00",
+  "b31_60": "69550.00",
+  "b61_90": "96300.00",
+  "b91_120": "0.00",
+  "over_120": "38520.00",
+  "gl_1130100": "1780016.00",
+  "dso_days": 38,
+  "rows": [
+   {
+    "contact": "C0031",
+    "current": "282400.00",
+    "total": "282400.00"
+   },
+   {
+    "contact": "C0044",
+    "current": "120000.00",
+    "b1_30": "344326.00",
+    "total": "464326.00"
+   },
+   {
+    "contact": "C0067",
+    "b1_30": "12000.00",
+    "b31_60": "48150.00",
+    "b61_90": "96300.00",
+    "total": "156450.00"
+   },
+   {
+    "contact": "C0081",
+    "over_120": "38520.00",
+    "total": "38520.00"
+   },
+   {
+    "contact": "others_14",
+    "current": "714200.00",
+    "b1_30": "102720.00",
+    "b31_60": "21400.00",
+    "total": "808320.00"
+   }
+  ],
+  "overdue_total": "663416.00",
+  "customers": 18,
+  "pct": {
+   "current": "62.7",
+   "b1_30": "25.8",
+   "b31_60": "3.9",
+   "b61_90": "5.4",
+   "b91_120": "0.0",
+   "over_120": "2.2"
+  }
+ },
+ "tax_vs_gl_2569_11": {
+  "vat_sales": {
+   "report": "134794.16",
+   "gl_2150100": "134794.16",
+   "diff": "0.00"
+  },
+  "vat_purchase": {
+   "report": "18724.80",
+   "gl_1170100": "19974.80",
+   "diff": "-1250.00",
+   "cause": "AP2611-0085 ตั้ง VAT แต่ใบกำกับไม่สมบูรณ์ ถูกคัดออกจากรายงาน"
+  },
+  "vat_not_due": {
+   "subledger": "58870.00",
+   "gl_2150400": "58870.00",
+   "diff": "0.00"
+  }
+ },
+ "control_accounts_2569_11_30": {
+  "1130100": {
+   "subledger": "1780016.00",
+   "gl": "1780016.00"
+  },
+  "2110100": {
+   "subledger": "1009010.00",
+   "gl": "1029010.00",
+   "diff": "-20000.00",
+   "cause": "JV2611-0098 ลงบัญชีคุมตรง ไม่ผูกผู้ขาย"
+  },
+  "2140100": {
+   "subledger": "486000.00",
+   "gl": "486000.00"
+  },
+  "1140100": {
+   "subledger": "128400.00",
+   "gl": "128400.00"
+  },
+  "1150100+1150200": {
+   "subledger": "654626.00",
+   "gl": "654626.00"
+  }
+ },
+ "period_status": {
+  "2569-01..08": "hard_closed",
+  "2569-09": "hard_closed",
+  "2569-10": {
+   "status": "soft_closed",
+   "closed_on": "2569-11-05",
+   "reopened": {
+    "on": "2569-11-09",
+    "by": "accounting_manager",
+    "reason": "แก้เลขผู้เสียภาษีลูกค้าบน IV2610-0049",
+    "duration_hours": 2
+   }
+  },
+  "2569-11": "open",
+  "2569-12": "open",
+  "2569-13": "not_opened"
+ },
+ "year_end_2569_preview": {
+  "cit_accrual": [
+   [
+    "Dr",
+    "5950100",
+    "718220.00"
+   ],
+   [
+    "Cr",
+    "2160100",
+    "718220.00"
+   ]
+  ],
+  "close_pl": [
+   [
+    "Dr",
+    "4xxxxxx",
+    "19752830.00"
+   ],
+   [
+    "Cr",
+    "5xxxxxx",
+    "16879950.00"
+   ],
+   [
+    "Cr",
+    "3900100",
+    "2872880.00"
+   ]
+  ],
+  "transfer_re": [
+   [
+    "Dr",
+    "3900100",
+    "2872880.00"
+   ],
+   [
+    "Cr",
+    "3200100",
+    "2872880.00"
+   ]
+  ],
+  "legal_reserve_note": "สำรองตามกฎหมาย (Dr 3200100 / Cr 3300100) ไม่ลงตอนปิดปี — บันทึกแยกเมื่อผู้ถือหุ้นอนุมัติจ่ายเงินปันผล ไม่น้อยกว่า 5% ของกำไรจนครบ 10% ของทุน (ป.พ.พ. ม.1202)"
+ },
+ "opening_balance_2569_12_31_company_c": {
+  "trial_balance_total": "6317920.55",
+  "balanced": true,
+  "lines_shown": [
+   {
+    "account": "1130100",
+    "name": "ลูกหนี้การค้า",
+    "dr": "612400.00",
+    "note": "รวมจากรายใบ 14 ใบ"
+   },
+   {
+    "account": "1500100",
+    "name": "ยานพาหนะ (ราคาทุน)",
+    "dr": "4800000.00",
+    "note": "จากทะเบียนสินทรัพย์ 6 รายการ"
+   },
+   {
+    "account": "1500190",
+    "name": "ค่าเสื่อมราคาสะสม — ยานพาหนะ",
+    "cr": "1920000.00",
+    "note": "คำนวณต่อจากวันเริ่มใช้"
+   },
+   {
+    "account": "2110100",
+    "name": "เจ้าหนี้การค้า",
+    "cr": "388650.00",
+    "note": "รวมจากรายใบ 9 ใบ"
+   }
+  ]
+ },
+ "users": [
+  {
+   "name": "Wei",
+   "org_role": "owner",
+   "company_role": "Owner",
+   "mfa": true
+  },
+  {
+   "name": "[ผู้จัดการบัญชี]",
+   "org_role": "admin",
+   "company_role": "Accountant Manager",
+   "approval_limit": "1000000.00",
+   "mfa": true
+  },
+  {
+   "name": "[พนักงานบัญชี 1]",
+   "org_role": "member",
+   "company_role": "Accountant",
+   "mfa": true
+  },
+  {
+   "name": "[พนักงานบัญชี 2]",
+   "org_role": "member",
+   "company_role": "AR Clerk",
+   "mfa": false
+  },
+  {
+   "name": "[ธุรการ]",
+   "org_role": "member",
+   "company_role": "Petty Cash Holder",
+   "approval_limit": "5000.00",
+   "mfa": true
+  },
+  {
+   "name": "[ผู้จัดการขนส่ง]",
+   "org_role": "member",
+   "company_role": "Viewer+approve_subcontractor",
+   "approval_limit": "200000.00",
+   "mfa": true
+  },
+  {
+   "name": "[สำนักงานสอบบัญชี]",
+   "org_role": "guest",
+   "company_role": "Auditor",
+   "expires": "2570-03-31",
+   "counts_seat": false
+  }
+ ],
+ "org": {
+  "name": "Innovera Group",
+  "plan": "Business",
+  "subscription_status": "active",
+  "renews": "2570-03-01",
+  "company_limit": 3,
+  "companies": 3,
+  "seat_limit": 10,
+  "seats_used": 6,
+  "pending_invites": 1
+ },
+ "cheque_summary_2569_11_30": {
+  "on_hand_total": "310300.00",
+  "on_hand_count": 2,
+  "on_hand_postdated_count": 1,
+  "deposited_pending_total": "344326.00",
+  "deposited_pending_count": 1,
+  "due_for_deposit_today_total": "96300.00",
+  "due_for_deposit_today_count": 1,
+  "bounced_90d_total": "12000.00",
+  "bounced_90d_count": 1
+ },
+ "dashboard_2569_11_30": {
+  "pending_approval": {
+   "count": 8,
+   "iv": 5,
+   "ap": 3,
+   "queue": [
+    {
+     "doc": "IV2611-0052",
+     "amount": "10700.00"
+    },
+    {
+     "doc": "AP2611-0042",
+     "amount": "25930.00"
+    },
+    {
+     "doc": "EXP2611-0019",
+     "amount": "20850.00"
+    },
+    {
+     "doc": "JV2569-00142",
+     "amount": "9700.00",
+     "desc": "ค่าสาธารณูปโภคค้างจ่าย พ.ย."
+    }
+   ]
+  },
+  "ar_due_within_7d": {
+   "total": "634622.00",
+   "count": 7,
+   "overdue_count": 5
+  },
+  "ap_due_within_7d": {
+   "total": "63193.40",
+   "count": 2,
+   "bills": [
+    "AP2611-0042",
+    "AP2611-0043"
+   ]
+  },
+  "statement_unmatched": {
+   "count": 12,
+   "bank_a": 7,
+   "bank_b": 5
+  },
+  "tax_payable_total": {
+   "amount": "139889.36",
+   "formula": "pp30.net_payable 116069.36 + pnd3.tax 2460.00 + pnd53.tax 21360.00"
+  },
+  "cash_summary": {
+   "bank_a_gl": "2297170.15",
+   "ar": "1780016.00",
+   "ap": "1029010.00",
+   "net_profit_ytd": "2872880.00"
+  },
+  "period_close_steps_left": 5
+ },
+ "doclist_2569_11": {
+  "counts": {
+   "all": 128,
+   "draft": 3,
+   "pending_approval": 5,
+   "outstanding": 31,
+   "overdue": 5
+  },
+  "total_amount_all": "6842118.00",
+  "page_rows": [
+   "IV2611-0053",
+   "IV2611-0052",
+   "IV2611-0051",
+   "IVS2610-0008",
+   "IV2610-0048",
+   "IV2611-0054"
+  ],
+  "page_totals": {
+   "subtotal": "403458.88",
+   "vat": "28242.12",
+   "grand_total": "431701.00",
+   "outstanding": "388326.00"
+  }
+ },
+ "purchase_list_2569_11": {
+  "outstanding_total": "1009010.00",
+  "page_rows": [
+   {
+    "doc": "AP2611-0042",
+    "amount": "25930.00",
+    "status": "pending_approval"
+   },
+   {
+    "doc": "INV-2026-11-0931",
+    "vendor": "[ผู้ให้บริการ cloud]",
+    "amount": "12840.00",
+    "due": "2569-12-01"
+   },
+   {
+    "doc": "AP2610-0038",
+    "amount": "37450.00",
+    "status": "overdue_26d"
+   },
+   {
+    "doc": "draft",
+    "vendor": "[ผู้ขายอุปกรณ์]",
+    "amount": "64200.00",
+    "status": "draft"
+   }
+  ]
+ },
+ "gl_balances_2569_11_30": {
+  "1100100": "2297170.15",
+  "1130100": "1780016.00",
+  "1160100": "42902.80",
+  "assets_shown_total": "4120088.95",
+  "2110100": "1029010.00",
+  "2150100": "134794.16",
+  "2150300": "23820.00",
+  "liabilities_shown_total": "1187624.16",
+  "4100100": "18420600.00",
+  "4101100": "1284000.00",
+  "revenue_shown_total": "19704600.00",
+  "5301200": "8840000.00",
+  "expenses_total": "16879950.00",
+  "note": "หน้าผังบัญชีแสดงเฉพาะบัญชีตัวอย่าง ยอดกลุ่ม = ผลรวมของแถวที่แสดง · 2150300 = ภ.ง.ด.3 2,460 + ภ.ง.ด.53 21,360"
+ },
+ "pl_ytd_2569_11": {
+  "revenue": {
+   "4100100": "18420600.00",
+   "4101100": "1284000.00",
+   "4200100": "48230.00",
+   "total": "19752830.00"
+  },
+  "cost_of_service": {
+   "5301200": "8840000.00",
+   "5100100": "3120000.00",
+   "5150100": "410450.00",
+   "total": "12370450.00"
+  },
+  "gross_profit": "7382380.00",
+  "gross_margin_pct": "37.4",
+  "sga": {
+   "5200100": "2160000.00",
+   "5302100": "312840.00",
+   "5303100": "781200.00",
+   "5304100": "422640.00",
+   "total": "3676680.00"
+  },
+  "ebit": "3705700.00",
+  "finance_cost_5900100": "114600.00",
+  "cit_5950100": "718220.00",
+  "net_profit": "2872880.00",
+  "prior_year_to_nov": {
+   "note": "คอลัมน์ 'ม.ค.–พ.ย. 2568' ในหน้างบกำไรขาดทุน · variance = 2569 − 2568 · % = variance ÷ 2568",
+   "revenue": {
+    "4100100": "14205800.00",
+    "4101100": "960000.00",
+    "4200100": "31900.00",
+    "total": "15197700.00"
+   },
+   "cost_of_service": {
+    "5301200": "7120000.00",
+    "5100100": "2760000.00",
+    "5150100": "384000.00",
+    "total": "10264000.00"
+   },
+   "gross_profit": "4933700.00",
+   "sga": {
+    "5200100": "1920000.00",
+    "5302100": "248500.00",
+    "5303100": "760000.00",
+    "5304100": "398200.00",
+    "total": "3326700.00"
+   },
+   "ebit": "1607000.00",
+   "finance_cost_5900100": "98000.00",
+   "cit_5950100": "301800.00",
+   "net_profit": "1207200.00",
+   "revenue_total": "15197700.00"
+  },
+  "variance_vs_prior": {
+   "formula": "แต่ละบรรทัด = pl_ytd_2569_11.<line> − prior_year_to_nov.<line>",
+   "revenue": {
+    "4100100": "4214800.00",
+    "4101100": "324000.00",
+    "4200100": "16330.00",
+    "total": "4555130.00"
+   },
+   "cost_of_service": {
+    "5301200": "1720000.00",
+    "5100100": "360000.00",
+    "5150100": "26450.00",
+    "total": "2106450.00"
+   },
+   "gross_profit": "2448680.00",
+   "sga": {
+    "5200100": "240000.00",
+    "5302100": "64340.00",
+    "5303100": "21200.00",
+    "5304100": "24440.00",
+    "total": "349980.00"
+   },
+   "ebit": "2098700.00",
+   "finance_cost_5900100": "16600.00",
+   "cit_5950100": "416420.00",
+   "net_profit": "1665680.00"
+  },
+  "cit_formula": "5950100 = (ebit − finance_cost) × 20% : (3705700 − 114600) × 0.20 = 718220.00 · ปีก่อน (1607000 − 98000) × 0.20 = 301800.00"
+ },
+ "deposits_2569_11_30": {
+  "liability_2140100": "486000.00",
+  "items": 6,
+  "customers": 4,
+  "invoiced_pending_total": "150000.00",
+  "invoiced_pending_count": 2,
+  "applied_this_month": "214000.00",
+  "applied_invoices": 3,
+  "stale_over_180d": "32100.00"
+ },
+ "recon_report_2569_11": {
+  "run_at": "2569-11-30 02:10",
+  "duration_sec": 4,
+  "checkpoints": 14,
+  "passed": 11,
+  "to_review": 3,
+  "diff_total": "23250.00",
+  "diff_total_formula": "2000.00 (JV2611-0077) + 1250.00 (AP2611-0085) + 20000.00 (JV2611-0098)",
+  "documents_vs_gl": [
+   {
+    "doc_type": "IV",
+    "count": 61,
+    "accounts": "4100100 + 4101100",
+    "by_documents": "1736580.00",
+    "by_gl": "1736580.00",
+    "diff": "0.00",
+    "note": "ค่ากำหนดใหม่ v26 (ไม่มีรายการ IV ครบทั้ง 61 ใบใน fixtures จึงคำนวณจากรายใบไม่ได้) — ไม่ยืมจากยอดอื่น"
+   },
+   {
+    "doc_type": "CN/DN",
+    "count": 4,
+    "accounts": "4100100 / 4150100",
+    "by_documents": "-38500.00",
+    "by_gl": "-38500.00",
+    "diff": "0.00"
+   },
+   {
+    "doc_type": "AP+EXP",
+    "count": 88,
+    "accounts": "53xxxxx + 15xxxxx",
+    "by_documents": "1214900.00",
+    "by_gl": "1216900.00",
+    "diff": "-2000.00",
+    "cause": "JV2611-0077"
+   },
+   {
+    "doc_type": "RV",
+    "count": 42,
+    "accounts": "1100xxx + 1150xxx",
+    "by_documents": "2104318.60",
+    "by_gl": "2104318.60",
+    "diff": "0.00",
+    "note": "ค่ากำหนดใหม่ v26 (ไม่มีรายการ RV ครบทั้ง 42 ใบใน fixtures) — ไม่ยืมจากยอดอื่น"
+   },
+   {
+    "doc_type": "PV",
+    "count": 37,
+    "accounts": "1100xxx (เครดิต)",
+    "by_documents": "-1386210.00",
+    "by_gl": "-1386210.00",
+    "diff": "0.00"
+   },
+   {
+    "doc_type": "orphan_jv",
+    "count": 1,
+    "doc": "JV2611-0077",
+    "amount": "2000.00"
+   }
+  ],
+  "tax_vs_gl": "ดู tax_vs_gl_2569_11 · 2150300 23820.00 · 1160100 42902.80",
+  "subledger_vs_control": "ดู control_accounts_2569_11_30 · 2140100 486000.00 · 1140100 128400.00",
+  "cheques_in_transit": {
+   "accounts": "1150100/1150200",
+   "count": 3,
+   "subledger": "654626.00",
+   "gl": "654626.00",
+   "diff": "0.00",
+   "formula": "cheque_summary on_hand_total 310300.00 + deposited_pending_total 344326.00"
+  }
+ },
+ "period_close_2569": {
+  "rows": [
+   {
+    "period": "2569-01..08",
+    "status": "hard_closed",
+    "pp30": "filed",
+    "pnd": "filed",
+    "bank_recon": "complete",
+    "profit": "2064612.00",
+    "closed_by": "[ผู้จัดการบัญชี]"
+   },
+   {
+    "period": "2569-09",
+    "status": "hard_closed",
+    "pp30": "filed",
+    "pnd": "filed",
+    "bank_recon": "complete",
+    "profit": "284120.00",
+    "closed_by": "[ผู้จัดการบัญชี] 25/10"
+   },
+   {
+    "period": "2569-10",
+    "status": "soft_closed",
+    "pp30": "filed",
+    "pnd": "filed",
+    "bank_recon": "complete",
+    "profit": "312460.00",
+    "closed_by": "[ผู้จัดการบัญชี] 05/11"
+   },
+   {
+    "period": "2569-11",
+    "status": "open",
+    "pp30": "draft",
+    "pnd": "draft",
+    "bank_recon": "diff 21250.00",
+    "profit": "211688.00"
+   },
+   {
+    "period": "2569-12",
+    "status": "open",
+    "profit": null,
+    "draft_ahead": 4
+   }
+  ],
+  "profit_sum_jan_nov": "2872880.00",
+  "note": "Σ กำไรรายงวด ม.ค.–พ.ย. = pl_ytd_2569_11.net_profit 2,872,880 · ธ.ค. ยังไม่มีรายการผ่าน (มีแต่ร่าง)"
+ },
+ "audit_log_samples": [
+  {
+   "at": "2569-11-08 11:14:27",
+   "by": "[พนักงานบัญชี 2]",
+   "action": "edit_draft",
+   "doc": "RV2611-0021",
+   "change": "lines[0].amount: 1530200.00 → 1515900.00 · wht: 0.00 → 14300.00",
+   "channel": "web",
+   "note": "ค่าร่างระหว่างแก้ไข · ค่าสุดท้ายดู documents.RV2611-0021 (WHT 42902.80)",
+   "values": [
+    "1530200.00",
+    "1515900.00",
+    "14300.00"
+   ]
+  },
+  {
+   "at": "2569-11-09 09:12:40",
+   "by": "[พนักงานบัญชี 1]",
+   "action": "post",
+   "doc": "AP2611-0088",
+   "journal": "JV2611-0104",
+   "change": "ร่าง → ผ่านรายการ · Dr 5301200 600000 / Cr 2110100 600000"
+  },
+  {
+   "at": "2569-11-09 07:30:00",
+   "by": "TMS ระบบ",
+   "action": "create_api",
+   "doc": "AP2611-0094",
+   "change": "external_ref SUB-BILL-7731 · V0415 · 24610.00 · draft"
+  }
+ ],
+ "ledger_1130100_2569_11": {
+  "page": "ScreenLedger",
+  "opening_2569_11_01": "3027816.00",
+  "opening_formula": "closing 1780016.00 − Σdr 423680.00 + Σcr 1671480.00",
+  "rows": [
+   {
+    "date": "2569-11-01",
+    "doc": "IV2611-0001",
+    "contact": "C0012",
+    "dr": "10700.00",
+    "cr": null,
+    "balance": "3038516.00"
+   },
+   {
+    "date": "2569-11-03",
+    "doc": "IV2611-0051",
+    "contact": "C0063",
+    "dr": "4280.00",
+    "cr": null,
+    "balance": "3042796.00"
+   },
+   {
+    "date": "2569-11-05",
+    "doc": "IV2611-0053",
+    "contact": "C0031",
+    "dr": "31200.00",
+    "cr": null,
+    "balance": "3073996.00"
+   },
+   {
+    "date": "2569-11-06",
+    "doc": "RV2611-0003",
+    "contact": "C0063",
+    "dr": null,
+    "cr": "4280.00",
+    "balance": "3069716.00"
+   },
+   {
+    "date": "2569-11-10",
+    "doc": "IV2611-0056",
+    "contact": "C0031",
+    "dr": "281200.00",
+    "cr": null,
+    "balance": "3350916.00"
+   },
+   {
+    "date": "2569-11-14",
+    "doc": "IV2611-0059",
+    "contact": "C0055",
+    "dr": "96300.00",
+    "cr": null,
+    "balance": "3447216.00"
+   },
+   {
+    "date": "2569-11-27",
+    "doc": "RV2611-0021",
+    "contact": "C0031",
+    "dr": null,
+    "cr": "1560200.00",
+    "balance": "1887016.00"
+   },
+   {
+    "date": "2569-11-28",
+    "doc": "RV2611-0022",
+    "contact": "C0012",
+    "dr": null,
+    "cr": "10700.00",
+    "balance": "1876316.00"
+   },
+   {
+    "date": "2569-11-30",
+    "doc": "RV2611-0025",
+    "contact": "C0055",
+    "dr": null,
+    "cr": "96300.00",
+    "balance": "1780016.00"
+   }
+  ],
+  "total_dr": "423680.00",
+  "total_cr": "1671480.00",
+  "closing_2569_11_30": "1780016.00",
+  "matches": "aging_ar_2569_11_30.gl_1130100"
+ },
+ "doc_edit_example": {
+  "page": "ScreenDocEdit",
+  "doc": "AP2611-0079",
+  "edit": "เลขประจำตัวผู้เสียภาษีของผู้ขาย (ข้อมูลอ้างอิง)",
+  "vat_purchase_report": "แก้เลขผู้เสียภาษีในบรรทัด INV-5521 · ยอดไม่เปลี่ยน",
+  "pp30_net_payable": "116069.36",
+  "pp30_changed": false
+ },
+ "decisions_wei_2026_11_09": {
+  "conflicts_resolved": [
+   {
+    "id": 1,
+    "topic": "IV2611-0056 ยอดรวม"
+   },
+   {
+    "id": 2,
+    "topic": "ScreenLedger 1130100 01–30/11"
+   },
+   {
+    "id": 3,
+    "topic": "กำไรรายงวดใน ScreenPeriodClose"
+   },
+   {
+    "id": 4,
+    "topic": "ราคา S-0001 พัฒนาซอฟต์แวร์ ต่อ ชม."
+   },
+   {
+    "id": 5,
+    "topic": "สถานะ IV2611-0052"
+   },
+   {
+    "id": 6,
+    "topic": "ลูกค้า A (C0012) ยอดค้างรับ"
+   },
+   {
+    "id": 7,
+    "topic": "ScreenReconReport ข้อ 1 ตัวเลขซ้ำกับที่อื่น"
+   },
+   {
+    "id": 8,
+    "topic": "เช็ครับรอเรียกเก็บ 1150100/1150200"
+   },
+   {
+    "id": 9,
+    "topic": "CN2611-0003 จำนวนที่รับคืน P-1002"
+   },
+   {
+    "id": 10,
+    "topic": "รหัสบัญชียานพาหนะในยอดยกมา (บริษัท C)"
+   },
+   {
+    "id": 11,
+    "topic": "ScreenDocEdit ภ.พ.30 หลังแก้ AP2611-0079"
+   }
+  ],
+  "applied_in": "แบบร่างเวอร์ชัน 26",
+  "notes": [
+   "#4 ราคา 1,200 ในหน้าสินค้าคือราคาขาย 2 ไม่ใช่ต้นทุน — ต้นทุนประมาณ 800/ชม. ตาม QO2611-0014 จึงไม่ต้องแก้ QO",
+   "#6 ลูกค้า A ค้าง 42,800 (IVS2610-0008 + IV2611-0001 ที่ยังค้างเพราะมี CN2611-0003 ตัดอยู่) ไม่ใช่ 32,100 ตามข้อเสนอเดิม",
+   "#9 ไม่ได้ขัดกันจริง: หน้าจอมีคอลัมน์จำนวนเดิม 5 และลดจำนวน 2 ตรงกับแบบพิมพ์",
+   "#5 PrintReceiptTax เปลี่ยนเป็น RV2611-0022 (28/11) ของ IV2610-0047 ซึ่งตรงกับแถว 7 ในรายงานภาษีขาย"
+  ]
+ }
+}

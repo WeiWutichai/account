@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>สูตรลงบัญชี</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="formula" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">บัญชี / สูตรลงบัญชี</span><span style="color: #525252">สิทธิ์: ผู้ดูแลระบบ</span></header>
+    <div style="padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px"><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">สูตรลงบัญชี</h1><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">สร้างสูตร</button></div>
+      <p style="margin: 0; font-size: 14px; color: #525252; max-width: 880px">สูตรบอกว่า "ยอดเงินก้อนไหนของเอกสาร" ลงบัญชีใดฝั่ง Dr/Cr บัญชีจริงเลือกตามลำดับ: บรรทัดเอกสาร → สินค้า → คู่ค้า → ค่าในสูตร แก้สูตรแล้วมีผลกับเอกสารที่ลงหลังจากนี้ เอกสารเดิมใช้ปุ่ม "ลงใหม่ตามสูตร" (ยกเว้นงวดที่ล็อก)</p>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start">
+        <section style="flex: 0 1 380px; border: 1px solid #e0e0e0">
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px">
+            <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">สูตร</th><th style="padding: 0 12px; font-weight: 400">เอกสาร</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ใช้ไป</th></tr></thead>
+            <tbody>
+              <tr style="border-top: 1px solid #e0e0e0; background: #e0e0e0"><td style="height: 40px; padding: 0 12px; font-weight: 600">Credit[IV] ขายเชื่อ</td><td style="padding: 0 12px">IV</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">118</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Cash[IV] ขายสด</td><td style="padding: 0 12px">IV</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">10</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Service[IV] บริการ (VAT เมื่อรับเงิน)</td><td style="padding: 0 12px">IV</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">31</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">CN[ref IV]</td><td style="padding: 0 12px">CN</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">3</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">CN[no-ref]</td><td style="padding: 0 12px">CN</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">0</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Credit[AP] ซื้อเชื่อ</td><td style="padding: 0 12px">AP</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">46</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Cash[EXP] จ่ายทันที</td><td style="padding: 0 12px">EXP</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">19</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Receive[RV]</td><td style="padding: 0 12px">RV</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">62</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">Pay[PV]</td><td style="padding: 0 12px">PV</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">38</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section style="flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ชื่อสูตร<input value="Credit[IV] ขายเชื่อ" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สมุดรายวัน<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>SJ ขาย</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สถานะชำระเมื่อลง<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ลูกหนี้ (ค้างชำระ)</option><option>ชำระแล้ว</option></select></label>
+          </div>
+          <div style="border: 1px solid #e0e0e0; overflow-x: auto">
+            <table style="width: 100%; min-width: 560px; border-collapse: collapse; font-size: 14px">
+              <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">ยอดเงิน</th><th style="padding: 0 12px; font-weight: 400">ด้าน</th><th style="padding: 0 12px; font-weight: 400">บัญชีค่าเริ่มต้น</th><th style="padding: 0 12px; font-weight: 400">แทนค่าจาก</th></tr></thead>
+              <tbody>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ยอดสุทธิ (grand_total)</td><td style="padding: 0 12px">Dr</td><td style="padding: 0 12px">1130100 ลูกหนี้การค้า</td><td style="padding: 0 12px"><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> บัญชีลูกหนี้ของคู่ค้า</label></td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ภาษีถูกหัก (wht)</td><td style="padding: 0 12px">Dr</td><td style="padding: 0 12px">1154200 ภาษีถูกหัก ณ ที่จ่าย</td><td style="padding: 0 12px; color: #525252">—</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ยอดก่อนภาษี (total)</td><td style="padding: 0 12px">Cr</td><td style="padding: 0 12px">4100100 รายได้จากการขาย</td><td style="padding: 0 12px"><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> บัญชีรายได้ของสินค้า (แยกตามบรรทัด)</label></td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ส่วนลดท้ายบิล (discount)</td><td style="padding: 0 12px">Dr</td><td style="padding: 0 12px">4190100 ส่วนลดจ่าย</td><td style="padding: 0 12px; color: #525252">—</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px">ภาษีมูลค่าเพิ่ม (vat)</td><td style="padding: 0 12px">Cr</td><td style="padding: 0 12px">2150100 ภาษีขาย</td><td style="padding: 0 12px; color: #525252">—</td></tr>
+                <tr style="border-top: 1px solid #e0e0e0"><td colspan="4" style="padding: 0 12px"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: transparent; color: #0f62fe; border: 1px solid transparent">+ เพิ่มบรรทัด</button></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div role="status" style="display: flex; gap: 12px; align-items: center; padding: 12px 16px; border: 1px solid #e0e0e0; border-left: 3px solid #24a148; font-size: 14px">ตรวจสมดุล: grand_total + wht = total − discount + vat ✓ · น้ำหนัก Dr = Cr ✓</div>
+          <section style="border: 1px solid #e0e0e0; padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 14px">
+            <strong>ทดสอบสูตรกับเอกสารจริง</strong>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center"><input aria-label="เลขเอกสาร" value="IV2611-0052" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">แสดง Dr/Cr</button><span style="color: #525252">ผล: Dr 1130100 10,700.00 / Cr 4100100 10,000.00 / Cr 2150100 700.00 — ดุล ✓</span></div>
+          </section>
+          <div style="display: flex; justify-content: flex-end"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ลงใหม่ตามสูตร (เลือกช่วงเอกสาร)</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">บันทึกสูตร</button></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

@@ -1,0 +1,6318 @@
+{
+ "$schema": "https://json-schema.org/draft/2020-12/schema",
+ "$id": "sample-company.schema.json",
+ "title": "AccountSystem sample company fixture",
+ "description": "โครงของ fixtures/sample-company.json — ยอดเงินเป็น string ทศนิยม 2 ตำแหน่ง (ห้าม number เพื่อกัน float) · วันที่เป็นปี พ.ศ. YYYY-MM-DD · รายการบัญชีเป็น [Dr|Cr, รหัสบัญชี, ยอด] · รอบ 3 (2569-11-09): เพิ่ม rows ของ ภ.ง.ด.3/53, รายงานภาษีซื้อ/ขาย, recon_report_2569_11, period_close_2569, audit_log_samples, conflicts_pending_wei",
+ "$defs": {
+  "money": {
+   "type": "string",
+   "pattern": "^-?\\d+\\.\\d{2}$"
+  },
+  "be_date": {
+   "type": "string",
+   "pattern": "^25\\d{2}-\\d{2}-\\d{2}$"
+  },
+  "account_code": {
+   "type": "string",
+   "pattern": "^\\d{7}$|^\\d{1,6}x+$",
+   "description": "รหัส 7 หลัก หรือกลุ่มบัญชีแบบ 4xxxxxx / 53xxxxx (ใช้เฉพาะรายการสรุปหลายบัญชี)"
+  },
+  "journal_line": {
+   "type": "array",
+   "prefixItems": [
+    {
+     "enum": [
+      "Dr",
+      "Cr"
+     ]
+    },
+    {
+     "$ref": "#/$defs/account_code"
+    },
+    {
+     "$ref": "#/$defs/money"
+    }
+   ],
+   "items": false,
+   "minItems": 3
+  },
+  "journal": {
+   "type": "array",
+   "items": {
+    "$ref": "#/$defs/journal_line"
+   },
+   "minItems": 2
+  }
+ },
+ "type": "object",
+ "properties": {
+  "_meta": {
+   "type": "object",
+   "properties": {
+    "source": {
+     "type": "string"
+    },
+    "rule": {
+     "type": "string"
+    },
+    "currency": {
+     "type": "string"
+    },
+    "vat_rate": {
+     "type": "number"
+    },
+    "period": {
+     "type": "string"
+    },
+    "today": {
+     "$ref": "#/$defs/be_date"
+    },
+    "view": {
+     "type": "string"
+    },
+    "coverage": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "coverage",
+    "currency",
+    "period",
+    "rule",
+    "source",
+    "today",
+    "vat_rate",
+    "view"
+   ]
+  },
+  "company": {
+   "type": "object",
+   "properties": {
+    "code": {
+     "type": "string"
+    },
+    "name_th": {
+     "type": "string"
+    },
+    "name_en": {
+     "type": "string"
+    },
+    "tax_id": {
+     "type": "string"
+    },
+    "branch": {
+     "type": "string"
+    },
+    "business_type": {
+     "type": "string"
+    },
+    "vat_registered": {
+     "type": "boolean"
+    },
+    "service_tax_point": {
+     "type": "string"
+    },
+    "wht_recognition": {
+     "type": "string"
+    },
+    "fiscal_year": {
+     "type": "object",
+     "properties": {
+      "start": {
+       "type": "string"
+      },
+      "end": {
+       "type": "string"
+      },
+      "periods": {
+       "type": "number"
+      },
+      "adjustment_period": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "adjustment_period",
+      "end",
+      "periods",
+      "start"
+     ]
+    },
+    "price_default": {
+     "type": "string"
+    },
+    "rounding": {
+     "type": "string"
+    },
+    "modules": {
+     "type": "object",
+     "properties": {
+      "stock": {
+       "type": "boolean"
+      },
+      "payroll": {
+       "type": "boolean"
+      },
+      "fixed_assets": {
+       "type": "boolean"
+      },
+      "dimensions": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "dimensions",
+      "fixed_assets",
+      "payroll",
+      "stock"
+     ]
+    },
+    "bank_accounts": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "account": {
+        "type": "string"
+       },
+       "name": {
+        "type": "string"
+       },
+       "number": {
+        "type": "string"
+       },
+       "statement_balance_2569_11_30": {
+        "$ref": "#/$defs/money"
+       },
+       "gl_balance_2569_11_30": {
+        "$ref": "#/$defs/money"
+       },
+       "unexplained_diff": {
+        "$ref": "#/$defs/money"
+       },
+       "balance_2569_11_28_before_payrun": {
+        "$ref": "#/$defs/money"
+       },
+       "balance_2569_11_28_after_payrun": {
+        "$ref": "#/$defs/money"
+       },
+       "statement_30_11_derivation": {
+        "type": "string"
+       },
+       "recon_2569_11": {
+        "type": "object",
+        "properties": {
+         "interest": {
+          "type": "object",
+          "properties": {
+           "gross": {
+            "$ref": "#/$defs/money"
+           },
+           "wht_15pct": {
+            "$ref": "#/$defs/money"
+           },
+           "net": {
+            "$ref": "#/$defs/money"
+           },
+           "journal": {
+            "$ref": "#/$defs/journal"
+           }
+          },
+          "required": [
+           "gross",
+           "journal",
+           "net",
+           "wht_15pct"
+          ]
+         },
+         "bank_fee": {
+          "$ref": "#/$defs/money"
+         },
+         "outstanding_cheques": {
+          "type": "object",
+          "properties": {
+           "count": {
+            "type": "number"
+           },
+           "total": {
+            "$ref": "#/$defs/money"
+           },
+           "note": {
+            "type": "string"
+           }
+          },
+          "required": [
+           "count",
+           "note",
+           "total"
+          ]
+         },
+         "unexplained_diff": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "bank_fee",
+         "interest",
+         "outstanding_cheques",
+         "unexplained_diff"
+        ]
+       }
+      },
+      "required": [
+       "account",
+       "name",
+       "number"
+      ]
+     }
+    }
+   },
+   "required": [
+    "bank_accounts",
+    "branch",
+    "business_type",
+    "code",
+    "fiscal_year",
+    "modules",
+    "name_en",
+    "name_th",
+    "price_default",
+    "rounding",
+    "service_tax_point",
+    "tax_id",
+    "vat_registered",
+    "wht_recognition"
+   ]
+  },
+  "chart_of_accounts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "code": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string"
+     },
+     "imprest": {
+      "$ref": "#/$defs/money"
+     },
+     "control": {
+      "type": "string"
+     },
+     "suspense": {
+      "type": "boolean"
+     },
+     "closing": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "code",
+     "name",
+     "type"
+    ]
+   }
+  },
+  "wht_rates": {
+   "type": "object",
+   "properties": {
+    "transport_domestic": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "advertising": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "service": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "hire_of_work": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "professional": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "rent": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "interest_received": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "pnd": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "pnd",
+      "rate"
+     ]
+    },
+    "freelance_software_dev": {
+     "type": "object",
+     "properties": {
+      "rate": {
+       "type": "number"
+      },
+      "income_section": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "alternatives": {
+       "type": "array"
+      }
+     },
+     "required": [
+      "alternatives",
+      "income_section",
+      "rate",
+      "status"
+     ]
+    }
+   },
+   "required": [
+    "advertising",
+    "freelance_software_dev",
+    "hire_of_work",
+    "interest_received",
+    "professional",
+    "rent",
+    "service",
+    "transport_domestic"
+   ]
+  },
+  "filing_calendar": {
+   "type": "object",
+   "properties": {
+    "pnd_1_3_53": {
+     "type": "object",
+     "properties": {
+      "paper_day": {
+       "type": "number"
+      },
+      "online_day": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "online_day",
+      "paper_day"
+     ]
+    },
+    "pp30": {
+     "type": "object",
+     "properties": {
+      "paper_day": {
+       "type": "number"
+      },
+      "online_day": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "online_day",
+      "paper_day"
+     ]
+    },
+    "online_extension": {
+     "type": "object",
+     "properties": {
+      "enabled": {
+       "type": "boolean"
+      },
+      "status": {
+       "type": "string"
+      },
+      "valid_until": {
+       "$ref": "#/$defs/be_date"
+      }
+     },
+     "required": [
+      "enabled",
+      "status",
+      "valid_until"
+     ]
+    }
+   },
+   "required": [
+    "online_extension",
+    "pnd_1_3_53",
+    "pp30"
+   ]
+  },
+  "contacts": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "code": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string"
+     },
+     "tax_id": {
+      "type": "string"
+     },
+     "credit_days": {
+      "type": "number"
+     },
+     "credit_limit_remaining": {
+      "$ref": "#/$defs/money"
+     },
+     "ar_outstanding_2569_11_30": {
+      "$ref": "#/$defs/money"
+     },
+     "ar_open_docs": {
+      "type": "array"
+     },
+     "note": {
+      "type": "string"
+     },
+     "credit_limit": {
+      "$ref": "#/$defs/money"
+     },
+     "billing_cycle": {
+      "type": "array"
+     },
+     "cheque_day": {
+      "type": "string"
+     },
+     "external": {
+      "type": "object",
+      "properties": {
+       "source": {
+        "type": "string"
+       },
+       "ref": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "ref",
+       "source"
+      ]
+     },
+     "over_limit": {
+      "type": "boolean"
+     },
+     "default_wht": {
+      "type": "string"
+     },
+     "ap_due_7d_2569_11_30": {
+      "type": "object",
+      "properties": {
+       "total": {
+        "$ref": "#/$defs/money"
+       },
+       "bills": {
+        "type": "array"
+       }
+      },
+      "required": [
+       "bills",
+       "total"
+      ]
+     },
+     "bank": {
+      "anyOf": [
+       {
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "person": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "code",
+     "name",
+     "type"
+    ]
+   }
+  },
+  "products": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "code": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "unit": {
+      "type": "string"
+     },
+     "price": {
+      "$ref": "#/$defs/money"
+     },
+     "revenue_account": {
+      "type": "string"
+     },
+     "vat": {
+      "type": "boolean"
+     },
+     "price_2": {
+      "$ref": "#/$defs/money"
+     },
+     "est_cost": {
+      "$ref": "#/$defs/money"
+     },
+     "est_cost_source": {
+      "type": "string"
+     },
+     "external_source": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "type": {
+      "type": "string"
+     },
+     "cost": {
+      "$ref": "#/$defs/money"
+     }
+    },
+    "required": [
+     "code",
+     "name",
+     "revenue_account",
+     "unit",
+     "vat"
+    ]
+   }
+  },
+  "documents": {
+   "type": "object",
+   "properties": {
+    "IV2611-0052": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "from": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "rule": {
+       "type": "string"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "type": "string"
+         },
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "account": {
+          "type": "string"
+         },
+         "vat": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "account",
+         "amount",
+         "desc",
+         "price",
+         "product",
+         "qty",
+         "vat"
+        ]
+       }
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "amount_text": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "wht_if_deducted_3pct": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "amount_text",
+      "contact",
+      "date",
+      "due",
+      "expected_journal",
+      "from",
+      "grand_total",
+      "lines",
+      "rule",
+      "status",
+      "subtotal",
+      "type",
+      "vat",
+      "wht_if_deducted_3pct"
+     ]
+    },
+    "IV2610-0049": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "billed_in": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "billed_in",
+      "contact",
+      "date",
+      "desc",
+      "due",
+      "grand_total",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "IV2611-0053": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "outstanding_2569_11_30": {
+       "$ref": "#/$defs/money"
+      },
+      "status_2569_11_30": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "desc",
+      "due",
+      "external",
+      "grand_total",
+      "outstanding_2569_11_30",
+      "status",
+      "status_2569_11_30",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "IV2611-0056": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "type": "string"
+         },
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "price_incl_vat": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "amount",
+         "desc",
+         "price_incl_vat",
+         "product",
+         "qty"
+        ]
+       }
+      },
+      "discount": {
+       "$ref": "#/$defs/money"
+      },
+      "refs": {
+       "type": "string"
+      },
+      "price_incl_vat": {
+       "type": "boolean"
+      },
+      "vat_formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "desc",
+      "discount",
+      "due",
+      "external",
+      "grand_total",
+      "lines",
+      "price_incl_vat",
+      "refs",
+      "status",
+      "subtotal",
+      "type",
+      "vat",
+      "vat_formula"
+     ]
+    },
+    "IV2611-0058": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "void_reason": {
+       "type": "string"
+      },
+      "reversal": {
+       "type": "string"
+      },
+      "expected_reversal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "contact",
+      "expected_reversal",
+      "grand_total",
+      "reversal",
+      "status",
+      "type",
+      "void_reason"
+     ]
+    },
+    "BN2611-0004": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "collect_date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "invoices": {
+       "type": "array"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "amount_text": {
+       "type": "string"
+      },
+      "posts_journal": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "amount_text",
+      "collect_date",
+      "contact",
+      "date",
+      "invoices",
+      "posts_journal",
+      "total",
+      "type"
+     ]
+    },
+    "RV2611-0021": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "bank_account": {
+       "type": "string"
+      },
+      "rule": {
+       "type": "string"
+      },
+      "applications": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "doc": {
+          "type": "string"
+         },
+         "outstanding": {
+          "$ref": "#/$defs/money"
+         },
+         "wht_base": {
+          "$ref": "#/$defs/money"
+         },
+         "wht_rate": {
+          "type": "number"
+         },
+         "wht": {
+          "$ref": "#/$defs/money"
+         },
+         "applied": {
+          "$ref": "#/$defs/money"
+         },
+         "remaining": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "applied",
+         "doc",
+         "outstanding",
+         "remaining",
+         "wht"
+        ]
+       }
+      },
+      "wht_cert_received": {
+       "type": "object",
+       "properties": {
+        "number": {
+         "type": "string"
+        },
+        "rate": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "number",
+        "rate"
+       ]
+      },
+      "bank_fee": {
+       "$ref": "#/$defs/money"
+      },
+      "fee_account": {
+       "type": "string"
+      },
+      "total_applied": {
+       "$ref": "#/$defs/money"
+      },
+      "total_wht": {
+       "$ref": "#/$defs/money"
+      },
+      "cash_in": {
+       "$ref": "#/$defs/money"
+      },
+      "vat_transfer": {
+       "type": "object",
+       "properties": {
+        "base": {
+         "$ref": "#/$defs/money"
+        },
+        "vat": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "base",
+        "vat"
+       ]
+      },
+      "amount_text": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "expected_journal_total": {
+       "$ref": "#/$defs/money"
+      },
+      "bank_statement_match": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "$ref": "#/$defs/be_date"
+        },
+        "desc": {
+         "type": "string"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "date",
+        "desc"
+       ]
+      },
+      "applied_gross_total": {
+       "$ref": "#/$defs/money"
+      },
+      "applied_gross_formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount_text",
+      "applications",
+      "applied_gross_formula",
+      "applied_gross_total",
+      "bank_account",
+      "bank_fee",
+      "bank_statement_match",
+      "cash_in",
+      "contact",
+      "date",
+      "expected_journal",
+      "expected_journal_total",
+      "fee_account",
+      "ref",
+      "rule",
+      "total_applied",
+      "total_wht",
+      "type",
+      "vat_transfer",
+      "wht_cert_received"
+     ]
+    },
+    "RV2611-0024": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "vat": {
+       "type": "boolean"
+      },
+      "amount": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_rate": {
+       "type": "number"
+      },
+      "wht": {
+       "$ref": "#/$defs/money"
+      },
+      "cash_in": {
+       "$ref": "#/$defs/money"
+      },
+      "amount_text": {
+       "type": "string"
+      },
+      "print": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount",
+      "amount_text",
+      "cash_in",
+      "contact",
+      "date",
+      "desc",
+      "print",
+      "ref",
+      "type",
+      "vat",
+      "wht",
+      "wht_rate"
+     ]
+    },
+    "EXP2611-0019": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "pay_now": {
+       "type": "boolean"
+      },
+      "pay_from": {
+       "type": "string"
+      },
+      "rule": {
+       "type": "string"
+      },
+      "dimension": {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "project"
+       ]
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "desc": {
+          "type": "string"
+         },
+         "account": {
+          "type": "string"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "vat": {
+          "type": "boolean"
+         },
+         "wht": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ]
+         }
+        },
+        "required": [
+         "account",
+         "amount",
+         "desc",
+         "vat",
+         "wht"
+        ]
+       }
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "wht": {
+       "$ref": "#/$defs/money"
+      },
+      "paid": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_cert": {
+       "type": "string"
+      },
+      "pnd": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "dimension",
+      "expected_journal",
+      "lines",
+      "paid",
+      "pay_from",
+      "pay_now",
+      "pnd",
+      "rule",
+      "total",
+      "type",
+      "wht",
+      "wht_cert"
+     ]
+    },
+    "AP2611-0079": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "dimension": {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "project"
+       ]
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "desc": {
+          "type": "string"
+         },
+         "account": {
+          "type": "string"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "vat": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "account",
+         "amount",
+         "desc",
+         "vat"
+        ]
+       }
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_on_payment": {
+       "type": "object",
+       "properties": {
+        "rate": {
+         "type": "number"
+        },
+        "base_after_cnr": {
+         "$ref": "#/$defs/money"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "base_after_cnr",
+        "rate"
+       ]
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "dimension",
+      "due",
+      "grand_total",
+      "lines",
+      "subtotal",
+      "type",
+      "vat",
+      "vendor_invoice",
+      "wht_on_payment"
+     ]
+    },
+    "CNR2611-0003": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "vendor_cn": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "reason": {
+       "type": "string"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "ref_line": {
+          "type": "number"
+         },
+         "original": {
+          "$ref": "#/$defs/money"
+         },
+         "corrected": {
+          "$ref": "#/$defs/money"
+         },
+         "diff": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "corrected",
+         "diff",
+         "original",
+         "ref_line"
+        ]
+       }
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "ap_after": {
+       "$ref": "#/$defs/money"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "vat_corrected": {
+       "$ref": "#/$defs/money"
+      },
+      "ap_after_detail": {
+       "type": "object",
+       "properties": {
+        "subtotal": {
+         "$ref": "#/$defs/money"
+        },
+        "vat": {
+         "$ref": "#/$defs/money"
+        },
+        "grand_total": {
+         "$ref": "#/$defs/money"
+        },
+        "from": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "from",
+        "grand_total",
+        "subtotal",
+        "vat"
+       ]
+      }
+     },
+     "required": [
+      "ap_after",
+      "ap_after_detail",
+      "contact",
+      "date",
+      "expected_journal",
+      "lines",
+      "reason",
+      "ref",
+      "subtotal",
+      "total",
+      "type",
+      "vat",
+      "vat_corrected",
+      "vendor_cn"
+     ]
+    },
+    "AP2611-0088": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "vat_exempt": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "contact",
+      "desc",
+      "due",
+      "expected_journal",
+      "external",
+      "grand_total",
+      "subtotal",
+      "type",
+      "vat",
+      "vat_exempt",
+      "vendor_invoice"
+     ]
+    },
+    "AP2611-0091": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "vat_exempt": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      }
+     },
+     "required": [
+      "contact",
+      "due",
+      "external",
+      "grand_total",
+      "type",
+      "vat_exempt",
+      "vendor_invoice"
+     ]
+    },
+    "AP2611-0080": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "vat_exempt": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_on_payment": {
+       "type": "object",
+       "properties": {
+        "rate": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "rate"
+       ]
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "contact",
+      "desc",
+      "due",
+      "expected_journal",
+      "grand_total",
+      "subtotal",
+      "type",
+      "vat",
+      "vat_exempt",
+      "wht_on_payment"
+     ]
+    },
+    "AP2611-0094": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_on_payment": {
+       "type": "object",
+       "properties": {
+        "rate": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "rate"
+       ]
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      },
+      "status": {
+       "type": "string"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "due",
+      "external",
+      "grand_total",
+      "note",
+      "status",
+      "type",
+      "wht_on_payment"
+     ]
+    },
+    "PV2611-0031": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "pay_from": {
+       "type": "string"
+      },
+      "method": {
+       "type": "string"
+      },
+      "bills": {
+       "type": "array"
+      },
+      "outstanding": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_rate": {
+       "type": "number"
+      },
+      "wht": {
+       "$ref": "#/$defs/money"
+      },
+      "paid": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_cert": {
+       "type": "string"
+      },
+      "pnd": {
+       "type": "string"
+      },
+      "amount_text": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "webhook": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount_text",
+      "bills",
+      "contact",
+      "date",
+      "expected_journal",
+      "method",
+      "outstanding",
+      "paid",
+      "pay_from",
+      "pnd",
+      "type",
+      "webhook",
+      "wht",
+      "wht_cert",
+      "wht_rate"
+     ]
+    },
+    "PAYRUN-2569-11-28": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "bank_account": {
+       "type": "string"
+      },
+      "selected_bills": {
+       "type": "array"
+      },
+      "selected_total": {
+       "$ref": "#/$defs/money"
+      },
+      "total_wht": {
+       "$ref": "#/$defs/money"
+      },
+      "paid_total": {
+       "$ref": "#/$defs/money"
+      },
+      "vouchers": {
+       "type": "array"
+      },
+      "approval": {
+       "type": "object",
+       "properties": {
+        "l1": {
+         "type": "string"
+        },
+        "l2_limit": {
+         "$ref": "#/$defs/money"
+        },
+        "l3": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "l1",
+        "l2_limit",
+        "l3"
+       ]
+      },
+      "bank_statement_match": {
+       "type": "object",
+       "properties": {
+        "date": {
+         "$ref": "#/$defs/be_date"
+        },
+        "desc": {
+         "type": "string"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "date",
+        "desc"
+       ]
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "bill": {
+          "type": "string"
+         },
+         "outstanding": {
+          "$ref": "#/$defs/money"
+         },
+         "wht": {
+          "$ref": "#/$defs/money"
+         },
+         "paid": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "bill",
+         "outstanding",
+         "paid",
+         "wht"
+        ]
+       }
+      },
+      "not_selected": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "bill": {
+          "type": "string"
+         },
+         "outstanding": {
+          "$ref": "#/$defs/money"
+         },
+         "wht": {
+          "$ref": "#/$defs/money"
+         },
+         "paid_if_selected": {
+          "$ref": "#/$defs/money"
+         },
+         "reason": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "bill",
+         "outstanding",
+         "paid_if_selected",
+         "reason",
+         "wht"
+        ]
+       }
+      },
+      "status_2569_11_30": {
+       "type": "string"
+      },
+      "approved": {
+       "type": "object",
+       "properties": {
+        "by": {
+         "type": "string"
+        },
+        "at": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "at",
+        "by"
+       ]
+      }
+     },
+     "required": [
+      "approval",
+      "approved",
+      "bank_account",
+      "bank_statement_match",
+      "lines",
+      "not_selected",
+      "paid_total",
+      "selected_bills",
+      "selected_total",
+      "status_2569_11_30",
+      "total_wht",
+      "type",
+      "vouchers"
+     ]
+    },
+    "PO2611-0018": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "from": {
+       "type": "string"
+      },
+      "delivery": {
+       "$ref": "#/$defs/be_date"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "desc": {
+          "type": "string"
+         },
+         "account": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "unit": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "vat": {
+          "type": "boolean"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "received": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "account",
+         "amount",
+         "desc",
+         "price",
+         "qty",
+         "received",
+         "unit",
+         "vat"
+        ]
+       }
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "expected_wht_on_payment": {
+       "$ref": "#/$defs/money"
+      },
+      "approval_limit_l2": {
+       "$ref": "#/$defs/money"
+      },
+      "discount": {
+       "$ref": "#/$defs/money"
+      },
+      "expected_wht_3pct": {
+       "$ref": "#/$defs/money"
+      },
+      "expected_wht_formula": {
+       "type": "string"
+      },
+      "pr_ref": {
+       "type": "string"
+      },
+      "delivery_due": {
+       "$ref": "#/$defs/be_date"
+      }
+     },
+     "required": [
+      "approval_limit_l2",
+      "contact",
+      "date",
+      "delivery",
+      "delivery_due",
+      "discount",
+      "expected_wht_3pct",
+      "expected_wht_formula",
+      "expected_wht_on_payment",
+      "from",
+      "grand_total",
+      "lines",
+      "pr_ref",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "QO2611-0030": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "valid_until": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "unit": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "amount",
+         "desc",
+         "price",
+         "qty",
+         "unit"
+        ]
+       }
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "deposit_pct": {
+       "type": "number"
+      },
+      "discount": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "deposit_pct",
+      "discount",
+      "grand_total",
+      "lines",
+      "subtotal",
+      "type",
+      "valid_until",
+      "vat"
+     ]
+    },
+    "DP2610-0006": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "deposit_base": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "received_via": {
+       "type": "string"
+      },
+      "applied_total": {
+       "$ref": "#/$defs/money"
+      },
+      "remaining": {
+       "$ref": "#/$defs/money"
+      },
+      "receive_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "apply_example": {
+       "type": "object",
+       "properties": {
+        "invoice": {
+         "type": "string"
+        },
+        "work_value": {
+         "$ref": "#/$defs/money"
+        },
+        "deposit_applied": {
+         "$ref": "#/$defs/money"
+        },
+        "taxable_now": {
+         "$ref": "#/$defs/money"
+        },
+        "vat_now": {
+         "$ref": "#/$defs/money"
+        },
+        "customer_pays": {
+         "$ref": "#/$defs/money"
+        },
+        "journal": {
+         "$ref": "#/$defs/journal"
+        }
+       },
+       "required": [
+        "customer_pays",
+        "deposit_applied",
+        "invoice",
+        "journal",
+        "taxable_now",
+        "vat_now",
+        "work_value"
+       ]
+      }
+     },
+     "required": [
+      "applied_total",
+      "apply_example",
+      "contact",
+      "date",
+      "deposit_base",
+      "receive_journal",
+      "received_via",
+      "ref",
+      "remaining",
+      "total",
+      "type",
+      "vat"
+     ]
+    },
+    "IV2611-0059": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "paid_by": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "desc",
+      "due",
+      "grand_total",
+      "paid_by",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "RV2611-0025": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "method": {
+       "type": "string"
+      },
+      "cheque": {
+       "type": "string"
+      },
+      "amount": {
+       "$ref": "#/$defs/money"
+      },
+      "rule": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount",
+      "cheque",
+      "contact",
+      "date",
+      "expected_journal",
+      "method",
+      "note",
+      "ref",
+      "rule",
+      "type"
+     ]
+    },
+    "IV2611-0051": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "outstanding_2569_11_30": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "due",
+      "grand_total",
+      "outstanding_2569_11_30",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "IVS2610-0008": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "overdue_days_2569_11_30": {
+       "type": "number"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "outstanding_2569_11_30": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "due",
+      "grand_total",
+      "outstanding_2569_11_30",
+      "overdue_days_2569_11_30",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "IV2610-0048": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "overdue_days_2569_11_30": {
+       "type": "number"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "outstanding_2569_11_30": {
+       "$ref": "#/$defs/money"
+      },
+      "billed_in": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "billed_in",
+      "contact",
+      "date",
+      "due",
+      "grand_total",
+      "outstanding_2569_11_30",
+      "overdue_days_2569_11_30",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "IV2611-0054": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "grand_total",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "AP2611-0042": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "vat_exempt": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "status": {
+       "type": "string"
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      },
+      "wht_on_payment": {
+       "type": "object",
+       "properties": {
+        "rate": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "amount",
+        "rate"
+       ]
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "net_pay_expected": {
+       "$ref": "#/$defs/money"
+      },
+      "net_pay_formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "desc",
+      "due",
+      "external",
+      "grand_total",
+      "net_pay_expected",
+      "net_pay_formula",
+      "status",
+      "type",
+      "vat_exempt",
+      "vendor_invoice",
+      "wht_on_payment"
+     ]
+    },
+    "AP2611-0043": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "vat_exempt": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "status": {
+       "type": "string"
+      },
+      "external": {
+       "type": "object",
+       "properties": {
+        "source": {
+         "type": "string"
+        },
+        "ref": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "ref",
+        "source"
+       ]
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "desc",
+      "due",
+      "external",
+      "grand_total",
+      "status",
+      "type",
+      "vat_exempt",
+      "vendor_invoice"
+     ]
+    },
+    "AP2610-0038": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "status": {
+       "type": "string"
+      },
+      "overdue_days_2569_11_30": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "due",
+      "grand_total",
+      "overdue_days_2569_11_30",
+      "status",
+      "type",
+      "vendor_invoice"
+     ]
+    },
+    "DP2605-0001": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "received": {
+       "$ref": "#/$defs/money"
+      },
+      "applied": {
+       "$ref": "#/$defs/money"
+      },
+      "remaining": {
+       "$ref": "#/$defs/money"
+      },
+      "age_days_2569_11_30": {
+       "type": "number"
+      },
+      "flag": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "age_days_2569_11_30",
+      "applied",
+      "contact",
+      "date",
+      "flag",
+      "received",
+      "ref",
+      "remaining",
+      "total",
+      "type"
+     ]
+    },
+    "PV2611-0032": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "pay_from": {
+       "type": "string"
+      },
+      "bills": {
+       "type": "array"
+      },
+      "outstanding_after_cnr": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_base": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_rate": {
+       "type": "number"
+      },
+      "wht": {
+       "$ref": "#/$defs/money"
+      },
+      "paid": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_cert": {
+       "type": "string"
+      },
+      "pnd": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "bills",
+      "contact",
+      "date",
+      "expected_journal",
+      "outstanding_after_cnr",
+      "paid",
+      "pay_from",
+      "pnd",
+      "type",
+      "wht",
+      "wht_base",
+      "wht_cert",
+      "wht_rate"
+     ]
+    },
+    "PV2611-0033": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "pay_from": {
+       "type": "string"
+      },
+      "bills": {
+       "type": "array"
+      },
+      "outstanding": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_base": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_rate": {
+       "type": "number"
+      },
+      "wht": {
+       "$ref": "#/$defs/money"
+      },
+      "paid": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_cert": {
+       "type": "string"
+      },
+      "pnd": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "bills",
+      "contact",
+      "date",
+      "expected_journal",
+      "outstanding",
+      "paid",
+      "pay_from",
+      "pnd",
+      "type",
+      "wht",
+      "wht_base",
+      "wht_cert",
+      "wht_rate"
+     ]
+    },
+    "QO2611-0014": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "valid_until": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "accepted_at": {
+       "type": "string"
+      },
+      "salesperson": {
+       "type": "string"
+      },
+      "dimension": {
+       "type": "object",
+       "properties": {
+        "project": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "project"
+       ]
+      },
+      "payment_terms": {
+       "type": "string"
+      },
+      "price_level": {
+       "type": "number"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "anyOf": [
+           {
+            "type": "string"
+           },
+           {
+            "type": "null"
+           }
+          ]
+         },
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "discount": {
+          "type": "string"
+         },
+         "est_cost": {
+          "$ref": "#/$defs/money"
+         },
+         "gross_margin_pct": {
+          "type": "string"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "amount_formula": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "amount",
+         "desc",
+         "est_cost",
+         "gross_margin_pct",
+         "price",
+         "product",
+         "qty"
+        ]
+       }
+      },
+      "est_cost_total": {
+       "$ref": "#/$defs/money"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "gross_margin_pct_total": {
+       "type": "string"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "deposit_30pct": {
+       "$ref": "#/$defs/money"
+      },
+      "deposit_formula": {
+       "type": "string"
+      },
+      "posts_journal": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "accepted_at",
+      "contact",
+      "date",
+      "deposit_30pct",
+      "deposit_formula",
+      "dimension",
+      "est_cost_total",
+      "grand_total",
+      "gross_margin_pct_total",
+      "lines",
+      "payment_terms",
+      "posts_journal",
+      "price_level",
+      "salesperson",
+      "status",
+      "subtotal",
+      "type",
+      "valid_until",
+      "vat"
+     ]
+    },
+    "IV2611-0001": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "credit_note": {
+       "type": "string"
+      },
+      "outstanding_after_cn": {
+       "$ref": "#/$defs/money"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "type": "string"
+         },
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "amount",
+         "desc",
+         "price",
+         "product",
+         "qty"
+        ]
+       }
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      }
+     },
+     "required": [
+      "contact",
+      "credit_note",
+      "date",
+      "grand_total",
+      "lines",
+      "outstanding_after_cn",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "CN2611-0003": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "apply": {
+       "type": "string"
+      },
+      "reason": {
+       "type": "string"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "type": "string"
+         },
+         "original_qty": {
+          "type": "string"
+         },
+         "returned_qty": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "stock_module": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "amount",
+         "original_qty",
+         "price",
+         "product",
+         "returned_qty"
+        ]
+       }
+      },
+      "original_value": {
+       "$ref": "#/$defs/money"
+      },
+      "corrected_value": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "iv_outstanding_after": {
+       "$ref": "#/$defs/money"
+      },
+      "iv_outstanding_formula": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "apply",
+      "contact",
+      "corrected_value",
+      "diff",
+      "expected_journal",
+      "iv_outstanding_after",
+      "iv_outstanding_formula",
+      "lines",
+      "original_value",
+      "reason",
+      "ref",
+      "status",
+      "total",
+      "type",
+      "vat"
+     ]
+    },
+    "DN2612-0001": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "status": {
+       "type": "string"
+      },
+      "original_value": {
+       "$ref": "#/$defs/money"
+      },
+      "corrected_value": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "note": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "ref_date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "type": "string"
+         },
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "amount",
+         "desc",
+         "price",
+         "product",
+         "qty"
+        ]
+       }
+      }
+     },
+     "required": [
+      "contact",
+      "corrected_value",
+      "date",
+      "diff",
+      "lines",
+      "note",
+      "original_value",
+      "ref",
+      "ref_date",
+      "status",
+      "total",
+      "type",
+      "vat"
+     ]
+    },
+    "EXP2611-0023": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "created_by": {
+       "type": "string"
+      },
+      "source": {
+       "type": "string"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "created_by",
+      "grand_total",
+      "note",
+      "source",
+      "status",
+      "type"
+     ]
+    },
+    "AP2611-0090": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "contact_tax_id": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "desc": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "capitalized_to": {
+       "type": "string"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "capitalized_to",
+      "contact",
+      "contact_tax_id",
+      "date",
+      "desc",
+      "grand_total",
+      "note",
+      "subtotal",
+      "type",
+      "vat",
+      "vendor_invoice"
+     ]
+    },
+    "AP2610-0071": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "contact_tax_id": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "input_vat_claimed_in": {
+       "type": "string"
+      },
+      "note": {
+       "type": "string"
+      },
+      "wht_on_payment": {
+       "type": "object",
+       "properties": {
+        "rate": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        },
+        "paid_on": {
+         "$ref": "#/$defs/be_date"
+        }
+       },
+       "required": [
+        "amount",
+        "paid_on",
+        "rate"
+       ]
+      }
+     },
+     "required": [
+      "contact",
+      "contact_tax_id",
+      "date",
+      "grand_total",
+      "input_vat_claimed_in",
+      "note",
+      "subtotal",
+      "type",
+      "vat",
+      "vendor_invoice",
+      "wht_on_payment"
+     ]
+    },
+    "EXP2611-0021": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "contact_tax_id": {
+       "type": "string"
+      },
+      "vendor_invoice": {
+       "type": "string"
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "wht": {
+       "type": "object",
+       "properties": {
+        "rate": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        },
+        "type": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "amount",
+        "rate",
+        "type"
+       ]
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "contact",
+      "contact_tax_id",
+      "date",
+      "grand_total",
+      "note",
+      "subtotal",
+      "type",
+      "vat",
+      "vendor_invoice",
+      "wht"
+     ]
+    },
+    "JV2611-0077": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "manual": {
+       "type": "boolean"
+      },
+      "amount": {
+       "$ref": "#/$defs/money"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount",
+      "manual",
+      "note",
+      "status",
+      "type"
+     ]
+    },
+    "JV2611-0098": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "manual": {
+       "type": "boolean"
+      },
+      "amount": {
+       "$ref": "#/$defs/money"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount",
+      "manual",
+      "note",
+      "status",
+      "type"
+     ]
+    },
+    "AP2611-0085": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "vat_recorded": {
+       "$ref": "#/$defs/money"
+      },
+      "vat_claimable": {
+       "$ref": "#/$defs/money"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "note",
+      "status",
+      "type",
+      "vat_claimable",
+      "vat_recorded"
+     ]
+    },
+    "BN2611-0002": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "collect_date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "invoices": {
+       "type": "array"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "total_formula": {
+       "type": "string"
+      },
+      "received_by": {
+       "type": "string"
+      },
+      "posts_journal": {
+       "type": "boolean"
+      }
+     },
+     "required": [
+      "collect_date",
+      "contact",
+      "invoices",
+      "posts_journal",
+      "received_by",
+      "total",
+      "total_formula",
+      "type"
+     ]
+    },
+    "IV2610-0047": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "due": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "status": {
+       "type": "string"
+      },
+      "rule": {
+       "type": "string"
+      },
+      "lines": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "product": {
+          "type": "string"
+         },
+         "desc": {
+          "type": "string"
+         },
+         "qty": {
+          "type": "string"
+         },
+         "price": {
+          "$ref": "#/$defs/money"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "account": {
+          "type": "string"
+         },
+         "vat": {
+          "type": "boolean"
+         }
+        },
+        "required": [
+         "account",
+         "amount",
+         "desc",
+         "price",
+         "product",
+         "qty",
+         "vat"
+        ]
+       }
+      },
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "paid_by": {
+       "type": "string"
+      },
+      "outstanding_2569_11_30": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "contact",
+      "date",
+      "due",
+      "grand_total",
+      "lines",
+      "outstanding_2569_11_30",
+      "paid_by",
+      "rule",
+      "status",
+      "subtotal",
+      "type",
+      "vat"
+     ]
+    },
+    "RV2611-0022": {
+     "type": "object",
+     "properties": {
+      "type": {
+       "type": "string"
+      },
+      "date": {
+       "$ref": "#/$defs/be_date"
+      },
+      "contact": {
+       "type": "string"
+      },
+      "ref": {
+       "type": "string"
+      },
+      "method": {
+       "type": "string"
+      },
+      "pay_to": {
+       "type": "string"
+      },
+      "print": {
+       "type": "string"
+      },
+      "cash_in": {
+       "$ref": "#/$defs/money"
+      },
+      "wht": {
+       "$ref": "#/$defs/money"
+      },
+      "wht_rate": {
+       "type": "number"
+      },
+      "amount_text": {
+       "type": "string"
+      },
+      "expected_journal": {
+       "$ref": "#/$defs/journal"
+      },
+      "vat_sales_report_row": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "amount_text",
+      "cash_in",
+      "contact",
+      "date",
+      "expected_journal",
+      "method",
+      "pay_to",
+      "print",
+      "ref",
+      "type",
+      "vat_sales_report_row",
+      "wht",
+      "wht_rate"
+     ]
+    }
+   },
+   "required": [
+    "AP2610-0038",
+    "AP2610-0071",
+    "AP2611-0042",
+    "AP2611-0043",
+    "AP2611-0079",
+    "AP2611-0080",
+    "AP2611-0085",
+    "AP2611-0088",
+    "AP2611-0090",
+    "AP2611-0091",
+    "AP2611-0094",
+    "BN2611-0002",
+    "BN2611-0004",
+    "CN2611-0003",
+    "CNR2611-0003",
+    "DN2612-0001",
+    "DP2605-0001",
+    "DP2610-0006",
+    "EXP2611-0019",
+    "EXP2611-0021",
+    "EXP2611-0023",
+    "IV2610-0047",
+    "IV2610-0048",
+    "IV2610-0049",
+    "IV2611-0001",
+    "IV2611-0051",
+    "IV2611-0052",
+    "IV2611-0053",
+    "IV2611-0054",
+    "IV2611-0056",
+    "IV2611-0058",
+    "IV2611-0059",
+    "IVS2610-0008",
+    "JV2611-0077",
+    "JV2611-0098",
+    "PAYRUN-2569-11-28",
+    "PO2611-0018",
+    "PV2611-0031",
+    "PV2611-0032",
+    "PV2611-0033",
+    "QO2611-0014",
+    "QO2611-0030",
+    "RV2611-0021",
+    "RV2611-0022",
+    "RV2611-0024",
+    "RV2611-0025"
+   ]
+  },
+  "cheques_received": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "number": {
+      "type": "string"
+     },
+     "bank": {
+      "type": "string"
+     },
+     "date": {
+      "$ref": "#/$defs/be_date"
+     },
+     "payer": {
+      "type": "string"
+     },
+     "ref": {
+      "type": "string"
+     },
+     "amount": {
+      "$ref": "#/$defs/money"
+     },
+     "status": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "deposited_on": {
+      "$ref": "#/$defs/be_date"
+     },
+     "reason": {
+      "type": "string"
+     },
+     "cleared_on": {
+      "$ref": "#/$defs/be_date"
+     }
+    },
+    "required": [
+     "amount",
+     "bank",
+     "date",
+     "number",
+     "payer",
+     "ref",
+     "status"
+    ]
+   }
+  },
+  "petty_cash": {
+   "type": "object",
+   "properties": {
+    "fund": {
+     "type": "string"
+    },
+    "imprest": {
+     "$ref": "#/$defs/money"
+    },
+    "spent_pending": {
+     "$ref": "#/$defs/money"
+    },
+    "on_hand": {
+     "$ref": "#/$defs/money"
+    },
+    "items": {
+     "type": "number"
+    },
+    "input_vat_in_items": {
+     "$ref": "#/$defs/money"
+    },
+    "expenses_total": {
+     "$ref": "#/$defs/money"
+    },
+    "last_count": {
+     "$ref": "#/$defs/be_date"
+    },
+    "reimburse_journal": {
+     "$ref": "#/$defs/journal"
+    },
+    "items_shown": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "date": {
+        "$ref": "#/$defs/be_date"
+       },
+       "no": {
+        "type": "string"
+       },
+       "desc": {
+        "type": "string"
+       },
+       "account": {
+        "type": "string"
+       },
+       "by": {
+        "type": "string"
+       },
+       "vat": {
+        "type": "string"
+       },
+       "amount": {
+        "$ref": "#/$defs/money"
+       },
+       "evidence": {
+        "type": "string"
+       },
+       "input_vat": {
+        "$ref": "#/$defs/money"
+       },
+       "wht": {
+        "type": "string"
+       },
+       "count": {
+        "type": "number"
+       },
+       "amount_formula": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "amount",
+       "no"
+      ]
+     }
+    },
+    "count_sheet": {
+     "type": "object",
+     "properties": {
+      "cash_counted": {
+       "$ref": "#/$defs/money"
+      },
+      "vouchers": {
+       "$ref": "#/$defs/money"
+      },
+      "note": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "cash_counted",
+      "note",
+      "vouchers"
+     ]
+    }
+   },
+   "required": [
+    "count_sheet",
+    "expenses_total",
+    "fund",
+    "imprest",
+    "input_vat_in_items",
+    "items",
+    "items_shown",
+    "last_count",
+    "on_hand",
+    "reimburse_journal",
+    "spent_pending"
+   ]
+  },
+  "fixed_assets": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "code": {
+      "type": "string"
+     },
+     "name": {
+      "type": "string"
+     },
+     "account": {
+      "type": "string"
+     },
+     "accum": {
+      "type": "string"
+     },
+     "expense": {
+      "type": "string"
+     },
+     "start": {
+      "$ref": "#/$defs/be_date"
+     },
+     "life_years": {
+      "type": "number"
+     },
+     "cost": {
+      "$ref": "#/$defs/money"
+     },
+     "salvage": {
+      "$ref": "#/$defs/money"
+     },
+     "annual": {
+      "$ref": "#/$defs/money"
+     },
+     "first_month_days": {
+      "type": "number"
+     },
+     "first_month_dep": {
+      "$ref": "#/$defs/money"
+     },
+     "from": {
+      "type": "string"
+     },
+     "monthly": {
+      "$ref": "#/$defs/money"
+     },
+     "accum_2569_10": {
+      "$ref": "#/$defs/money"
+     },
+     "accum_2569_11": {
+      "$ref": "#/$defs/money"
+     },
+     "nbv_2569_11": {
+      "$ref": "#/$defs/money"
+     },
+     "nbv_formula": {
+      "type": "string"
+     },
+     "life_note": {
+      "type": "string"
+     },
+     "tax_cost_cap": {
+      "$ref": "#/$defs/money"
+     },
+     "disposed": {
+      "$ref": "#/$defs/be_date"
+     },
+     "sale_price": {
+      "$ref": "#/$defs/money"
+     },
+     "sale_vat": {
+      "$ref": "#/$defs/money"
+     },
+     "last_month_days": {
+      "type": "number"
+     },
+     "accum_at_disposal": {
+      "$ref": "#/$defs/money"
+     },
+     "disposal_journal": {
+      "$ref": "#/$defs/journal"
+     },
+     "monthly_formula": {
+      "type": "string"
+     },
+     "dep_2569_11": {
+      "$ref": "#/$defs/money"
+     },
+     "dep_2569_11_formula": {
+      "type": "string"
+     },
+     "accum_at_sale": {
+      "$ref": "#/$defs/money"
+     },
+     "nbv_at_sale": {
+      "$ref": "#/$defs/money"
+     },
+     "disposal": {
+      "type": "object",
+      "properties": {
+       "date": {
+        "$ref": "#/$defs/be_date"
+       },
+       "doc": {
+        "type": "string"
+       },
+       "price": {
+        "$ref": "#/$defs/money"
+       },
+       "vat": {
+        "$ref": "#/$defs/money"
+       },
+       "cash": {
+        "$ref": "#/$defs/money"
+       },
+       "loss_5910100": {
+        "$ref": "#/$defs/money"
+       },
+       "loss_formula": {
+        "type": "string"
+       },
+       "journal": {
+        "$ref": "#/$defs/journal"
+       }
+      },
+      "required": [
+       "cash",
+       "date",
+       "doc",
+       "journal",
+       "loss_5910100",
+       "loss_formula",
+       "price",
+       "vat"
+      ]
+     },
+     "fully_depreciated": {
+      "type": "boolean"
+     },
+     "status": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "account",
+     "code",
+     "cost",
+     "life_years",
+     "name",
+     "salvage",
+     "start"
+    ]
+   }
+  },
+  "depreciation_2569_11": {
+   "type": "object",
+   "properties": {
+    "total": {
+     "$ref": "#/$defs/money"
+    },
+    "by_expense": {
+     "type": "object",
+     "properties": {
+      "5150100": {
+       "$ref": "#/$defs/money"
+      },
+      "5150200": {
+       "$ref": "#/$defs/money"
+      },
+      "5150300": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "5150100",
+      "5150200",
+      "5150300"
+     ]
+    },
+    "assets_total": {
+     "type": "number"
+    },
+    "cost_total": {
+     "$ref": "#/$defs/money"
+    },
+    "accum_total": {
+     "$ref": "#/$defs/money"
+    },
+    "nbv_total": {
+     "$ref": "#/$defs/money"
+    },
+    "tax_max_rates_rd145_pct": {
+     "type": "object",
+     "properties": {
+      "building": {
+       "type": "number"
+      },
+      "vehicle_equipment": {
+       "type": "number"
+      },
+      "computer": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "building",
+      "computer",
+      "vehicle_equipment"
+     ]
+    },
+    "journal": {
+     "$ref": "#/$defs/journal"
+    }
+   },
+   "required": [
+    "accum_total",
+    "assets_total",
+    "by_expense",
+    "cost_total",
+    "journal",
+    "nbv_total",
+    "tax_max_rates_rd145_pct",
+    "total"
+   ]
+  },
+  "tax_2569_11": {
+   "type": "object",
+   "properties": {
+    "pp30": {
+     "type": "object",
+     "properties": {
+      "sales_total": {
+       "$ref": "#/$defs/money"
+      },
+      "exempt_sales": {
+       "$ref": "#/$defs/money"
+      },
+      "taxable_sales": {
+       "$ref": "#/$defs/money"
+      },
+      "output_vat": {
+       "$ref": "#/$defs/money"
+      },
+      "purchases_creditable": {
+       "$ref": "#/$defs/money"
+      },
+      "input_vat": {
+       "$ref": "#/$defs/money"
+      },
+      "input_vat_prior_month_claims": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "invoice": {
+          "type": "string"
+         },
+         "vat": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "invoice",
+         "vat"
+        ]
+       }
+      },
+      "net_payable": {
+       "$ref": "#/$defs/money"
+      },
+      "due_online": {
+       "$ref": "#/$defs/be_date"
+      },
+      "post_on_filed": {
+       "$ref": "#/$defs/journal"
+      }
+     },
+     "required": [
+      "due_online",
+      "exempt_sales",
+      "input_vat",
+      "input_vat_prior_month_claims",
+      "net_payable",
+      "output_vat",
+      "post_on_filed",
+      "purchases_creditable",
+      "sales_total",
+      "taxable_sales"
+     ]
+    },
+    "pnd3": {
+     "type": "object",
+     "properties": {
+      "certs": {
+       "type": "number"
+      },
+      "base": {
+       "$ref": "#/$defs/money"
+      },
+      "tax": {
+       "$ref": "#/$defs/money"
+      },
+      "due_online": {
+       "$ref": "#/$defs/be_date"
+      },
+      "rdprep_file": {
+       "type": "string"
+      },
+      "rows": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "no": {
+          "type": "number"
+         },
+         "payee": {
+          "type": "string"
+         },
+         "contact": {
+          "type": "string"
+         },
+         "id": {
+          "type": "string"
+         },
+         "paid": {
+          "$ref": "#/$defs/be_date"
+         },
+         "income_type": {
+          "type": "string"
+         },
+         "rate_pct": {
+          "type": "number"
+         },
+         "base": {
+          "$ref": "#/$defs/money"
+         },
+         "tax": {
+          "$ref": "#/$defs/money"
+         },
+         "condition": {
+          "type": "number"
+         },
+         "source": {
+          "type": "string"
+         },
+         "status": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "base",
+         "condition",
+         "id",
+         "income_type",
+         "no",
+         "paid",
+         "payee",
+         "rate_pct",
+         "tax"
+        ]
+       }
+      },
+      "totals_formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "base",
+      "certs",
+      "due_online",
+      "rdprep_file",
+      "rows",
+      "tax",
+      "totals_formula"
+     ]
+    },
+    "pnd53": {
+     "type": "object",
+     "properties": {
+      "certs": {
+       "type": "number"
+      },
+      "base": {
+       "$ref": "#/$defs/money"
+      },
+      "tax": {
+       "$ref": "#/$defs/money"
+      },
+      "due_online": {
+       "$ref": "#/$defs/be_date"
+      },
+      "rdprep_file": {
+       "type": "string"
+      },
+      "rows": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "no": {
+          "type": "number"
+         },
+         "payee": {
+          "type": "string"
+         },
+         "contact": {
+          "type": "string"
+         },
+         "tax_id": {
+          "type": "string"
+         },
+         "paid": {
+          "$ref": "#/$defs/be_date"
+         },
+         "income_type": {
+          "type": "string"
+         },
+         "rate_pct": {
+          "type": "number"
+         },
+         "base": {
+          "$ref": "#/$defs/money"
+         },
+         "tax": {
+          "$ref": "#/$defs/money"
+         },
+         "condition": {
+          "type": "number"
+         },
+         "cert": {
+          "type": "string"
+         },
+         "source": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "base",
+         "condition",
+         "income_type",
+         "no",
+         "paid",
+         "payee",
+         "rate_pct",
+         "tax",
+         "tax_id"
+        ]
+       }
+      },
+      "totals_formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "base",
+      "certs",
+      "due_online",
+      "rdprep_file",
+      "rows",
+      "tax",
+      "totals_formula"
+     ]
+    },
+    "wht_received_1160100": {
+     "$ref": "#/$defs/money"
+    },
+    "etax": {
+     "type": "object",
+     "properties": {
+      "issued": {
+       "type": "number"
+      },
+      "submitted": {
+       "type": "number"
+      },
+      "failed": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "failed",
+      "issued",
+      "submitted"
+     ]
+    },
+    "payable_total_shown_on_home": {
+     "$ref": "#/$defs/money"
+    },
+    "vat_sales_report": {
+     "type": "object",
+     "properties": {
+      "rows": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "no": {
+          "type": "number"
+         },
+         "date": {
+          "$ref": "#/$defs/be_date"
+         },
+         "doc": {
+          "type": "string"
+         },
+         "customer": {
+          "type": "string"
+         },
+         "tax_id": {
+          "type": "string"
+         },
+         "branch": {
+          "type": "string"
+         },
+         "base": {
+          "$ref": "#/$defs/money"
+         },
+         "vat": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "base",
+         "branch",
+         "customer",
+         "date",
+         "doc",
+         "no",
+         "tax_id",
+         "vat"
+        ]
+       }
+      },
+      "total_base": {
+       "$ref": "#/$defs/money"
+      },
+      "total_vat": {
+       "$ref": "#/$defs/money"
+      },
+      "formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "formula",
+      "rows",
+      "total_base",
+      "total_vat"
+     ]
+    },
+    "vat_purchase_report": {
+     "type": "object",
+     "properties": {
+      "rows": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "no": {
+          "type": "number"
+         },
+         "date": {
+          "$ref": "#/$defs/be_date"
+         },
+         "vendor_invoice": {
+          "type": "string"
+         },
+         "vendor": {
+          "type": "string"
+         },
+         "tax_id": {
+          "type": "string"
+         },
+         "branch": {
+          "type": "string"
+         },
+         "doc": {
+          "type": "string"
+         },
+         "base": {
+          "$ref": "#/$defs/money"
+         },
+         "vat": {
+          "$ref": "#/$defs/money"
+         }
+        },
+        "required": [
+         "base",
+         "branch",
+         "date",
+         "doc",
+         "no",
+         "tax_id",
+         "vat",
+         "vendor",
+         "vendor_invoice"
+        ]
+       }
+      },
+      "total_base": {
+       "$ref": "#/$defs/money"
+      },
+      "total_vat": {
+       "$ref": "#/$defs/money"
+      },
+      "formula": {
+       "type": "string"
+      },
+      "disallowed_input_vat_entertainment": {
+       "type": "object",
+       "properties": {
+        "items": {
+         "type": "number"
+        },
+        "amount": {
+         "$ref": "#/$defs/money"
+        },
+        "treatment": {
+         "type": "string"
+        }
+       },
+       "required": [
+        "amount",
+        "items",
+        "treatment"
+       ]
+      }
+     },
+     "required": [
+      "disallowed_input_vat_entertainment",
+      "formula",
+      "rows",
+      "total_base",
+      "total_vat"
+     ]
+    }
+   },
+   "required": [
+    "etax",
+    "payable_total_shown_on_home",
+    "pnd3",
+    "pnd53",
+    "pp30",
+    "vat_purchase_report",
+    "vat_sales_report",
+    "wht_received_1160100"
+   ]
+  },
+  "aging_ar_2569_11_30": {
+   "type": "object",
+   "properties": {
+    "buckets_days": {
+     "type": "array"
+    },
+    "total": {
+     "$ref": "#/$defs/money"
+    },
+    "current": {
+     "$ref": "#/$defs/money"
+    },
+    "b1_30": {
+     "$ref": "#/$defs/money"
+    },
+    "b31_60": {
+     "$ref": "#/$defs/money"
+    },
+    "b61_90": {
+     "$ref": "#/$defs/money"
+    },
+    "b91_120": {
+     "$ref": "#/$defs/money"
+    },
+    "over_120": {
+     "$ref": "#/$defs/money"
+    },
+    "gl_1130100": {
+     "$ref": "#/$defs/money"
+    },
+    "dso_days": {
+     "type": "number"
+    },
+    "rows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "contact": {
+        "type": "string"
+       },
+       "current": {
+        "$ref": "#/$defs/money"
+       },
+       "total": {
+        "$ref": "#/$defs/money"
+       },
+       "b1_30": {
+        "$ref": "#/$defs/money"
+       },
+       "b31_60": {
+        "$ref": "#/$defs/money"
+       },
+       "b61_90": {
+        "$ref": "#/$defs/money"
+       },
+       "over_120": {
+        "$ref": "#/$defs/money"
+       }
+      },
+      "required": [
+       "contact",
+       "total"
+      ]
+     }
+    },
+    "overdue_total": {
+     "$ref": "#/$defs/money"
+    },
+    "customers": {
+     "type": "number"
+    },
+    "pct": {
+     "type": "object",
+     "properties": {
+      "current": {
+       "type": "string"
+      },
+      "b1_30": {
+       "type": "string"
+      },
+      "b31_60": {
+       "type": "string"
+      },
+      "b61_90": {
+       "type": "string"
+      },
+      "b91_120": {
+       "type": "string"
+      },
+      "over_120": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "b1_30",
+      "b31_60",
+      "b61_90",
+      "b91_120",
+      "current",
+      "over_120"
+     ]
+    }
+   },
+   "required": [
+    "b1_30",
+    "b31_60",
+    "b61_90",
+    "b91_120",
+    "buckets_days",
+    "current",
+    "customers",
+    "dso_days",
+    "gl_1130100",
+    "over_120",
+    "overdue_total",
+    "pct",
+    "rows",
+    "total"
+   ]
+  },
+  "tax_vs_gl_2569_11": {
+   "type": "object",
+   "properties": {
+    "vat_sales": {
+     "type": "object",
+     "properties": {
+      "report": {
+       "$ref": "#/$defs/money"
+      },
+      "gl_2150100": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "diff",
+      "gl_2150100",
+      "report"
+     ]
+    },
+    "vat_purchase": {
+     "type": "object",
+     "properties": {
+      "report": {
+       "$ref": "#/$defs/money"
+      },
+      "gl_1170100": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      },
+      "cause": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "cause",
+      "diff",
+      "gl_1170100",
+      "report"
+     ]
+    },
+    "vat_not_due": {
+     "type": "object",
+     "properties": {
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl_2150400": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "diff",
+      "gl_2150400",
+      "subledger"
+     ]
+    }
+   },
+   "required": [
+    "vat_not_due",
+    "vat_purchase",
+    "vat_sales"
+   ]
+  },
+  "control_accounts_2569_11_30": {
+   "type": "object",
+   "properties": {
+    "1130100": {
+     "type": "object",
+     "properties": {
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "gl",
+      "subledger"
+     ]
+    },
+    "2110100": {
+     "type": "object",
+     "properties": {
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      },
+      "cause": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "cause",
+      "diff",
+      "gl",
+      "subledger"
+     ]
+    },
+    "2140100": {
+     "type": "object",
+     "properties": {
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "gl",
+      "subledger"
+     ]
+    },
+    "1140100": {
+     "type": "object",
+     "properties": {
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "gl",
+      "subledger"
+     ]
+    },
+    "1150100+1150200": {
+     "type": "object",
+     "properties": {
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "gl",
+      "subledger"
+     ]
+    }
+   },
+   "required": [
+    "1130100",
+    "1140100",
+    "1150100+1150200",
+    "2110100",
+    "2140100"
+   ]
+  },
+  "period_status": {
+   "type": "object",
+   "properties": {
+    "2569-01..08": {
+     "type": "string"
+    },
+    "2569-09": {
+     "type": "string"
+    },
+    "2569-10": {
+     "type": "object",
+     "properties": {
+      "status": {
+       "type": "string"
+      },
+      "closed_on": {
+       "$ref": "#/$defs/be_date"
+      },
+      "reopened": {
+       "type": "object",
+       "properties": {
+        "on": {
+         "$ref": "#/$defs/be_date"
+        },
+        "by": {
+         "type": "string"
+        },
+        "reason": {
+         "type": "string"
+        },
+        "duration_hours": {
+         "type": "number"
+        }
+       },
+       "required": [
+        "by",
+        "duration_hours",
+        "on",
+        "reason"
+       ]
+      }
+     },
+     "required": [
+      "closed_on",
+      "reopened",
+      "status"
+     ]
+    },
+    "2569-11": {
+     "type": "string"
+    },
+    "2569-12": {
+     "type": "string"
+    },
+    "2569-13": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "2569-01..08",
+    "2569-09",
+    "2569-10",
+    "2569-11",
+    "2569-12",
+    "2569-13"
+   ]
+  },
+  "year_end_2569_preview": {
+   "type": "object",
+   "properties": {
+    "cit_accrual": {
+     "$ref": "#/$defs/journal"
+    },
+    "close_pl": {
+     "$ref": "#/$defs/journal"
+    },
+    "transfer_re": {
+     "$ref": "#/$defs/journal"
+    },
+    "legal_reserve_note": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "cit_accrual",
+    "close_pl",
+    "legal_reserve_note",
+    "transfer_re"
+   ]
+  },
+  "opening_balance_2569_12_31_company_c": {
+   "type": "object",
+   "properties": {
+    "trial_balance_total": {
+     "$ref": "#/$defs/money"
+    },
+    "balanced": {
+     "type": "boolean"
+    },
+    "lines_shown": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "account": {
+        "type": "string"
+       },
+       "name": {
+        "type": "string"
+       },
+       "dr": {
+        "$ref": "#/$defs/money"
+       },
+       "note": {
+        "type": "string"
+       },
+       "cr": {
+        "$ref": "#/$defs/money"
+       }
+      },
+      "required": [
+       "account",
+       "name",
+       "note"
+      ]
+     }
+    }
+   },
+   "required": [
+    "balanced",
+    "lines_shown",
+    "trial_balance_total"
+   ]
+  },
+  "users": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "name": {
+      "type": "string"
+     },
+     "org_role": {
+      "type": "string"
+     },
+     "company_role": {
+      "type": "string"
+     },
+     "mfa": {
+      "type": "boolean"
+     },
+     "approval_limit": {
+      "$ref": "#/$defs/money"
+     },
+     "expires": {
+      "$ref": "#/$defs/be_date"
+     },
+     "counts_seat": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "company_role",
+     "name",
+     "org_role"
+    ]
+   }
+  },
+  "org": {
+   "type": "object",
+   "properties": {
+    "name": {
+     "type": "string"
+    },
+    "plan": {
+     "type": "string"
+    },
+    "subscription_status": {
+     "type": "string"
+    },
+    "renews": {
+     "$ref": "#/$defs/be_date"
+    },
+    "company_limit": {
+     "type": "number"
+    },
+    "companies": {
+     "type": "number"
+    },
+    "seat_limit": {
+     "type": "number"
+    },
+    "seats_used": {
+     "type": "number"
+    },
+    "pending_invites": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "companies",
+    "company_limit",
+    "name",
+    "pending_invites",
+    "plan",
+    "renews",
+    "seat_limit",
+    "seats_used",
+    "subscription_status"
+   ]
+  },
+  "cheque_summary_2569_11_30": {
+   "type": "object",
+   "properties": {
+    "on_hand_total": {
+     "$ref": "#/$defs/money"
+    },
+    "on_hand_count": {
+     "type": "number"
+    },
+    "on_hand_postdated_count": {
+     "type": "number"
+    },
+    "deposited_pending_total": {
+     "$ref": "#/$defs/money"
+    },
+    "deposited_pending_count": {
+     "type": "number"
+    },
+    "due_for_deposit_today_total": {
+     "$ref": "#/$defs/money"
+    },
+    "due_for_deposit_today_count": {
+     "type": "number"
+    },
+    "bounced_90d_total": {
+     "$ref": "#/$defs/money"
+    },
+    "bounced_90d_count": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "bounced_90d_count",
+    "bounced_90d_total",
+    "deposited_pending_count",
+    "deposited_pending_total",
+    "due_for_deposit_today_count",
+    "due_for_deposit_today_total",
+    "on_hand_count",
+    "on_hand_postdated_count",
+    "on_hand_total"
+   ]
+  },
+  "dashboard_2569_11_30": {
+   "type": "object",
+   "properties": {
+    "pending_approval": {
+     "type": "object",
+     "properties": {
+      "count": {
+       "type": "number"
+      },
+      "iv": {
+       "type": "number"
+      },
+      "ap": {
+       "type": "number"
+      },
+      "queue": {
+       "type": "array",
+       "items": {
+        "type": "object",
+        "properties": {
+         "doc": {
+          "type": "string"
+         },
+         "amount": {
+          "$ref": "#/$defs/money"
+         },
+         "desc": {
+          "type": "string"
+         }
+        },
+        "required": [
+         "amount",
+         "doc"
+        ]
+       }
+      }
+     },
+     "required": [
+      "ap",
+      "count",
+      "iv",
+      "queue"
+     ]
+    },
+    "ar_due_within_7d": {
+     "type": "object",
+     "properties": {
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "count": {
+       "type": "number"
+      },
+      "overdue_count": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "count",
+      "overdue_count",
+      "total"
+     ]
+    },
+    "ap_due_within_7d": {
+     "type": "object",
+     "properties": {
+      "total": {
+       "$ref": "#/$defs/money"
+      },
+      "count": {
+       "type": "number"
+      },
+      "bills": {
+       "type": "array"
+      }
+     },
+     "required": [
+      "bills",
+      "count",
+      "total"
+     ]
+    },
+    "statement_unmatched": {
+     "type": "object",
+     "properties": {
+      "count": {
+       "type": "number"
+      },
+      "bank_a": {
+       "type": "number"
+      },
+      "bank_b": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "bank_a",
+      "bank_b",
+      "count"
+     ]
+    },
+    "tax_payable_total": {
+     "type": "object",
+     "properties": {
+      "amount": {
+       "$ref": "#/$defs/money"
+      },
+      "formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "amount",
+      "formula"
+     ]
+    },
+    "cash_summary": {
+     "type": "object",
+     "properties": {
+      "bank_a_gl": {
+       "$ref": "#/$defs/money"
+      },
+      "ar": {
+       "$ref": "#/$defs/money"
+      },
+      "ap": {
+       "$ref": "#/$defs/money"
+      },
+      "net_profit_ytd": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "ap",
+      "ar",
+      "bank_a_gl",
+      "net_profit_ytd"
+     ]
+    },
+    "period_close_steps_left": {
+     "type": "number"
+    }
+   },
+   "required": [
+    "ap_due_within_7d",
+    "ar_due_within_7d",
+    "cash_summary",
+    "pending_approval",
+    "period_close_steps_left",
+    "statement_unmatched",
+    "tax_payable_total"
+   ]
+  },
+  "doclist_2569_11": {
+   "type": "object",
+   "properties": {
+    "counts": {
+     "type": "object",
+     "properties": {
+      "all": {
+       "type": "number"
+      },
+      "draft": {
+       "type": "number"
+      },
+      "pending_approval": {
+       "type": "number"
+      },
+      "outstanding": {
+       "type": "number"
+      },
+      "overdue": {
+       "type": "number"
+      }
+     },
+     "required": [
+      "all",
+      "draft",
+      "outstanding",
+      "overdue",
+      "pending_approval"
+     ]
+    },
+    "total_amount_all": {
+     "$ref": "#/$defs/money"
+    },
+    "page_rows": {
+     "type": "array"
+    },
+    "page_totals": {
+     "type": "object",
+     "properties": {
+      "subtotal": {
+       "$ref": "#/$defs/money"
+      },
+      "vat": {
+       "$ref": "#/$defs/money"
+      },
+      "grand_total": {
+       "$ref": "#/$defs/money"
+      },
+      "outstanding": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "grand_total",
+      "outstanding",
+      "subtotal",
+      "vat"
+     ]
+    }
+   },
+   "required": [
+    "counts",
+    "page_rows",
+    "page_totals",
+    "total_amount_all"
+   ]
+  },
+  "purchase_list_2569_11": {
+   "type": "object",
+   "properties": {
+    "outstanding_total": {
+     "$ref": "#/$defs/money"
+    },
+    "page_rows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "doc": {
+        "type": "string"
+       },
+       "amount": {
+        "$ref": "#/$defs/money"
+       },
+       "status": {
+        "type": "string"
+       },
+       "vendor": {
+        "type": "string"
+       },
+       "due": {
+        "$ref": "#/$defs/be_date"
+       }
+      },
+      "required": [
+       "amount",
+       "doc"
+      ]
+     }
+    }
+   },
+   "required": [
+    "outstanding_total",
+    "page_rows"
+   ]
+  },
+  "gl_balances_2569_11_30": {
+   "type": "object",
+   "properties": {
+    "1100100": {
+     "$ref": "#/$defs/money"
+    },
+    "1130100": {
+     "$ref": "#/$defs/money"
+    },
+    "1160100": {
+     "$ref": "#/$defs/money"
+    },
+    "assets_shown_total": {
+     "$ref": "#/$defs/money"
+    },
+    "2110100": {
+     "$ref": "#/$defs/money"
+    },
+    "2150100": {
+     "$ref": "#/$defs/money"
+    },
+    "2150300": {
+     "$ref": "#/$defs/money"
+    },
+    "liabilities_shown_total": {
+     "$ref": "#/$defs/money"
+    },
+    "4100100": {
+     "$ref": "#/$defs/money"
+    },
+    "4101100": {
+     "$ref": "#/$defs/money"
+    },
+    "revenue_shown_total": {
+     "$ref": "#/$defs/money"
+    },
+    "5301200": {
+     "$ref": "#/$defs/money"
+    },
+    "expenses_total": {
+     "$ref": "#/$defs/money"
+    },
+    "note": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "1100100",
+    "1130100",
+    "1160100",
+    "2110100",
+    "2150100",
+    "2150300",
+    "4100100",
+    "4101100",
+    "5301200",
+    "assets_shown_total",
+    "expenses_total",
+    "liabilities_shown_total",
+    "note",
+    "revenue_shown_total"
+   ]
+  },
+  "pl_ytd_2569_11": {
+   "type": "object",
+   "properties": {
+    "revenue": {
+     "type": "object",
+     "properties": {
+      "4100100": {
+       "$ref": "#/$defs/money"
+      },
+      "4101100": {
+       "$ref": "#/$defs/money"
+      },
+      "4200100": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "4100100",
+      "4101100",
+      "4200100",
+      "total"
+     ]
+    },
+    "cost_of_service": {
+     "type": "object",
+     "properties": {
+      "5301200": {
+       "$ref": "#/$defs/money"
+      },
+      "5100100": {
+       "$ref": "#/$defs/money"
+      },
+      "5150100": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "5100100",
+      "5150100",
+      "5301200",
+      "total"
+     ]
+    },
+    "gross_profit": {
+     "$ref": "#/$defs/money"
+    },
+    "gross_margin_pct": {
+     "type": "string"
+    },
+    "sga": {
+     "type": "object",
+     "properties": {
+      "5200100": {
+       "$ref": "#/$defs/money"
+      },
+      "5302100": {
+       "$ref": "#/$defs/money"
+      },
+      "5303100": {
+       "$ref": "#/$defs/money"
+      },
+      "5304100": {
+       "$ref": "#/$defs/money"
+      },
+      "total": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "5200100",
+      "5302100",
+      "5303100",
+      "5304100",
+      "total"
+     ]
+    },
+    "ebit": {
+     "$ref": "#/$defs/money"
+    },
+    "finance_cost_5900100": {
+     "$ref": "#/$defs/money"
+    },
+    "cit_5950100": {
+     "$ref": "#/$defs/money"
+    },
+    "net_profit": {
+     "$ref": "#/$defs/money"
+    },
+    "prior_year_to_nov": {
+     "type": "object",
+     "properties": {
+      "note": {
+       "type": "string"
+      },
+      "revenue": {
+       "type": "object",
+       "properties": {
+        "4100100": {
+         "$ref": "#/$defs/money"
+        },
+        "4101100": {
+         "$ref": "#/$defs/money"
+        },
+        "4200100": {
+         "$ref": "#/$defs/money"
+        },
+        "total": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "4100100",
+        "4101100",
+        "4200100",
+        "total"
+       ]
+      },
+      "cost_of_service": {
+       "type": "object",
+       "properties": {
+        "5301200": {
+         "$ref": "#/$defs/money"
+        },
+        "5100100": {
+         "$ref": "#/$defs/money"
+        },
+        "5150100": {
+         "$ref": "#/$defs/money"
+        },
+        "total": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "5100100",
+        "5150100",
+        "5301200",
+        "total"
+       ]
+      },
+      "gross_profit": {
+       "$ref": "#/$defs/money"
+      },
+      "sga": {
+       "type": "object",
+       "properties": {
+        "5200100": {
+         "$ref": "#/$defs/money"
+        },
+        "5302100": {
+         "$ref": "#/$defs/money"
+        },
+        "5303100": {
+         "$ref": "#/$defs/money"
+        },
+        "5304100": {
+         "$ref": "#/$defs/money"
+        },
+        "total": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "5200100",
+        "5302100",
+        "5303100",
+        "5304100",
+        "total"
+       ]
+      },
+      "ebit": {
+       "$ref": "#/$defs/money"
+      },
+      "finance_cost_5900100": {
+       "$ref": "#/$defs/money"
+      },
+      "cit_5950100": {
+       "$ref": "#/$defs/money"
+      },
+      "net_profit": {
+       "$ref": "#/$defs/money"
+      },
+      "revenue_total": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "cit_5950100",
+      "cost_of_service",
+      "ebit",
+      "finance_cost_5900100",
+      "gross_profit",
+      "net_profit",
+      "note",
+      "revenue",
+      "revenue_total",
+      "sga"
+     ]
+    },
+    "variance_vs_prior": {
+     "type": "object",
+     "properties": {
+      "formula": {
+       "type": "string"
+      },
+      "revenue": {
+       "type": "object",
+       "properties": {
+        "4100100": {
+         "$ref": "#/$defs/money"
+        },
+        "4101100": {
+         "$ref": "#/$defs/money"
+        },
+        "4200100": {
+         "$ref": "#/$defs/money"
+        },
+        "total": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "4100100",
+        "4101100",
+        "4200100",
+        "total"
+       ]
+      },
+      "cost_of_service": {
+       "type": "object",
+       "properties": {
+        "5301200": {
+         "$ref": "#/$defs/money"
+        },
+        "5100100": {
+         "$ref": "#/$defs/money"
+        },
+        "5150100": {
+         "$ref": "#/$defs/money"
+        },
+        "total": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "5100100",
+        "5150100",
+        "5301200",
+        "total"
+       ]
+      },
+      "gross_profit": {
+       "$ref": "#/$defs/money"
+      },
+      "sga": {
+       "type": "object",
+       "properties": {
+        "5200100": {
+         "$ref": "#/$defs/money"
+        },
+        "5302100": {
+         "$ref": "#/$defs/money"
+        },
+        "5303100": {
+         "$ref": "#/$defs/money"
+        },
+        "5304100": {
+         "$ref": "#/$defs/money"
+        },
+        "total": {
+         "$ref": "#/$defs/money"
+        }
+       },
+       "required": [
+        "5200100",
+        "5302100",
+        "5303100",
+        "5304100",
+        "total"
+       ]
+      },
+      "ebit": {
+       "$ref": "#/$defs/money"
+      },
+      "finance_cost_5900100": {
+       "$ref": "#/$defs/money"
+      },
+      "cit_5950100": {
+       "$ref": "#/$defs/money"
+      },
+      "net_profit": {
+       "$ref": "#/$defs/money"
+      }
+     },
+     "required": [
+      "cit_5950100",
+      "cost_of_service",
+      "ebit",
+      "finance_cost_5900100",
+      "formula",
+      "gross_profit",
+      "net_profit",
+      "revenue",
+      "sga"
+     ]
+    },
+    "cit_formula": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "cit_5950100",
+    "cit_formula",
+    "cost_of_service",
+    "ebit",
+    "finance_cost_5900100",
+    "gross_margin_pct",
+    "gross_profit",
+    "net_profit",
+    "prior_year_to_nov",
+    "revenue",
+    "sga",
+    "variance_vs_prior"
+   ]
+  },
+  "deposits_2569_11_30": {
+   "type": "object",
+   "properties": {
+    "liability_2140100": {
+     "$ref": "#/$defs/money"
+    },
+    "items": {
+     "type": "number"
+    },
+    "customers": {
+     "type": "number"
+    },
+    "invoiced_pending_total": {
+     "$ref": "#/$defs/money"
+    },
+    "invoiced_pending_count": {
+     "type": "number"
+    },
+    "applied_this_month": {
+     "$ref": "#/$defs/money"
+    },
+    "applied_invoices": {
+     "type": "number"
+    },
+    "stale_over_180d": {
+     "$ref": "#/$defs/money"
+    }
+   },
+   "required": [
+    "applied_invoices",
+    "applied_this_month",
+    "customers",
+    "invoiced_pending_count",
+    "invoiced_pending_total",
+    "items",
+    "liability_2140100",
+    "stale_over_180d"
+   ]
+  },
+  "recon_report_2569_11": {
+   "type": "object",
+   "properties": {
+    "run_at": {
+     "type": "string"
+    },
+    "duration_sec": {
+     "type": "number"
+    },
+    "checkpoints": {
+     "type": "number"
+    },
+    "passed": {
+     "type": "number"
+    },
+    "to_review": {
+     "type": "number"
+    },
+    "diff_total": {
+     "$ref": "#/$defs/money"
+    },
+    "diff_total_formula": {
+     "type": "string"
+    },
+    "documents_vs_gl": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "doc_type": {
+        "type": "string"
+       },
+       "count": {
+        "type": "number"
+       },
+       "accounts": {
+        "type": "string"
+       },
+       "by_documents": {
+        "$ref": "#/$defs/money"
+       },
+       "by_gl": {
+        "$ref": "#/$defs/money"
+       },
+       "diff": {
+        "$ref": "#/$defs/money"
+       },
+       "note": {
+        "type": "string"
+       },
+       "cause": {
+        "type": "string"
+       },
+       "doc": {
+        "type": "string"
+       },
+       "amount": {
+        "$ref": "#/$defs/money"
+       }
+      },
+      "required": [
+       "count",
+       "doc_type"
+      ]
+     }
+    },
+    "tax_vs_gl": {
+     "type": "string"
+    },
+    "subledger_vs_control": {
+     "type": "string"
+    },
+    "cheques_in_transit": {
+     "type": "object",
+     "properties": {
+      "accounts": {
+       "type": "string"
+      },
+      "count": {
+       "type": "number"
+      },
+      "subledger": {
+       "$ref": "#/$defs/money"
+      },
+      "gl": {
+       "$ref": "#/$defs/money"
+      },
+      "diff": {
+       "$ref": "#/$defs/money"
+      },
+      "formula": {
+       "type": "string"
+      }
+     },
+     "required": [
+      "accounts",
+      "count",
+      "diff",
+      "formula",
+      "gl",
+      "subledger"
+     ]
+    }
+   },
+   "required": [
+    "checkpoints",
+    "cheques_in_transit",
+    "diff_total",
+    "diff_total_formula",
+    "documents_vs_gl",
+    "duration_sec",
+    "passed",
+    "run_at",
+    "subledger_vs_control",
+    "tax_vs_gl",
+    "to_review"
+   ]
+  },
+  "period_close_2569": {
+   "type": "object",
+   "properties": {
+    "rows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "period": {
+        "type": "string"
+       },
+       "status": {
+        "type": "string"
+       },
+       "pp30": {
+        "type": "string"
+       },
+       "pnd": {
+        "type": "string"
+       },
+       "bank_recon": {
+        "type": "string"
+       },
+       "profit": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/money"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "closed_by": {
+        "type": "string"
+       },
+       "draft_ahead": {
+        "type": "number"
+       }
+      },
+      "required": [
+       "period",
+       "profit",
+       "status"
+      ]
+     }
+    },
+    "profit_sum_jan_nov": {
+     "$ref": "#/$defs/money"
+    },
+    "note": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "note",
+    "profit_sum_jan_nov",
+    "rows"
+   ]
+  },
+  "audit_log_samples": {
+   "type": "array",
+   "items": {
+    "type": "object",
+    "properties": {
+     "at": {
+      "type": "string"
+     },
+     "by": {
+      "type": "string"
+     },
+     "action": {
+      "type": "string"
+     },
+     "doc": {
+      "type": "string"
+     },
+     "change": {
+      "type": "string"
+     },
+     "channel": {
+      "type": "string"
+     },
+     "note": {
+      "type": "string"
+     },
+     "values": {
+      "type": "array"
+     },
+     "journal": {
+      "type": "string"
+     }
+    },
+    "required": [
+     "action",
+     "at",
+     "by",
+     "change",
+     "doc"
+    ]
+   }
+  },
+  "ledger_1130100_2569_11": {
+   "type": "object",
+   "properties": {
+    "page": {
+     "type": "string"
+    },
+    "opening_2569_11_01": {
+     "$ref": "#/$defs/money"
+    },
+    "opening_formula": {
+     "type": "string"
+    },
+    "rows": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "date": {
+        "$ref": "#/$defs/be_date"
+       },
+       "doc": {
+        "type": "string"
+       },
+       "contact": {
+        "type": "string"
+       },
+       "dr": {
+        "anyOf": [
+         {
+          "$ref": "#/$defs/money"
+         },
+         {
+          "type": "null"
+         }
+        ]
+       },
+       "cr": {
+        "anyOf": [
+         {
+          "type": "null"
+         },
+         {
+          "$ref": "#/$defs/money"
+         }
+        ]
+       },
+       "balance": {
+        "$ref": "#/$defs/money"
+       }
+      },
+      "required": [
+       "balance",
+       "contact",
+       "cr",
+       "date",
+       "doc",
+       "dr"
+      ]
+     }
+    },
+    "total_dr": {
+     "$ref": "#/$defs/money"
+    },
+    "total_cr": {
+     "$ref": "#/$defs/money"
+    },
+    "closing_2569_11_30": {
+     "$ref": "#/$defs/money"
+    },
+    "matches": {
+     "type": "string"
+    }
+   },
+   "required": [
+    "closing_2569_11_30",
+    "matches",
+    "opening_2569_11_01",
+    "opening_formula",
+    "page",
+    "rows",
+    "total_cr",
+    "total_dr"
+   ]
+  },
+  "doc_edit_example": {
+   "type": "object",
+   "properties": {
+    "page": {
+     "type": "string"
+    },
+    "doc": {
+     "type": "string"
+    },
+    "edit": {
+     "type": "string"
+    },
+    "vat_purchase_report": {
+     "type": "string"
+    },
+    "pp30_net_payable": {
+     "$ref": "#/$defs/money"
+    },
+    "pp30_changed": {
+     "type": "boolean"
+    }
+   },
+   "required": [
+    "doc",
+    "edit",
+    "page",
+    "pp30_changed",
+    "pp30_net_payable",
+    "vat_purchase_report"
+   ]
+  },
+  "decisions_wei_2026_11_09": {
+   "type": "object",
+   "properties": {
+    "conflicts_resolved": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "number"
+       },
+       "topic": {
+        "type": "string"
+       }
+      },
+      "required": [
+       "id",
+       "topic"
+      ]
+     }
+    },
+    "applied_in": {
+     "type": "string"
+    },
+    "notes": {
+     "type": "array"
+    }
+   },
+   "required": [
+    "applied_in",
+    "conflicts_resolved",
+    "notes"
+   ]
+  },
+  "$schema": {
+   "type": "string"
+  }
+ },
+ "required": [
+  "_meta",
+  "aging_ar_2569_11_30",
+  "audit_log_samples",
+  "chart_of_accounts",
+  "cheque_summary_2569_11_30",
+  "cheques_received",
+  "company",
+  "contacts",
+  "control_accounts_2569_11_30",
+  "dashboard_2569_11_30",
+  "decisions_wei_2026_11_09",
+  "deposits_2569_11_30",
+  "depreciation_2569_11",
+  "doc_edit_example",
+  "doclist_2569_11",
+  "documents",
+  "filing_calendar",
+  "fixed_assets",
+  "gl_balances_2569_11_30",
+  "ledger_1130100_2569_11",
+  "opening_balance_2569_12_31_company_c",
+  "org",
+  "period_close_2569",
+  "period_status",
+  "petty_cash",
+  "pl_ytd_2569_11",
+  "products",
+  "purchase_list_2569_11",
+  "recon_report_2569_11",
+  "tax_2569_11",
+  "tax_vs_gl_2569_11",
+  "users",
+  "wht_rates",
+  "year_end_2569_preview"
+ ]
+}

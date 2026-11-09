@@ -1,0 +1,13 @@
+node_modules/
+.turbo/
+dist/
+.next/
+coverage/
+*.log
+.env
+.env.*
+!.env.example
+.DS_Store
+spike/tenancy/results/raw/
+playwright-report/
+test-results/

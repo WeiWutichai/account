@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ยืนยันตัวตน 2 ชั้น (2FA)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="min-height: 1000px; background: #f4f4f4; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6; display: flex; flex-direction: column">
+  <header style="height: 48px; background: #161616; color: #f4f4f4; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; font-size: 14px"><div style="display: flex; align-items: center; gap: 12px"><span style="width: 24px; height: 24px; background: #0f62fe; display: inline-block"></span><span style="font-weight: 600">Innovera ID</span><span style="color: #a8a8a8">บัญชีเดียว ใช้ได้ทุกแอป Innovera</span></div><a href="ScreenLogin.dc.html" style="color: #c6c6c6; text-decoration: none">ใช้บัญชีอื่น</a></header>
+  <main style="flex: 1; display: flex; justify-content: center; padding: 48px 32px; box-sizing: border-box">
+    <div style="width: 100%; max-width: 980px; display: flex; flex-direction: column; gap: 24px">
+
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; align-items: start">
+  <section style="width: 100%; max-width: 460px; margin: 0 auto; background: #ffffff; border: 1px solid #e0e0e0; padding: 32px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box"><div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ยืนยันตัวตน 2 ชั้น</h1><span style="font-size: 13px; color: #525252">เข้าสู่ระบบในชื่อ wei@innovera… · เปิดแอป Authenticator แล้วกรอกรหัส 6 หลัก</span></div>
+<div style="display: flex; gap: 8px; justify-content: space-between"><input aria-label="หลักที่ 1" maxlength="1" value="4" style="width: 48px; height: 56px; text-align: center; font-size: 24px; font-variant-numeric: tabular-nums; border: 0; border-bottom: 2px solid #0f62fe; background: #f4f4f4; font-family: inherit"><input aria-label="หลักที่ 2" maxlength="1" value="8" style="width: 48px; height: 56px; text-align: center; font-size: 24px; font-variant-numeric: tabular-nums; border: 0; border-bottom: 2px solid #0f62fe; background: #f4f4f4; font-family: inherit"><input aria-label="หลักที่ 3" maxlength="1" value="2" style="width: 48px; height: 56px; text-align: center; font-size: 24px; font-variant-numeric: tabular-nums; border: 0; border-bottom: 2px solid #0f62fe; background: #f4f4f4; font-family: inherit"><input aria-label="หลักที่ 4" maxlength="1" value="" style="width: 48px; height: 56px; text-align: center; font-size: 24px; font-variant-numeric: tabular-nums; border: 0; border-bottom: 2px solid #8d8d8d; background: #f4f4f4; font-family: inherit"><input aria-label="หลักที่ 5" maxlength="1" value="" style="width: 48px; height: 56px; text-align: center; font-size: 24px; font-variant-numeric: tabular-nums; border: 0; border-bottom: 2px solid #8d8d8d; background: #f4f4f4; font-family: inherit"><input aria-label="หลักที่ 6" maxlength="1" value="" style="width: 48px; height: 56px; text-align: center; font-size: 24px; font-variant-numeric: tabular-nums; border: 0; border-bottom: 2px solid #8d8d8d; background: #f4f4f4; font-family: inherit"></div>
+<span style="font-size: 13px; color: #525252">รหัสเปลี่ยนทุก 30 วินาที · ผิดได้ 5 ครั้งแล้วล็อก 15 นาที</span>
+<label style="display: flex; gap: 8px; align-items: center; font-size: 14px"><input type="checkbox" checked> เชื่อถืออุปกรณ์นี้ 30 วัน (ไม่ถามรหัสอีกบนเบราว์เซอร์นี้)</label>
+<a href="ScreenCompanyPicker.dc.html" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe; height: 40px; width: 100%">ยืนยันและเข้าสู่ระบบ</a>
+<div style="display: flex; flex-direction: column; gap: 6px; font-size: 14px; border-top: 1px solid #e0e0e0; padding-top: 16px"><span style="color: #525252">ไม่มีโทรศัพท์อยู่กับตัว?</span><a href="ScreenTwoFactor.dc.html" style="text-decoration: none">ใช้รหัสสำรอง (backup code) 1 ใน 10 ชุด</a><a href="ScreenTwoFactor.dc.html" style="text-decoration: none">ส่งรหัสทาง SMS ไปที่ 08x-xxx-x123</a><a href="ScreenOrgMembers.dc.html" style="text-decoration: none; color: #525252">ติดต่อผู้ดูแลองค์กรเพื่อรีเซ็ต 2FA</a></div></section>
+  <section style="width: 100%; max-width: 460px; margin: 0 auto; background: #ffffff; border: 1px solid #e0e0e0; padding: 32px; display: flex; flex-direction: column; gap: 20px; box-sizing: border-box"><div><div style="font-size: 13px; color: #525252">ครั้งแรก / เปิดใช้งาน</div><h2 style="margin: 0; font-size: 18px; line-height: 26px; font-weight: 600">ตั้งค่า 2FA</h2><span style="font-size: 13px; color: #525252">บริษัท [ชื่อบริษัท] บังคับใช้ 2FA ทุกผู้ใช้ — ต้องตั้งค่าก่อนใช้งานต่อ</span></div>
+<ol style="margin: 0; padding: 0 0 0 20px; font-size: 14px; display: flex; flex-direction: column; gap: 10px">
+<li>ติดตั้งแอป Authenticator (Google Authenticator, Microsoft Authenticator, 1Password ฯลฯ)</li>
+<li>สแกน QR นี้ หรือพิมพ์คีย์ด้วยตนเอง<div style="display: flex; gap: 16px; align-items: center; margin-top: 8px"><span aria-hidden="true" style="width: 120px; height: 120px; background: repeating-linear-gradient(90deg, #161616 0 6px, #ffffff 6px 12px), repeating-linear-gradient(0deg, #161616 0 6px, #ffffff 6px 12px); background-blend-mode: difference; flex: 0 0 auto"></span><div style="font-size: 13px; color: #525252">คีย์: <code style="font-family: 'IBM Plex Mono', monospace; color: #161616">JBSW Y3DP EHPK 3PXP</code><br>บัญชี: Innovera ID (wei@innovera…)<br>TOTP · SHA-1 · 6 หลัก · 30 วินาที</div></div></li>
+<li>กรอกรหัสจากแอปเพื่อยืนยัน<div style="margin-top: 8px"><label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">รหัส 6 หลัก<input value="" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616"></label></div></li>
+<li>บันทึก<strong>รหัสสำรอง 10 ชุด</strong>ไว้ในที่ปลอดภัย (แสดงครั้งเดียว)<div style="margin-top: 8px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; font-family: 'IBM Plex Mono', monospace; font-size: 13px; background: #f4f4f4; padding: 12px; font-variant-numeric: tabular-nums"><span>a7k2-93mq</span><span>x1pz-40rt</span><span>q8vd-17ls</span><span>m3hn-62wc</span><span>…</span><span>…</span></div></li>
+</ol>
+<div style="display: flex; gap: 8px"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ดาวน์โหลดรหัสสำรอง</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; text-decoration: none; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">เปิดใช้ 2FA</button></div></section>
+</div>
+    </div>
+  </main>
+  <footer style="padding: 16px 32px; font-size: 13px; color: #525252; text-align: center">© Innovera · <a href="ScreenTwoFactor.dc.html" style="text-decoration: none">นโยบายความเป็นส่วนตัว</a> · <a href="ScreenTwoFactor.dc.html" style="text-decoration: none">เงื่อนไขการใช้งาน</a> · ภาษา: ไทย / <a href="ScreenTwoFactor.dc.html" style="text-decoration: none">EN</a></footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

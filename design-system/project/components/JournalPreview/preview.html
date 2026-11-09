@@ -1,0 +1,31 @@
+<!-- @dsCard group="บัญชี" height=230 subtitle="Dr/Cr ก่อนอนุมัติ · สีกลาง · บรรทัดโมดูลเสริมจาง" -->
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:16px;background:var(--bg-page);color:var(--text-primary);font-family:var(--font-sans);font-size:14px}
+.panel{max-width:460px;background:var(--bg-layer-1);border:1px solid var(--border-subtle);border-radius:var(--radius-sm)}
+.head{display:flex;justify-content:space-between;align-items:center;padding:var(--space-04) var(--space-05);border-bottom:1px solid var(--border-subtle)}
+.head strong{font-size:15px;font-weight:600}
+.head span{font-size:13px;color:var(--text-secondary)}
+table{border-collapse:collapse;width:100%}
+td{height:32px;padding:0 var(--space-05);border-top:1px solid var(--border-subtle)}
+tr:first-child td{border-top:0}
+.cr td:first-child{padding-left:32px}
+.amt{text-align:right;font-variant-numeric:tabular-nums;width:120px}
+.muted td{color:var(--text-secondary)}
+.foot{display:flex;justify-content:space-between;padding:var(--space-03) var(--space-05);font-size:13px;color:var(--text-secondary);border-top:1px solid var(--border-strong)}
+.ok{color:var(--status-success-text)}
+</style></head><body>
+<div class="panel">
+  <div class="head"><strong>ตัวอย่างการลงบัญชี</strong><span>สูตร Credit[IV] · ขายเชื่อ</span></div>
+  <table>
+    <tr><td>Dr 1130100 ลูกหนี้การค้า</td><td class="amt">10,700.00</td><td class="amt"></td></tr>
+    <tr class="cr"><td>Cr 4100100 รายได้บริการ</td><td class="amt"></td><td class="amt">10,000.00</td></tr>
+    <tr class="cr"><td>Cr 2150100 ภาษีขาย</td><td class="amt"></td><td class="amt">700.00</td></tr>
+    <tr class="muted"><td>Dr 5100100 ต้นทุนขาย (โมดูลสต๊อก)</td><td class="amt">6,250.00</td><td class="amt"></td></tr>
+    <tr class="muted cr"><td>Cr 1140100 สินค้าคงเหลือ</td><td class="amt"></td><td class="amt">6,250.00</td></tr>
+  </table>
+  <div class="foot"><span>คำนวณใหม่ทุกครั้งที่แก้ · ลงจริงเมื่ออนุมัติ</span><span class="ok">ดุล ✓ 16,950.00</span></div>
+</div>
+</body></html>

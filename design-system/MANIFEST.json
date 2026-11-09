@@ -1,0 +1,64 @@
+{
+ "artifact": "https://claude.ai/artifact/UdMQo46L3WYvyRHCLGYuaa",
+ "published_version_id": "1794203704-c66a",
+ "exported": "2026-11-09",
+ "confirmed_by": "Wei 2026-11-09",
+ "files": {
+  "project/README.md": {
+   "bytes": 10860,
+   "sha256": "d23306639819fef3a0b49c708434aa5199d478f53895428a2561ffb91b88b2ed"
+  },
+  "project/components/AmountCell/README.md": {
+   "bytes": 999,
+   "sha256": "80e9ed03327687fd15fdc4b0a95c027fd64315a0b66ff5b86359ff1cd0a6514c"
+  },
+  "project/components/AmountCell/preview.html": {
+   "bytes": 2157,
+   "sha256": "a0a290744c2e02fb21d70b8c839d6afef1900cf501f497956c58d6825dfe1256"
+  },
+  "project/components/Button/README.md": {
+   "bytes": 1093,
+   "sha256": "8dff133a044eae068b5a14fa6cd1cc37dfd6d605363413f77ce7e8f7a885649f"
+  },
+  "project/components/Button/preview.html": {
+   "bytes": 2517,
+   "sha256": "76c9e37794b9bc10974f3c64b985b201b768a696886cd96c0755da8a01944a3e"
+  },
+  "project/components/Cover/preview.html": {
+   "bytes": 2655,
+   "sha256": "2c42bbfed758df7a42cf50d7e39cd43393e6ea80340f8cf8952c640f496271f9"
+  },
+  "project/components/DataTable/README.md": {
+   "bytes": 1322,
+   "sha256": "72cdfbb0bf2576a23b6be8e3fd7892aec72768b88438be2f20cca82a172d9d0a"
+  },
+  "project/components/DataTable/preview.html": {
+   "bytes": 4637,
+   "sha256": "e13ecbf9b9feee34cfc6da6c7c494f41788c5a9edfc0a9d8d2433c4ecc1ceb10"
+  },
+  "project/components/JournalPreview/README.md": {
+   "bytes": 1126,
+   "sha256": "ce13ef148872cd347d1df7f019ccf0787120af8f66a6fe9947fe29349b2cfaa5"
+  },
+  "project/components/JournalPreview/preview.html": {
+   "bytes": 2523,
+   "sha256": "d4df9f7978c910a15af77139664bc9c9a9b75767dd704de096246e9d497c5771"
+  },
+  "project/components/StatusTag/README.md": {
+   "bytes": 1169,
+   "sha256": "42c15d45b855656fd453be68c889b3db02e474439d76a12fd5750defa79effe7"
+  },
+  "project/components/StatusTag/preview.html": {
+   "bytes": 2246,
+   "sha256": "a1e4f5da4db6906f54276a6bb69fc89a970dbaa9d494b12d50dd12a63e1616d5"
+  },
+  "project/design-system.json": {
+   "bytes": 469,
+   "sha256": "8d5e30e2f73808b9059a2644de49dbc3f93860e44ede9e7df46d7fe7d58137fb"
+  },
+  "project/tokens.json": {
+   "bytes": 13691,
+   "sha256": "9536c6797fda89dfc6c53cfffde12f1e342ad8a01e44cbb7e0c58a620c2dec22"
+  }
+ }
+}

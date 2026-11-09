@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>บันทึกรายวัน</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="journal" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">บัญชี / บันทึกรายวัน / JV2569-00142</span><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #edf5ff; color: #0043ce; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ร่าง</span></header>
+    <div style="padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 1200px; box-sizing: border-box">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px">
+        <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">รายการปรับปรุง JV2569-00142</h1><span style="font-size: 13px; color: #525252">สมุดรายวันทั่วไป · สร้างจาก template "ค้างจ่ายสาธารณูปโภค"</span></div>
+        <select aria-label="template" style="height: 40px; padding: 0 32px 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"><option>ใช้ template: ค้างจ่ายสาธารณูปโภค</option><option>ค่าเสื่อมราคาประจำเดือน</option><option>ตั้งค่าใช้จ่ายค้างจ่ายเงินเดือน</option><option>บันทึกเป็น template ใหม่…</option></select>
+      </div>
+      <section style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px">
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">วันที่<input value="30/11/2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สมุดบัญชี<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>JV ทั่วไป</option><option>SJ ขาย</option><option>PJ ซื้อ</option><option>RJ รับเงิน</option><option>PAJ จ่ายเงิน</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">กลับรายการอัตโนมัติ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>วันที่ 1 งวดถัดไป</option><option>ไม่กลับรายการ</option></select></label>
+        <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">รายการประจำ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ไม่ใช่</option><option>ทุกเดือน วันสุดท้าย</option></select></label>
+        <label style="grid-column: 1 / -1; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">คำอธิบาย<input value="ตั้งค่าใช้จ่ายค้างจ่าย ค่าไฟฟ้าและค่าน้ำประปา เดือนพฤศจิกายน 2569" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+      </section>
+      <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; width: 32px; padding: 0 12px; font-weight: 400">#</th><th style="padding: 0 12px; font-weight: 400">บัญชี</th><th style="padding: 0 12px; font-weight: 400">คำอธิบาย</th><th style="padding: 0 12px; font-weight: 400">คู่ค้า</th><th style="padding: 0 12px; font-weight: 400">มิติ</th><th style="padding: 0 12px; font-weight: 400; text-align: right">เดบิต</th><th style="padding: 0 12px; font-weight: 400; text-align: right">เครดิต</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; color: #525252">1</td><td style="padding: 0 12px">5220100 ค่าไฟฟ้า</td><td style="padding: 0 12px">ค่าไฟ พ.ย.</td><td style="padding: 0 12px; color: #525252">—</td><td style="padding: 0 12px">สำนักงาน</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">8,500.00</td><td style="padding: 0 12px"></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; color: #525252">2</td><td style="padding: 0 12px">5220200 ค่าน้ำประปา</td><td style="padding: 0 12px">ค่าน้ำ พ.ย.</td><td style="padding: 0 12px; color: #525252">—</td><td style="padding: 0 12px">สำนักงาน</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,200.00</td><td style="padding: 0 12px"></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; color: #525252">3</td><td style="padding: 0 12px">2130100 ค่าใช้จ่ายค้างจ่าย</td><td style="padding: 0 12px">ค้างจ่ายสาธารณูปโภค</td><td style="padding: 0 12px">[การไฟฟ้า/ประปา]</td><td style="padding: 0 12px; color: #525252">—</td><td style="padding: 0 12px"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">9,700.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px; color: #525252">4</td><td colspan="6" style="padding: 0 12px"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: transparent; color: #0f62fe; border: 1px solid transparent">+ เพิ่มบรรทัด (Enter)</button></td></tr>
+          </tbody>
+          <tfoot><tr style="border-top: 1px solid #8d8d8d; font-weight: 600"><td colspan="5" style="height: 40px; padding: 0 12px; text-align: right">รวม</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">9,700.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">9,700.00</td></tr></tfoot>
+        </table>
+      </section>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap">
+        <div role="status" style="flex: 1 1 320px; display: flex; gap: 12px; align-items: center; padding: 12px 16px; border: 1px solid #e0e0e0; border-left: 3px solid #24a148; font-size: 14px"><span><strong>ดุลแล้ว</strong> ผลต่าง 0.00 · งวด 11/2569 เปิด · ไม่มีบัญชีคุม · ผู้ใช้มีสิทธิ์สมุด JV</span></div>
+        <div style="flex: 1 1 320px; padding: 12px 16px; border: 1px solid #e0e0e0; font-size: 14px; color: #525252">ไฟล์แนบ: <a href="ScreenJournal.dc.html">ใบแจ้งค่าไฟ.pdf</a> · เส้นทางอนุมัติ: นักบัญชี → ผู้จัดการบัญชี · <a href="ScreenAudit.dc.html">ประวัติ</a></div>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0; flex-wrap: wrap; gap: 8px">
+      <span style="font-size: 13px; color: #525252">Ctrl/⌘+S บันทึกร่าง · Enter เพิ่มบรรทัด</span>
+      <div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ตั้งเป็น template</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">บันทึกร่าง</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">ลงบัญชี</button></div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>คู่ค้า</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="contacts" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ข้อมูลหลัก / คู่ค้า</span><span style="color: #525252">148 ราย · ลูกค้า 96 · ผู้ขาย 61 · ผู้รับเหมา 12</span></header>
+    <div style="padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px"><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">คู่ค้า</h1><div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">นำเข้า Excel</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">เพิ่มคู่ค้า</button></div></div>
+      <div style="display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start">
+        <section style="flex: 1 1 440px; min-width: 0; border: 1px solid #e0e0e0">
+          <div style="display: flex; gap: 8px; padding: 12px; border-bottom: 1px solid #e0e0e0; flex-wrap: wrap"><label style="display: flex; flex: 1 1 200px; height: 40px; background: #f4f4f4; border-bottom: 1px solid #8d8d8d; align-items: center; padding: 0 16px"><span style="position: absolute; width: 1px; height: 1px; overflow: hidden">ค้นหา</span><input placeholder="ชื่อ / เลขผู้เสียภาษี / รหัส" style="flex: 1; border: 0; background: transparent; font-family: inherit; font-size: 14px; outline: none"></label><select aria-label="บทบาท" style="height: 40px; padding: 0 32px 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px"><option>ทุกบทบาท</option><option>ลูกค้า</option><option>ผู้ขาย</option><option>ผู้รับเหมา</option><option>พนักงาน</option></select></div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px">
+            <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">คู่ค้า</th><th style="padding: 0 12px; font-weight: 400">บทบาท</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ค้างรับ</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ค้างจ่าย</th></tr></thead>
+            <tbody>
+              <tr style="border-top: 1px solid #e0e0e0; background: #e0e0e0"><td style="height: 48px; padding: 4px 12px"><a href="ScreenContacts.dc.html" style="text-decoration: none; font-weight: 500">[ลูกค้า A] จำกัด</a><br><span style="font-size: 13px; color: #525252">C0012 · 0105xxxxxxxxx · 00000</span></td><td style="padding: 0 12px"><span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e0e0e0; border: 1px solid #8d8d8d">ลูกค้า</span></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">42,800.00</td><td style="padding: 0 12px; text-align: right"></td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 48px; padding: 4px 12px"><a href="ScreenContacts.dc.html" style="text-decoration: none; font-weight: 500">บจก. สยามพลาสติก</a> <span style="font-size: 11px; padding: 1px 6px; background: #393939; color: #ffffff; border-radius: 4px">TMS</span><br><span style="font-size: 13px; color: #525252">C0031 · 0105xxxxxxxxx · 00000</span></td><td style="padding: 0 12px"><span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e0e0e0">ลูกค้า</span></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">282,400.00</td><td style="padding: 0 12px; text-align: right"></td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 48px; padding: 4px 12px"><a href="ScreenContacts.dc.html" style="text-decoration: none; font-weight: 500">หจก. ทรัพย์สมบูรณ์ขนส่ง</a> <span style="font-size: 11px; padding: 1px 6px; background: #393939; color: #ffffff; border-radius: 4px">TMS</span><br><span style="font-size: 13px; color: #525252">V0008 · 0103xxxxxxxxx · 00000</span></td><td style="padding: 0 12px"><span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e0e0e0">ผู้รับเหมา</span></td><td style="padding: 0 12px; text-align: right"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">63,193.40</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 48px; padding: 4px 12px"><a href="ScreenContacts.dc.html" style="text-decoration: none; font-weight: 500">[ผู้ให้บริการ cloud]</a><br><span style="font-size: 13px; color: #525252">V0002 · ต่างประเทศ · ไม่มีเลขผู้เสียภาษี</span></td><td style="padding: 0 12px"><span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e0e0e0">ผู้ขาย</span></td><td style="padding: 0 12px; text-align: right"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums"></td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td style="height: 48px; padding: 4px 12px"><a href="ScreenContacts.dc.html" style="text-decoration: none; font-weight: 500">[ลูกค้า C] จำกัด</a><br><span style="font-size: 13px; color: #525252">C0040 · 0105xxxxxxxxx · 00000</span></td><td style="padding: 0 12px"><span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e0e0e0">ลูกค้า</span> <span style="font-size: 12px; padding: 2px 8px; border-radius: 4px; background: #e0e0e0">ผู้ขาย</span></td><td style="padding: 0 12px; text-align: right"></td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">1,200.00</td></tr>
+            </tbody>
+          </table>
+        </section>
+        <section style="flex: 1 1 420px; min-width: 0; border: 1px solid #e0e0e0; display: flex; flex-direction: column">
+          <div style="display: flex; justify-content: space-between; align-items: flex-start; padding: 16px; border-bottom: 1px solid #e0e0e0; gap: 12px"><div><h2 style="margin: 0; font-size: 18px; font-weight: 600">[ลูกค้า A] จำกัด</h2><span style="font-size: 13px; color: #525252">C0012 · เลขผู้เสียภาษี 0105xxxxxxxxx · สาขา 00000 · นิติบุคคล</span></div><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 32px; padding: 0 12px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">แก้ไข</button></div>
+          <div role="tablist" style="display: flex; border-bottom: 1px solid #e0e0e0; font-size: 14px; padding: 0 8px"><button role="tab" aria-selected="false" style="height: 40px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #525252; font-family: inherit; font-size: 14px">ทั่วไป</button><button role="tab" aria-selected="false" style="height: 40px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #525252; font-family: inherit; font-size: 14px">ที่อยู่ 2</button><button role="tab" aria-selected="true" style="height: 40px; padding: 0 12px; border: 0; border-bottom: 2px solid #0f62fe; background: transparent; color: #161616; font-family: inherit; font-size: 14px; font-weight: 600">สำหรับนักบัญชี</button><button role="tab" aria-selected="false" style="height: 40px; padding: 0 12px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: #525252; font-family: inherit; font-size: 14px">เอกสาร 24</button></div>
+          <div style="padding: 16px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เครดิตเทอม (วัน)<input value="30" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">วงเงินเครดิต<input value="500,000.00" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; text-align: right; font-variant-numeric: tabular-nums"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">บัญชีลูกหนี้ (แทนค่าในสูตร)<input value="1130100 ลูกหนี้การค้า" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">บัญชีเจ้าหนี้<input placeholder="ว่าง = ตามสูตร" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">WHT ที่ลูกค้าหักเรา<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>3% ค่าบริการ</option><option>1% ขนส่ง / 3% บริการ</option><option>ไม่หัก</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">แบบ ภ.ง.ด.<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>53 นิติบุคคล</option><option>3 บุคคลธรรมดา</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ระดับราคาขาย<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ราคา 1 (ปกติ)</option><option>ราคา 2 (ตัวแทน)</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">บัญชีธนาคารรับโอน<input value="กสิกรไทย xxx-x-x5678-x" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+          </div>
+          <div style="padding: 12px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252">ค้างรับ 2 ใบ 42,800.00 · เกินกำหนด 1 ใบ · <a href="ScreenAging.dc.html">อายุลูกหนี้</a> · เอกสารล่าสุด IV2611-0052</div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

@@ -1,0 +1,35 @@
+<!-- @dsCard group="การกระทำ" height=150 subtitle="หลัก / รอง / ghost / อันตราย · button set" -->
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:16px;background:var(--bg-page);color:var(--text-primary);font-family:var(--font-sans);font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:var(--space-05);align-items:center;margin-bottom:var(--space-05)}
+button{font-family:inherit;font-size:14px;height:40px;padding:0 64px 0 16px;border:1px solid transparent;border-radius:var(--radius-none);cursor:pointer;text-align:left;min-width:120px}
+.primary{background:var(--btn-primary);color:var(--text-on-color)}
+.primary:hover{background:var(--interactive-hover)}
+.secondary{background:var(--btn-secondary);color:var(--text-on-color)}
+.tertiary{background:transparent;color:var(--interactive);border-color:var(--interactive)}
+.ghost{background:transparent;color:var(--link);padding:0 16px;min-width:0}
+.danger{background:var(--btn-danger);color:var(--text-on-color)}
+button:focus-visible{outline:2px solid var(--border-focus);outline-offset:-2px;box-shadow:inset 0 0 0 3px var(--bg-page)}
+.set{display:flex}
+.set button{padding-right:48px}
+.set .secondary{margin-right:0}
+.sm{height:32px;padding:0 16px;min-width:0}
+.cap{font-size:13px;color:var(--text-secondary);margin:0}
+</style></head><body>
+<div class="row">
+  <button class="primary">อนุมัติและลงบัญชี</button>
+  <button class="secondary">บันทึกร่าง</button>
+  <button class="tertiary">ดูตัวอย่าง PDF</button>
+  <button class="ghost">ประวัติการแก้ไข</button>
+  <button class="danger">ยกเลิกเอกสาร</button>
+</div>
+<div class="row">
+  <div class="set"><button class="secondary">ย้อนกลับ</button><button class="primary">ถัดไป: ประเภทธุรกิจ</button></div>
+  <button class="tertiary sm">ตัดตามลำดับครบกำหนด</button>
+  <button class="ghost sm">+ เพิ่มบรรทัด</button>
+</div>
+<p class="cap">ปุ่มหลัก 1 ปุ่มต่อหน้า · ชุดปุ่มติดกันไม่มีช่องว่าง · มุมเหลี่ยมตาม Carbon · focus กรอบ 2 px</p>
+</body></html>

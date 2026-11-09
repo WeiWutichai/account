@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>ตั้งค่าบริษัท</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="settings" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ตั้งค่า / บริษัท</span><span style="color: #525252">แผน Business · ต่ออายุ 01/03/2570 · <a href="ScreenPlan.dc.html" style="text-decoration: none">จัดการแผน</a></span></header>
+    <div style="display: flex; flex: 1; min-height: 0">
+      <nav style="flex: 0 0 240px; border-right: 1px solid #e0e0e0; padding: 16px 0; font-size: 14px">
+        <a href="ScreenSettings.dc.html" aria-current="page" style="display: block; padding: 8px 16px 8px 13px; text-decoration: none; color: #161616; background: #e0e0e0; border-left: 3px solid #0f62fe; font-weight: 600">ข้อมูลบริษัท</a>
+        <a href="ScreenPeriodClose.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">ปีบัญชี และงวด</a>
+        <a href="ScreenDocSettings.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">เลขที่เอกสาร (running)</a>
+        <a href="ScreenSettings.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">ภาษี (VAT / หัก ณ ที่จ่าย)</a>
+        <a href="ScreenDocSettings.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">แบบฟอร์มพิมพ์ / โลโก้</a>
+        <a href="ScreenSettings.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">มิติ (รถ / เที่ยว / โครงการ / สาขา)</a>
+        <a href="ScreenPlan.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">สกุลเงิน และอัตราแลกเปลี่ยน</a>
+        <a href="ScreenSettings.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">อีเมลและการแจ้งเตือน</a>
+        <a href="ScreenPlan.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">โมดูลเสริม (สินทรัพย์ / เงินเดือน · สต็อก v2)</a>
+        <a href="ScreenUsers.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">ผู้ใช้และสิทธิ์</a>
+        <a href="ScreenApps.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">แอปที่เชื่อมต่อ</a>
+        <a href="ScreenAudit.dc.html" style="display: block; padding: 8px 16px; text-decoration: none; color: #161616">ประวัติการใช้งาน</a>
+        <div style="margin: 16px 16px 0; padding-top: 16px; border-top: 1px solid #e0e0e0"><a href="ScreenSettings.dc.html" style="display: block; padding: 8px 0; text-decoration: none; color: #a2191f">ส่งออกข้อมูลทั้งหมด / ปิดบริษัท</a></div>
+      </nav>
+      <div style="flex: 1; min-width: 0; padding: 24px 32px 96px; display: flex; flex-direction: column; gap: 24px; max-width: 880px; box-sizing: border-box">
+        <div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">ข้อมูลบริษัท</h1><span style="font-size: 13px; color: #525252">ใช้บนเอกสารทุกใบ ใบกำกับภาษี และแบบยื่นภาษี · เปลี่ยนแล้วมีผลกับเอกสารที่ออกหลังจากนี้</span></div>
+        <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 24px">
+          <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ชื่อนิติบุคคล (ไทย)<input value="บริษัท [ชื่อบริษัท] จำกัด" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+          <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ชื่อนิติบุคคล (อังกฤษ)<input value="[Company Name] Co., Ltd." style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เลขประจำตัวผู้เสียภาษี 13 หลัก<input value="0105xxxxxxxxx" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; font-variant-numeric: tabular-nums"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">สาขา<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>สำนักงานใหญ่ (00000)</option><option>สาขาที่ 00001</option></select></label>
+          <label style="grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ที่อยู่ตามทะเบียน (ภาษาไทย)<textarea rows="2" style="padding: 8px 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; resize: vertical">[เลขที่ ถนน แขวง เขต] กรุงเทพมหานคร 10xxx</textarea></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">โทรศัพท์<input value="02-xxx-xxxx" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">อีเมลสำหรับส่งเอกสาร<input value="ar@[company].co.th" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ประเภทกิจการ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>บริการ</option><option>ซื้อมาขายไป</option><option>ผลิต</option><option>ผสม</option></select></label>
+          <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">จดทะเบียน VAT<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>จดทะเบียนแล้ว · 7%</option><option>ยังไม่จด</option></select></label>
+        </section>
+        <section style="border: 1px solid #e0e0e0; padding: 16px; display: flex; flex-direction: column; gap: 12px; font-size: 14px">
+          <strong>ค่าเริ่มต้นเอกสาร</strong>
+          <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 24px">
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เครดิตเทอมขาย<input value="30 วัน" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">เครดิตเทอมซื้อ<input value="30 วัน" style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ราคาตั้งต้น<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ไม่รวม VAT</option><option>รวม VAT</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">จุดภาษีสำหรับบริการ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>เมื่อรับชำระ (เกณฑ์เงินสด)</option><option>เมื่อออกใบกำกับ</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ปัดเศษ<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>ทศนิยม 2 ตำแหน่ง · ปัดที่บรรทัดสุดท้าย</option><option>ปัดรายบรรทัด</option></select></label>
+            <label style="display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252">ฟอนต์เอกสารพิมพ์<select style="height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px"><option>Sarabun</option><option>IBM Plex Sans Thai</option></select></label>
+          </div>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> เปิดใช้ e-Tax Invoice &amp; e-Receipt (ลงนามดิจิทัลผ่านผู้ให้บริการ)</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> อนุญาตให้บันทึกรายการล่วงหน้าในงวดถัดไป / ปีถัดไป</label>
+          <label style="display: flex; gap: 8px; align-items: center"><input type="checkbox"> บังคับแนบไฟล์หลักฐานทุกบิลซื้อ</label>
+        </section>
+        <section style="border: 1px solid #e0e0e0; padding: 16px; display: flex; flex-direction: column; gap: 8px; font-size: 14px"><strong>ฐานข้อมูลและความปลอดภัย</strong><div style="display: flex; justify-content: space-between"><span>รหัสบริษัท (tenant)</span><span style="font-variant-numeric: tabular-nums; color: #525252">co_01hv9…k3</span></div><div style="display: flex; justify-content: space-between"><span>สำรองข้อมูลอัตโนมัติ</span><span style="color: #525252">ทุกวัน 02:00 · เก็บ 30 วัน · ล่าสุด วันนี้ 02:04</span></div><div style="display: flex; justify-content: space-between"><span>ฐานข้อมูลแยกเฉพาะบริษัท (Enterprise)</span><span style="color: #525252">ไม่ได้เปิด · <a href="ScreenPlan.dc.html" style="text-decoration: none">อัปเกรด</a></span></div><div style="display: flex; justify-content: space-between"><span>บังคับ 2FA ทุกผู้ใช้</span><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> เปิด</label></div></section>
+      </div>
+    </div>
+    <div style="position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: flex-end; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0"><div style="display: flex; gap: 8px; flex-wrap: wrap"><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #ffffff; color: #161616; border: 1px solid #8d8d8d">ยกเลิก</button><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 40px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">บันทึกการตั้งค่า</button></div></div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>

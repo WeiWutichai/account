@@ -1,0 +1,32 @@
+<!-- @dsCard group="สถานะ" height=120 subtitle="4 ความหมาย + กลาง + แหล่งที่มา" -->
+<!doctype html>
+<html lang="th"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+body{margin:0;padding:16px;background:var(--bg-page);color:var(--text-primary);font-family:var(--font-sans);font-size:14px}
+.row{display:flex;flex-wrap:wrap;gap:var(--space-03);align-items:center}
+.tag{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 var(--space-03);border-radius:var(--radius-sm);font-size:13px;line-height:18px;font-weight:500;white-space:nowrap}
+.tag::before{content:"";width:8px;height:8px;border-radius:var(--radius-full);background:currentColor;opacity:.9}
+.ok{background:var(--status-success-bg);color:var(--status-success-text)}
+.wait{background:var(--status-warning-bg);color:var(--status-warning-text)}
+.err{background:var(--status-error-bg);color:var(--status-error-text)}
+.info{background:var(--status-info-bg);color:var(--status-info-text)}
+.neutral{background:var(--tag-neutral-bg);color:var(--tag-neutral-text)}
+.neutral::before,.src::before{display:none}
+.src{background:var(--bg-inverse);color:var(--text-inverse);font-size:11px;height:20px;letter-spacing:.4px}
+p{margin:12px 0 0;font-size:13px;color:var(--text-secondary)}
+</style></head><body>
+<div class="row">
+  <span class="tag ok">ลงบัญชีแล้ว</span>
+  <span class="tag ok">ชำระแล้ว</span>
+  <span class="tag wait">รออนุมัติ</span>
+  <span class="tag wait">ครบกำหนดใน 3 วัน</span>
+  <span class="tag err">เกินกำหนด 12 วัน</span>
+  <span class="tag err">ยกเลิก</span>
+  <span class="tag info">ร่าง</span>
+  <span class="tag neutral">ลูกค้า</span>
+  <span class="tag neutral">รถร่วม</span>
+  <span class="tag src">TMS</span>
+</div>
+<p>สีมาคู่คำเสมอ · จุดนำหน้าเฉพาะสถานะ 4 ความหมาย · tag แหล่งที่มา (TMS, API) ใช้พื้น inverse</p>
+</body></html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<title>เงินมัดจำ — ใบแจ้งหนี้มัดจำ และการตัดมัดจำ</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+a{color:#0f62fe}a:hover{color:#0353e9}
+</style>
+</helmet>
+<div style="display: flex; flex-wrap: wrap; min-height: 1000px; background: #ffffff; color: #161616; font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.6">
+  <div style="flex: 0 0 256px; display: flex"><dc-import name="Sidebar" active="deposit" hint-size="256px,1000px"></dc-import></div>
+  <main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px"><span style="color: #525252">ขาย / เงินมัดจำ</span><div role="group" style="display: inline-flex; border: 1px solid #8d8d8d; border-radius: 4px; overflow: hidden"><button aria-pressed="true" style="height: 32px; padding: 0 12px; border: 0; border-radius: 0; background: #0f62fe; color: #ffffff; font-family: inherit; font-size: 14px; font-weight: 600; cursor: pointer">มัดจำรับจากลูกค้า</button><button aria-pressed="false" style="height: 32px; padding: 0 12px; border: 0; border-radius: 0; background: #ffffff; color: #161616; font-family: inherit; font-size: 14px; font-weight: 400; cursor: pointer">มัดจำจ่ายให้ผู้ขาย</button></div></header>
+    <div style="padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 16px">
+      <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px"><div><h1 style="margin: 0; font-size: 22px; line-height: 30px; font-weight: 600">เงินมัดจำรับจากลูกค้า</h1><span style="font-size: 13px; color: #525252">ออกใบแจ้งหนี้มัดจำ → รับเงินและออกใบกำกับภาษี/ใบเสร็จ (จุดภาษีเกิดเมื่อรับเงิน) → ตัดมัดจำในใบกำกับงานจริง</span></div><button style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-sizing: border-box; border-radius: 4px; font-family: inherit; font-size: 14px; font-weight: 500; line-height: 1; white-space: nowrap; cursor: pointer; height: 36px; padding: 0 16px; background: #0f62fe; color: #ffffff; border: 1px solid #0f62fe">+ ใบแจ้งหนี้มัดจำ</button></div>
+      <div style="display: flex; gap: 32px; padding: 16px 0; border-top: 1px solid #e0e0e0; border-bottom: 1px solid #e0e0e0; font-size: 14px; flex-wrap: wrap">
+        <div><span style="color: #525252; font-size: 13px">มัดจำคงค้าง (หนี้สิน 2140100)</span><div style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums">486,000.00</div><span style="color: #525252">6 รายการ · 4 ลูกค้า</span></div>
+        <div><span style="color: #525252; font-size: 13px">แจ้งหนี้มัดจำ รอรับเงิน</span><div style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums">150,000.00</div><span style="color: #525252">2 ใบ · ยังไม่ลงบัญชี</span></div>
+        <div><span style="color: #525252; font-size: 13px">ตัดมัดจำเดือนนี้</span><div style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums">214,000.00</div><span style="color: #525252">ใน 3 ใบกำกับ</span></div>
+        <div><span style="color: #525252; font-size: 13px">ค้างเกิน 180 วัน</span><div style="font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; color: #684e00">32,100.00</div><span style="color: #684e00">ตรวจสอบว่างานยกเลิก/คืนเงิน</span></div>
+      </div>
+      <section style="border: 1px solid #e0e0e0; overflow-x: auto">
+        <table style="width: 100%; min-width: 1100px; border-collapse: collapse; font-size: 14px; line-height: 20px">
+          <thead><tr style="background: #f4f4f4; color: #525252; font-size: 13px; text-align: left"><th style="height: 40px; padding: 0 12px; font-weight: 400">เลขที่</th><th style="padding: 0 12px; font-weight: 400">วันที่</th><th style="padding: 0 12px; font-weight: 400">ลูกค้า</th><th style="padding: 0 12px; font-weight: 400">อ้างอิง (ใบเสนอราคา/สัญญา)</th><th style="padding: 0 12px; font-weight: 400; text-align: right">มัดจำ (รวม VAT)</th><th style="padding: 0 12px; font-weight: 400; text-align: right">รับแล้ว</th><th style="padding: 0 12px; font-weight: 400; text-align: right">ตัดแล้ว</th><th style="padding: 0 12px; font-weight: 400; text-align: right">คงเหลือ</th><th style="padding: 0 12px; font-weight: 400">สถานะ</th></tr></thead>
+          <tbody>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px"><a href="ScreenDeposit.dc.html" style="text-decoration: none; font-weight: 500">DP2611-0009</a></td><td style="padding: 0 12px; font-variant-numeric: tabular-nums">20/11/2569</td><td style="padding: 0 12px">บจก. [ลูกค้า E]</td><td style="padding: 0 12px">QO2611-0030 · โครงการระบบจอง 30%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">96,300.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">96,300.00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fcf4d6; color: #684e00; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>แจ้งหนี้แล้ว รอรับเงิน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0; background: #e0e0e0"><td style="height: 40px; padding: 0 12px"><a href="ScreenDeposit.dc.html" style="text-decoration: none; font-weight: 500">DP2610-0006</a></td><td style="padding: 0 12px; font-variant-numeric: tabular-nums">08/10/2569</td><td style="padding: 0 12px">บจก. สยามพลาสติก</td><td style="padding: 0 12px">QO2610-0022 · บริการรายปี 50%</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">321,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">321,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">107,000.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">214,000.00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #edf5ff; color: #0043ce; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>รับแล้ว · ตัดบางส่วน</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px"><a href="ScreenDeposit.dc.html" style="text-decoration: none; font-weight: 500">DP2609-0004</a></td><td style="padding: 0 12px; font-variant-numeric: tabular-nums">12/09/2569</td><td style="padding: 0 12px">[ลูกค้า G] หจก.</td><td style="padding: 0 12px">QO2609-0015 · งานติดตั้ง</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">53,500.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">53,500.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">53,500.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #defbe6; color: #0e6027; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ตัดครบ · IV2611-0049</span></td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 40px; padding: 0 12px"><a href="ScreenDeposit.dc.html" style="text-decoration: none; font-weight: 500">DP2605-0001</a></td><td style="padding: 0 12px; font-variant-numeric: tabular-nums">03/05/2569</td><td style="padding: 0 12px">[ลูกค้า F]</td><td style="padding: 0 12px">QO2605-0003 · งานยกเลิก?</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">32,100.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">32,100.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums; color: #525252">0.00</td><td style="padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums">32,100.00</td><td style="padding: 0 12px"><span style="display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 8px; border-radius: 4px; background: #fff1f1; color: #a2191f; font-size: 13px; font-weight: 500"><span style="width: 8px; height: 8px; border-radius: 999px; background: currentColor"></span>ค้าง 211 วัน</span></td></tr>
+          </tbody>
+        </table>
+      </section>
+      <div style="display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px; align-items: start">
+        <section style="border: 1px solid #0f62fe; display: flex; flex-direction: column">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e0e0e0; background: #edf5ff"><strong style="font-weight: 600">ตัดมัดจำในใบกำกับภาษี IV2611-0062 (ร่าง) — บจก. สยามพลาสติก</strong><span style="font-size: 13px; color: #525252">เลือกมัดจำที่จะตัด</span></div>
+          <table style="width: 100%; border-collapse: collapse; font-size: 14px; line-height: 20px"><tbody>
+            <tr><td style="height: 36px; padding: 0 16px">มูลค่างานงวดนี้ (บริการรายปี งวด 2/4)</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">150,000.00</td></tr>
+            <tr style="border-top: 1px solid #e0e0e0"><td style="height: 36px; padding: 0 16px"><label style="display: flex; gap: 8px; align-items: center"><input type="checkbox" checked> หัก มัดจำ DP2610-0006 (คงเหลือ 200,000.00 ก่อน VAT)</label></td><td style="text-align: right; padding: 0 16px"><input value="100,000.00" style="width: 130px; height: 32px; text-align: right; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px; font-variant-numeric: tabular-nums"></td></tr>
+            <tr style="border-top: 1px solid #8d8d8d"><td style="height: 36px; padding: 0 16px">มูลค่าที่ต้องเสียภาษีงวดนี้</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">50,000.00</td></tr>
+            <tr><td style="height: 36px; padding: 0 16px">VAT 7% (เฉพาะส่วนที่ยังไม่เคยเสีย)</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">3,500.00</td></tr>
+            <tr style="border-top: 1px solid #8d8d8d; font-weight: 600"><td style="height: 40px; padding: 0 16px">ยอดเรียกเก็บลูกค้า</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums; font-size: 16px">53,500.00</td></tr>
+          </tbody></table>
+          <div style="padding: 8px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252">บนใบกำกับพิมพ์: แสดงบรรทัด "หัก เงินมัดจำตามใบกำกับภาษีเลขที่ RV2610-0012 ลงวันที่ 10/10/2569" ตามแนวปฏิบัติกรมสรรพากร · รายงานภาษีขายไม่ซ้ำ</div>
+        </section>
+        <section style="display: flex; flex-direction: column; gap: 16px">
+          <div style="background: #f4f4f4; border: 1px solid #e0e0e0">
+            <div style="display: flex; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid #e0e0e0"><strong style="font-weight: 600">ตัวอย่างการลงบัญชี</strong><span style="font-size: 13px; color: #525252">3 ขั้น</span></div>
+            <table style="width: 100%; border-collapse: collapse; font-size: 13px"><tbody>
+              <tr><td colspan="3" style="height: 28px; padding: 0 16px; color: #525252">① แจ้งหนี้มัดจำ DP — ไม่ลงบัญชี (เป็นเอกสารแจ้งเท่านั้น)</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td colspan="3" style="height: 28px; padding: 0 16px; color: #525252">② รับเงินมัดจำ RV2610-0012 + ใบกำกับภาษี</td></tr>
+              <tr><td style="height: 28px; padding: 0 16px">Dr 1100100 เงินฝากธนาคาร</td><td style="width: 100px; text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">321,000.00</td><td style="width: 100px"></td></tr>
+              <tr><td style="height: 28px; padding: 0 16px 0 32px">Cr 2140100 เงินมัดจำรับล่วงหน้า</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">300,000.00</td></tr>
+              <tr><td style="height: 28px; padding: 0 16px 0 32px">Cr 2150100 ภาษีขาย</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">21,000.00</td></tr>
+              <tr style="border-top: 1px solid #e0e0e0"><td colspan="3" style="height: 28px; padding: 0 16px; color: #525252">③ ตัดมัดจำใน IV2611-0062</td></tr>
+              <tr><td style="height: 28px; padding: 0 16px">Dr 2140100 เงินมัดจำรับล่วงหน้า</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">100,000.00</td><td></td></tr>
+              <tr><td style="height: 28px; padding: 0 16px">Dr 1130100 ลูกหนี้การค้า</td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">53,500.00</td><td></td></tr>
+              <tr><td style="height: 28px; padding: 0 16px 0 32px">Cr 4100100 รายได้จากการให้บริการ</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">150,000.00</td></tr>
+              <tr><td style="height: 28px; padding: 0 16px 0 32px">Cr 2150100 ภาษีขาย</td><td></td><td style="text-align: right; padding: 0 16px; font-variant-numeric: tabular-nums">3,500.00</td></tr>
+            </tbody></table>
+          </div>
+          <div style="border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 6px"><strong>ฝั่งผู้ขาย (มัดจำจ่าย) — แท็บถัดไป</strong><span style="color: #525252">จ่ายมัดจำ → Dr 1140100 เงินมัดจำจ่ายล่วงหน้า / Dr 1170100 ภาษีซื้อ / Cr 1100100 · หัก ณ ที่จ่ายตอนจ่ายมัดจำตามฐานมัดจำ · ตัดมัดจำในบิลซื้อ AP: Dr ค่าใช้จ่าย / Cr 1140100 / Cr 2110100 ส่วนที่เหลือ (หัก ณ ที่จ่ายเฉพาะยอดที่จ่ายจริงเพิ่ม)</span><span style="color: #525252">รายงานมัดจำจ่ายคงค้าง 3 รายการ · 128,400.00</span></div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic { renderVals() { return {}; } }
+</script>
+</body>
+</html>
