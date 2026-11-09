@@ -27,7 +27,8 @@ if (exists) {
   // เอกสารขาย/รับเงิน: สร้างเป็นเอกสารจริงผ่าน sales service (M4) · ประเภทอื่นยังลง journal ตาม expected_journal จนกว่าจะมีโมดูล (M5+)
   for (const l of await seedSalesDocuments(db, COMPANY_ID, fx.documents as never, (fx as unknown as { cheques_received: never }).cheques_received)) console.log(l);
   for (const l of await seedCheques(db, COMPANY_ID)) console.log(l);
-  for (const l of await seedPurchaseDocuments(db, COMPANY_ID, { ...fx.documents, __petty: (fx as unknown as { petty_cash: unknown }).petty_cash } as never)) console.log(l);
+  for (const l of await seedPurchaseDocuments(db, COMPANY_ID, { ...fx.documents, __petty: (fx as unknown as { petty_cash: unknown }).petty_cash,
+    __contactBanks: Object.fromEntries((fx as unknown as { contacts: { code: string; bank?: string | null }[] }).contacts.filter((c) => c.code.startsWith('V')).map((c) => [c.code, c.bank ?? null])) } as never)) console.log(l);
   let n = 0;
   for (const [no, d] of Object.entries(fx.documents)) {
     if (!d.expected_journal || !d.date || SEEDED_SALES_TYPES.includes(d.type) || SEEDED_PURCHASE_TYPES.includes(d.type)) continue;
