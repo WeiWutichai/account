@@ -3,7 +3,7 @@
 import { Button, ButtonLink, css, money, parseThaiDate, shortDate, thaiDate } from '@innovera/ui';
 import { bangkok } from '../../sales/_lib/doc.ts';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Msg } from '../../sales/_lib/ui';
 import { blankPLine, netLines, pLinePayload, type PLineRow, pRowFromLine, usePTotals, validP } from './lines.ts';
 import { docAction, P, PHeader, Pending, Seg } from './ui';
@@ -13,8 +13,10 @@ import { call } from '../../sales/_lib/client.ts';
 import { toCents } from '../../sales/_lib/num.ts';
 
 type Kind = 'PR' | 'PO';
-// TODO(backend): วงเงินสายอนุมัติ PO ไม่มีใน API — ใช้ fixtures PO2611-0018.approval_limit_l2 (300,000) ตามแบบร่าง · backend ยังไม่บังคับระดับกรรมการ
-const L2_LIMIT = '300000.00';
+// วงเงินสายอนุมัติ PO: GET /v1/approval-settings (ค่าตั้งบริษัท · ค่าตั้งต้น fixtures PO2611-0018.approval_limit_l2 = 300,000) · approvePurchase บังคับกรรมการเมื่อเกิน
+const L2_DEFAULT = '300000.00';
+/** '300000.00' → '300,000' ตามรูปแบบในแบบร่าง */
+const limitText = (v: string) => money(v).replace(/\.00$/u, '');
 // TODO(backend): เงื่อนไขชำระไม่มีฟิลด์ใน PurchaseDraftInput — เก็บใน notes
 const TERMS = ['เครดิต 30 วันหลังรับบิล', 'มัดจำ 30% + ที่เหลือเมื่อส่งมอบ', 'จ่ายทันที'] as const;
 const LABEL = 'display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252';
@@ -86,7 +88,9 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
   const refPr = detail?.ref ?? (pr ? { id: pr.doc.id, doc_no: pr.doc.doc_no } : null);
   const sub = [refPr ? `สร้างจากใบขอซื้อ ${pDocNo(refPr)}${pr?.doc.status === 'approved' || detail?.ref ? ' (อนุมัติแล้ว)' : ''}` : null, 'ไม่ลงบัญชี', 'ใช้ควบคุมงบและเทียบกับบิลซื้อที่เข้ามา'].filter(Boolean).join(' · ');
   const grand = totals?.grandTotal ?? d?.grand_total ?? null;
-  const over = toCents(grand) > toCents(L2_LIMIT);
+  const [l2Limit, setL2Limit] = useState(L2_DEFAULT);
+  useEffect(() => { void call<{ purchaseOrder: { l2Limit: string } }>('approval-settings').then((r) => { if (r.ok) setL2Limit(r.data.purchaseOrder.l2Limit); }); }, []);
+  const over = toCents(grand) > toCents(l2Limit);
   const approvedAt = d?.status === 'approved' ? ddmm(d.approved_at) : '';
   const step = (ok: string, wait: boolean) => (ok ? <span style={css('color: #0e6027')}>อนุมัติ · {ok}</span> : wait ? <span style={css('color: #684e00')}>รอ</span> : <span style={css('color: #525252')}>—</span>);
   const IN = css(P.input);
@@ -152,11 +156,12 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
           <section style={css('flex: 1 1 400px; display: flex; flex-direction: column; gap: 16px')}>
             <div style={css(`${P.box}; gap: 8px`)}><strong>สายอนุมัติ (ตามวงเงิน PO)</strong>
               <div style={css('display: flex; justify-content: space-between')}><span>1. หัวหน้าแผนก (PR)</span>{refPr ? step(pr?.doc.status === 'approved' ? ddmm(pr.doc.approved_at) : '', !!pr && pr.doc.status === 'pending_approval') : kind === 'PR' ? step(approvedAt, d?.status === 'pending_approval') : <span style={css('color: #525252')}>ไม่ต้อง</span>}</div>
-              <div style={css('display: flex; justify-content: space-between')}><span>2. ผู้จัดการบัญชี (PO ≤ 300,000)</span>{kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span style={css('color: #525252')}>—</span>}</div>
-              <div style={css(over ? 'display: flex; justify-content: space-between' : 'display: flex; justify-content: space-between; color: #525252')}><span>3. กรรมการ (PO &gt; 300,000)</span>{over && kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span>ไม่ต้อง</span>}</div>
+              <div style={css('display: flex; justify-content: space-between')}><span>{`2. ผู้จัดการบัญชี (PO ≤ ${limitText(l2Limit)})`}</span>{kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span style={css('color: #525252')}>—</span>}</div>
+              <div style={css(over ? 'display: flex; justify-content: space-between' : 'display: flex; justify-content: space-between; color: #525252')}><span>{`3. กรรมการ (PO > ${limitText(l2Limit)})`}</span>{over && kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span>ไม่ต้อง</span>}</div>
               {/* TODO(backend): "เตือน: งบ … Q4 จะใช้ถึง N% หลังอนุมัติ PO นี้" — ยังไม่มีข้อมูลงบประมาณ */}
             </div>
-            {/* TODO(backend): "ถ้ายอด AP เกิน PO มากกว่า 5% ต้องให้ผู้อนุมัติ PO ยืนยัน" และ "PO ปิดอัตโนมัติ" ยังไม่บังคับใน approvePurchase */}
+            {/* approvePurchase: AP ที่อ้าง PO ยอดรวมเกินเกณฑ์ (ค่าตั้ง · 5%) ต้อง confirmOverPo โดยผู้อนุมัติ PO/กรรมการ · รับบิลครบ → PO ปิดอัตโนมัติ (closed_at)
+                TODO(Wei) ScreenPurchaseOrder.dc.html: "หรือกดปิดเอง" — แบบร่างไม่มีปุ่มปิด PO */}
             <div style={css(`${P.box}; gap: 6px`)}><strong>เมื่อบิลซื้อเข้ามา</strong><span style={css('color: #525252')}>· สร้าง AP จาก PO นี้ได้บางส่วน (ยอดค้างรับแสดงในคอลัมน์ &quot;รับบิลแล้ว&quot;) · บัญชี/VAT/มิติ ถูกเติมให้จาก PO · ถ้ายอด AP เกิน PO มากกว่า 5% ต้องให้ผู้อนุมัติ PO ยืนยัน · PO ปิดอัตโนมัติเมื่อรับบิลครบหรือกดปิดเอง</span></div>
           </section>
           <table style={css('flex: 0 1 340px; border-collapse: collapse; font-size: 15px')}><tbody>

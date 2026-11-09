@@ -83,13 +83,22 @@ export interface AcctDB {
     receive_account: string | null; fee: Money; fee_account: string | null; wht_cert_no: string | null; wht_rate: string | null; bill_discount: Money; credit_days: number | null; sent_at: Ts | null;
     vendor_ref: string | null; pay_now: Generated<boolean>; batch_ref: string | null; approval_level: Generated<number> ; party_tax_id: Generated<string | null>; vendor_invoice_date: ColumnType<string | null, string | null | undefined, string | null>; project_code: Generated<string | null>;
     salesperson: Generated<string | null>; payment_terms: Generated<string | null>; price_level: Generated<number | null>; print_count: Generated<number>;
-    vat_claim_month: Generated<string | null> };
+    vat_claim_month: Generated<string | null>;
+    // 0019
+    petty_cash_fund_id: Generated<string | null>; closed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null> };
   'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
     pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
   'acct.bank_account': { company_id: string; id: Generated<string>; gl_account: string; bank_name: string; branch: string | null; account_no: string; account_name: string | null;
     is_default_receive: Generated<boolean>; created_at: Ts };
   'acct.bank_statement_line': { company_id: string; id: Generated<string>; bank_account: string; line_date: DateCol; description: string; amount: string; balance: string | null; ref: string | null;
     import_batch: string; fingerprint: string; matched_journal_id: string | null; match_status: Generated<'unmatched' | 'auto' | 'manual' | 'ignored'>; created_at: Ts };
+  // 0019 จับคู่ 1 ต่อหลาย · ปิดกระทบยอดรายเดือน · กองเงินสดย่อย + ตรวจนับ
+  'acct.bank_match': { company_id: string; statement_line_id: string; journal_id: string; created_at: Ts };
+  'acct.bank_recon_close': { company_id: string; bank_account: string; month: DateCol; statement_balance: string; gl_balance: string; closed_at: Ts; closed_by: string | null };
+  'acct.petty_cash_fund': { company_id: string; id: Generated<string>; code: string; name: string; holder: string | null; imprest: string; gl_account: string;
+    is_default: Generated<boolean>; active: Generated<boolean>; created_at: Ts };
+  'acct.petty_cash_count': { company_id: string; id: Generated<string>; fund_id: string; count_date: DateCol; counted_at: Ts; counted_by: string | null; counted_by_name: string | null;
+    cash_counted: string; vouchers: string; imprest: string; difference: string; note: string | null };
   'acct.fixed_asset': { company_id: string; id: Generated<string>; code: string; name: string; asset_account: string; accum_account: string; expense_account: string; start_date: DateCol;
     life_years: string; cost: string; salvage: Money; opening_accum: Money; opening_accum_date: DateCol | null; status: Generated<'active' | 'disposed' | 'fully_depreciated'>; disposed_on: DateCol | null;
     source_document_id: string | null; created_at: Ts;

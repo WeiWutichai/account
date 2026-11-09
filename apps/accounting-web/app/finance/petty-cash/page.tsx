@@ -1,4 +1,4 @@
-// F5 เงินสดย่อย (imprest) — design/project/ScreenPettyCash.dc.html · ข้อมูลจาก GET /v1/petty-cash
+// F5 เงินสดย่อย (imprest) — design/project/ScreenPettyCash.dc.html · ข้อมูลจาก GET /v1/petty-cash?fund= (กองที่เลือก · ว่าง = กองตั้งต้น)
 import { api } from '../../lib/api';
 import { currentPeriod, Shell } from '../../lib/shell';
 import { findDoc } from '../_shared/data';
@@ -7,10 +7,11 @@ import { PettyCashScreen, type PettyItem, type PettySummary } from './_screen';
 
 interface WhtType { key: string; rate: string; label: string }
 
-export default async function PettyCashPage() {
+export default async function PettyCashPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
   const { year } = await currentPeriod();
   const [sum, accounts, contacts, types] = await Promise.all([
-    api<PettySummary>('/v1/petty-cash'), api<Account[]>(`/v1/accounts?year=${year}&period=13`), api<Contact[]>('/v1/contacts'), api<Record<string, WhtType>>('/v1/wht-types'),
+    api<PettySummary>(`/v1/petty-cash${sp.fund ? `?fund=${encodeURIComponent(sp.fund)}` : ''}`), api<Account[]>(`/v1/accounts?year=${year}&period=13`), api<Contact[]>('/v1/contacts'), api<Record<string, WhtType>>('/v1/wht-types'),
   ]);
   // ผู้รับเงินของรายการที่หัก ณ ที่จ่าย: บุคคลธรรมดา / นิติบุคคล ตามเลขผู้เสียภาษี (ขึ้นต้น 0 = นิติบุคคล · เหมือน pndOf ของ @innovera/tax-th)
   const items: PettyItem[] = await Promise.all(sum.items.map(async (i) => {

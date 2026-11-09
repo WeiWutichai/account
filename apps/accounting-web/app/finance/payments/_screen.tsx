@@ -4,9 +4,9 @@
 // TODO(Wei) ScreenPayment.dc.html: แบบร่างมีแต่สถานะ "จ่ายแล้ว" — สถานะรอบจ่ายใหม่ (ปุ่ม "ส่งอนุมัติ") · รออนุมัติ (ป้าย "รออนุมัติ" + ปุ่ม "อนุมัติ" ในสายอนุมัติ)
 //   และช่องข้อมูลเช็ค (ชื่อช่องยืมจาก ScreenCheque.dc.html) ไม่มีในไฟล์
 // TODO(Wei) ScreenPayment.dc.html: "+ จ่ายรายการเดียว" — ตีความเป็นโหมดเลือกบิลได้ใบเดียว → POST /v1/payments (รองรับเช็ค) · รอบจ่าย → POST /v1/payment-runs
-// บัญชีรับโอนของผู้ขาย = contact.bank_account · ไม่มี → "ยังไม่มีบัญชีธนาคาร" ตามแบบร่าง (ยังไม่บังคับห้ามเลือก)
+// บัญชีรับโอน = contact.bank_account (ทะเบียนผู้ติดต่อ) · ไม่มี → "ยังไม่มีบัญชีธนาคาร" ตามข้อความแบบร่าง (ยังไม่บังคับห้ามเลือก — ไฟล์โอนชุดจะไม่สร้างถ้ามีผู้ขายไม่มีบัญชี)
 // TODO(Wei) ScreenPayment.dc.html: แบบร่างแสดง "[ธนาคาร] xxx-x-x1234-x" แต่ fixtures contacts.bank มีแค่เลขที่บัญชี (ไม่มีชื่อธนาคาร) → แสดงตามที่บันทึกในทะเบียน
-// TODO(backend): วิธีจ่าย PromptPay ยังไม่มีใน API (method: transfer | bulk_transfer | cheque | cash) → ส่งเป็น transfer
+// สายอนุมัติ: วงเงินขั้น 2 จาก GET /v1/approval-settings (ค่าตั้งบริษัท) · เกินวงเงิน = ผู้จัดการอนุมัติ (ขั้น 2) แล้วกรรมการอนุมัติ (ขั้น 3) คนละคน — ปุ่ม "อนุมัติ" เดียวกัน API ตัดสินขั้นเอง
 import { Button, ButtonLink, buttonStyle, css, href, money, parseThaiDate, S, Tag, thaiDate, thaiMonth, TopBar } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
@@ -16,22 +16,24 @@ import { docVoidHref } from '../_shared/types';
 export interface BillRow {
   id: string; docNo: string; contactId: string; contact: string; due: string;
   outstanding: string; wht: string; pct: string | null; paid: string; pendingAuditor: boolean; whtError: string | null;
-  tms: boolean; cnr: string | null; exempt: boolean; desc: string | null; bankAccount: string | null;
-  paidOn: string | null; pvId: string | null;
+  tms: boolean; cnr: string | null; exempt: boolean; desc: string | null;
+  paidOn: string | null; pvId: string | null; bank: string | null;
 }
 export interface Cert { id: string; certNo: string; pnd: string; pendingAuditor: boolean; paymentId: string }
-export interface PvInfo { id: string; docNo: string | null; status: string; contact: string; paid: string }
+/** level = approval_level (0 ยังไม่อนุมัติ · 2 ผู้จัดการอนุมัติแล้ว · 3 กรรมการอนุมัติแล้ว) */
+export interface PvInfo { id: string; docNo: string | null; status: string; contact: string; paid: string; level: number }
 export interface PaymentView {
   id: string; docNo: string | null; status: string; date: string; payFrom: string; method: string; batchRef: string | null;
   pvs: PvInfo[]; certs: Cert[]; balance: { before: string; after: string } | null;
-  submittedAt: string | null; approvedAt: string | null; voidReason: string | null;
+  submittedAt: string | null; l2At: string | null; approvedAt: string | null; voidReason: string | null;
 }
-interface Props { mode: 'new' | 'view'; today: string; rows: BillRow[]; view?: PaymentView; accountNames: Record<string, string> }
+interface Props { mode: 'new' | 'view'; today: string; rows: BillRow[]; view?: PaymentView; accountNames: Record<string, string>; l2Limit: string }
 
 // ตัวเลือกตามแบบร่าง (ตัวอักษรตามไฟล์)
 const PAY_FROM: [string, string][] = [['1100100', '1100100 ออมทรัพย์ [ธนาคาร A]'], ['1100200', '1100200 กระแสรายวัน [ธนาคาร B]']];
-const METHOD: [string, string][] = [['bulk_transfer', 'โอนเป็นชุด (ไฟล์ธนาคาร)'], ['cheque', 'เช็ค — พิมพ์จากระบบ'], ['transfer', 'PromptPay']];
-const L2_LIMIT = 100_000_000n; // 1,000,000.00 (สตางค์) — ตามป้ายในแบบร่าง "(≤ 1,000,000)" · ตรงกับ PAY_APPROVAL.l2Limit ของ API
+const METHOD: [string, string][] = [['bulk_transfer', 'โอนเป็นชุด (ไฟล์ธนาคาร)'], ['cheque', 'เช็ค — พิมพ์จากระบบ'], ['promptpay', 'PromptPay']];
+/** วงเงินในป้ายสายอนุมัติ: '1000000.00' → '1,000,000' (ตามรูปแบบในแบบร่าง) */
+const limitText = (v: string) => money(v).replace(/\.00$/u, '');
 
 const LABEL = 'flex: 1 1 220px; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252';
 const INPUT = 'height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px';
@@ -68,7 +70,7 @@ function noRange(nos: string[], sep: string): string {
 }
 const bankLabel = (name: string | undefined) => (name ?? '').replace(/^เงินฝากธนาคาร\s*(ออมทรัพย์|กระแสรายวัน|ประจำ)?\s*/u, '').replace(/[[\]]/gu, '');
 
-export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) {
+export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }: Props) {
   const router = useRouter();
   const ro = mode === 'view';
   const [date, setDate] = useState(thaiDate(view?.date ?? today));
@@ -145,9 +147,12 @@ export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) 
     setMsg(null);
     setBusy(true);
     const done: string[] = [];
-    for (const p of view.pvs.filter((x) => x.status === 'pending_approval')) {
+    // ขั้นที่ยังค้าง: ใบที่ยังไม่ผ่านขั้น 2 ก่อน · ผ่านขั้น 2 ครบแล้ว = ขั้น 3 (กรรมการ)
+    const waiting = view.pvs.filter((x) => x.status === 'pending_approval');
+    const step2 = waiting.filter((x) => x.level < 2);
+    for (const p of step2.length ? step2 : waiting) {
       const res = await fetch(`/api/proxy/payments/${p.id}/approve`, { method: 'POST' });
-      const out = (await res.json()) as { docNo?: string; error?: string | string[] };
+      const out = (await res.json()) as { docNo?: string | null; error?: string | string[] };
       if (!res.ok) {
         setBusy(false);
         setMsg({ kind: 'err', text: `${done.length ? `อนุมัติแล้ว ${done.join(', ')} · ` : ''}${Array.isArray(out.error) ? out.error.join(' · ') : (out.error ?? 'อนุมัติไม่สำเร็จ')}` });
@@ -169,13 +174,17 @@ export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) 
   const pvNos = live.map((p) => p.docNo).filter((x): x is string => Boolean(x));
   const certs = (view?.certs ?? []).slice().sort((a, b) => a.certNo.localeCompare(b.certNo));
   const pnds = [...new Set(certs.map((c) => c.pnd))].sort();
-  const needDirector = (ro ? live.reduce((s, p) => s + cents(p.paid), 0n) : paidTotal) > L2_LIMIT;
+  const needDirector = (ro ? live.reduce((s, p) => s + cents(p.paid), 0n) : paidTotal) > cents(l2Limit);
+  const waiting = live.filter((p) => p.status === 'pending_approval');
+  const l2Done = ro && live.length > 0 && live.every((p) => p.status === 'posted' || p.level >= 2);
   const runLabel = iso ? dayMonth(iso) : '';
   const isRun = !ro || Boolean(view?.batchRef);
   const title = isRun ? `รอบจ่ายชำระ ${iso ? longDate(iso) : ''}` : `จ่ายชำระ ${view?.docNo ?? ''}`;
   const crumb = `การเงิน / จ่ายชำระ / ${isRun ? `รอบจ่าย ${runLabel}` : (view?.docNo ?? '')}`;
   const nextMonth = iso ? thaiMonth((isoParts(iso).m % 12) + 1) : '';
   const bank = bankLabel(accountNames[payFrom]);
+  // ชื่อธนาคารในข้อความไฟล์โอนชุดตามแบบร่าง "[ธนาคาร A]" (ส่วนในวงเล็บของชื่อบัญชี)
+  const bankTag = /\[[^\]]+\]/u.exec(accountNames[payFrom] ?? '')?.[0] ?? bank;
 
   return (
     <>
@@ -236,7 +245,7 @@ export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) 
                       {r.cnr && <> <span style={css('color: #525252')}>{`หลัง ${r.cnr}`}</span></>}
                       {r.exempt && <>{r.desc ? ` ${r.desc}` : ''} <span style={css('color: #525252')}>ยกเว้น VAT</span></>}</td>
                     <td style={css(late ? 'padding: 0 12px; color: #a2191f' : TD)}>{thaiDate(r.due)}{r.paidOn && late ? ` · จ่ายแล้ว ${ddmm(r.paidOn)}` : ''}</td>
-                    <td style={css(firstOfVendor.has(r.id) && !r.bankAccount ? 'padding: 0 12px; color: #a2191f' : firstOfVendor.has(r.id) ? TD : 'padding: 0 12px; color: #525252')}>{firstOfVendor.has(r.id) ? r.bankAccount ?? 'ยังไม่มีบัญชีธนาคาร' : 'รวมโอนครั้งเดียว'}</td>
+                    <td style={css(!firstOfVendor.has(r.id) ? 'padding: 0 12px; color: #525252' : r.bank ? TD : 'padding: 0 12px; color: #a2191f')}>{!firstOfVendor.has(r.id) ? 'รวมโอนครั้งเดียว' : (r.bank ?? 'ยังไม่มีบัญชีธนาคาร')}</td>
                     <td style={css(NUM)}>{money(r.outstanding)}</td>
                     <td style={css(`${NUM}; white-space: nowrap`)}>{r.whtError ? <span style={css('color: #a2191f')}>{r.whtError}</span> : <>{money(r.wht)}{r.pct && cents(r.wht) > 0n && <> <span style={css('color: #525252')}>{r.pct}</span></>}{r.pendingAuditor && <> <span style={css('color: #684e00')}>รอยืนยัน</span></>}</>}</td>
                     <td style={css(NUM)}>{money(r.paid)}</td>
@@ -257,19 +266,24 @@ export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) 
               {/* TODO(M6): แบบร่างต่อท้าย "· จับคู่ statement 28/11 แล้ว" — แสดงเมื่อมีกระทบยอดธนาคารของรอบจ่ายจริง */}
               <span>{`· สร้าง ${noRange(pvNos, '…')} แยกตามผู้ขาย (1 ใบ = 1 รายการโอน)`}</span>
               {certs.length > 0 && <span>· ออก 50 ทวิ {certs.length} ฉบับ (<span>{certs.map((c, i) => <span key={c.id}>{i ? ', ' : ''}<a href={`/print/wht50/${c.id}`} style={css('text-decoration: none')}>{c.certNo}</a>{c.pendingAuditor && <span style={css('color: #684e00')}> รอยืนยัน</span>}</span>)}</span>) {`เข้า ${pnds.map((p) => `ภ.ง.ด.${p}`).join(' / ')} เดือน ${isoParts(view!.date).m}`}</span>}
-              {/* TODO(backend): "สร้างไฟล์โอนชุดสำหรับ [ธนาคาร A] (รูปแบบ Bulk Payment) ให้ดาวน์โหลดไปอัปโหลด" — ยังไม่มีตัวสร้างไฟล์โอนชุดใน API */}
+              {/* TODO(Wei): รูปแบบไฟล์ Bulk Payment ของธนาคารยังไม่ได้รับ spec — API สร้าง CSV กลาง (GET /v1/payment-runs/:batchRef/bulk-file) */}
+              {view!.batchRef && <span>· <a href={`/api/proxy/payment-runs/${encodeURIComponent(view!.batchRef)}/bulk-file`} download style={css('text-decoration: none')}>{`สร้างไฟล์โอนชุดสำหรับ ${bankTag} (รูปแบบ Bulk Payment) ให้ดาวน์โหลดไปอัปโหลด`}</a></span>}
               {/* TODO(M7): "แจ้ง TMS ว่าบิลของผู้รับเหมาขนส่งถูกจ่ายแล้ว (payment.paid)" — แสดงเมื่อมี webhook จริง */}
             </section>
           )}
           <section style={css(BOX)}><strong>สายอนุมัติ</strong>
             {/* TODO(backend): ชื่อผู้จัดทำ/ผู้อนุมัติ — events.actor เป็น user id · accounting-api ยังไม่มีชื่อผู้ใช้ (Innovera ID) */}
             <div style={css(ROW)}><span>1. บัญชี จัดทำ</span>{ro && view!.submittedAt ? <span style={css('color: #0e6027')}>{`เสร็จ · ${ddmm(new Date(new Date(view!.submittedAt).getTime() + 7 * 3_600_000).toISOString().slice(0, 10))}`}</span> : <span style={css('color: #525252')}>—</span>}</div>
-            <div style={css(ROW)}><span>2. ผู้จัดการบัญชี อนุมัติ (≤ 1,000,000)</span>
-              {allPosted && view!.approvedAt ? <span style={css('color: #0e6027')}>{`อนุมัติ · ${stamp(view!.approvedAt)}`}</span>
-                : pending ? <Button kind="primary" size={32} disabled={busy} onClick={() => void approve()}>อนุมัติ</Button>
+            <div style={css(ROW)}><span>{`2. ผู้จัดการบัญชี อนุมัติ (≤ ${limitText(l2Limit)})`}</span>
+              {needDirector && l2Done && view!.l2At ? <span style={css('color: #0e6027')}>{`อนุมัติ · ${stamp(view!.l2At)}`}</span>
+                : allPosted && view!.approvedAt ? <span style={css('color: #0e6027')}>{`อนุมัติ · ${stamp(view!.approvedAt)}`}</span>
+                : pending && !l2Done ? <Button kind="primary" size={32} disabled={busy} onClick={() => void approve()}>อนุมัติ</Button>
                 : <span style={css('color: #525252')}>—</span>}</div>
-            {/* TODO(backend) ScreenPayment.dc.html: ระดับ 3 กรรมการ (เกิน 1,000,000) — API ใช้วงเงินผู้อนุมัติแทนขั้นแยก (approval_level = 1 เสมอ · needsDirector เป็นแค่ธง) */}
-            <div style={css(`${ROW}; color: #525252`)}><span>3. กรรมการ (เกิน 1,000,000)</span><span>{needDirector ? 'ต้องอนุมัติ' : 'ไม่ต้อง'}</span></div>
+            <div style={css(needDirector ? ROW : `${ROW}; color: #525252`)}><span>{`3. กรรมการ (เกิน ${limitText(l2Limit)})`}</span>
+              {!needDirector ? <span>ไม่ต้อง</span>
+                : allPosted && view!.approvedAt ? <span style={css('color: #0e6027')}>{`อนุมัติ · ${stamp(view!.approvedAt)}`}</span>
+                : pending && l2Done && waiting.length > 0 ? <Button kind="primary" size={32} disabled={busy} onClick={() => void approve()}>อนุมัติ</Button>
+                : <span style={css('color: #525252')}>ต้องอนุมัติ</span>}</div>
           </section>
         </div>
         {voided && view!.voidReason && <div role="status" style={css('padding: 12px 16px; border: 1px solid #e0e0e0; border-left: 3px solid #da1e28; font-size: 14px')}>{`ยกเลิกแล้ว · ${view!.voidReason}`}</div>}

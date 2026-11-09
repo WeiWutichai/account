@@ -1,10 +1,10 @@
 'use client';
 // F6 กระทบยอดธนาคาร — design/project/ScreenBankRecon.dc.html
-// ยอดทุกตัวมาจาก GET /v1/bank/:account/reconciliation · จับคู่เอง/พักไว้ = PUT /v1/bank/lines/:id · นำเข้า = POST /v1/bank/:account/statement (จับคู่อัตโนมัติต่อทันที)
+// ยอดทุกตัวมาจาก GET /v1/bank/:account/reconciliation (รวมข้อเสนอการจับคู่ 1 ต่อ 1 / 1 ต่อหลายตามรอบจ่าย) · จับคู่เอง/พักไว้ = PUT /v1/bank/lines/:id (journalIds)
+// นำเข้า CSV/OFX = POST /v1/bank/:account/statement (ตรวจรูปแบบจากเนื้อไฟล์ · จับคู่อัตโนมัติต่อทันที) · ปิดกระทบยอดเดือน = POST /v1/bank/:account/close
 // TODO(Wei) ScreenBankRecon.dc.html: "พักไว้" ในแบบร่างระบุ "พักไว้ก่อน: 2190100 เงินรับรอตรวจสอบ" แต่ backend ตอนนี้ = ทำเครื่องหมาย "ไม่สนใจ" (ignored) ไม่ได้ลงบัญชีพัก 2190100 — ต้องยืนยันว่าจะให้ลงบัญชีพักจริงหรือไม่
-// TODO(backend) ScreenBankRecon.dc.html: จับคู่ 1 ต่อหลาย (PV2611-0031 + 0032 + 0033) — PUT bank/lines/:id รับได้ journal เดียว · ยังไม่แสดงข้อเสนอแบบหลายรายการ
 // TODO(Wei) ScreenBankRecon.dc.html: กฎ "ดอกเบี้ยรับ (หัก ณ ที่จ่าย 15% แล้ว)" ต้องคำนวณยอดก่อนหักภาษีจากยอดสุทธิ — เป็นเรื่องภาษี ยังไม่ทำ (แสดงเป็นรายการที่ไม่มีเอกสาร)
-// TODO(backend) ScreenBankRecon.dc.html: "ปิดกระทบยอดเดือนนี้" (ล็อกรายการธนาคารของเดือน) และ "พิมพ์งบกระทบยอด" ยังไม่มี API — ปุ่มคงตามแบบร่างแต่ยังไม่ทำงาน · OFX ยังไม่รองรับ (CSV เท่านั้น)
+// TODO(Wei) ScreenBankRecon.dc.html: "พิมพ์งบกระทบยอด" ยังไม่มีแบบพิมพ์ในแบบร่าง — ปุ่มคงไว้ในสถานะใช้ไม่ได้
 import { Button, buttonStyle, css, href, money, shortDate, thaiMonth } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
@@ -14,13 +14,16 @@ import { Msg } from '../../sales/_lib/ui';
 
 interface StLine { id: string; line_date: string; description: string; amount: string; ref: string | null }
 interface GlLine { id: string; journal_no: string; journal_date: string; description: string | null; debit: string; credit: string }
+/** journal ที่จับคู่/เสนอ · amount = ยอดสุทธิในบัญชีธนาคาร (+ เข้า / − ออก) */
+interface MJournal { id: string; journal_no: string; journal_date: string; description: string | null; doc_no: string | null; amount: string }
+interface Proposal { lineId: string; journals: MJournal[]; kind: 'single' | 'batch'; batchRef: string | null; days: number }
 /** จำนวนรายการ (ไม่ใช่ยอดเงิน) */
 type Count = number;
-export interface Recon { statementBalance: string; glBalance: string; diff: string; unmatchedStatement: StLine[]; unmatchedGl: GlLine[]; matched: Count; total: Count }
-interface Props {
-  banks: { code: string; label: string }[]; account: string; year: number; period: number; from: string; asOf: string; rec: Recon;
-  matchedGl: { date: string; journal_no: string; description: string | null; debit: string; credit: string }[];
+export interface Recon {
+  statementBalance: string; glBalance: string; diff: string; unmatchedStatement: StLine[]; unmatchedGl: GlLine[]; matched: Count; total: Count;
+  matchedLines: (StLine & { match_status: string; journals: MJournal[] })[]; proposals: Proposal[]; closed: { month: string; closedAt: string } | null;
 }
+interface Props { banks: { code: string; label: string }[]; account: string; year: number; period: number; from: string; asOf: string; rec: Recon }
 
 const CELL = 'border: 1px solid #e0e0e0; padding: 8px 12px; display: flex; justify-content: space-between; gap: 12px';
 const CELL_ON = 'border: 1px solid #0f62fe; background: #edf5ff; padding: 8px 12px; display: flex; justify-content: space-between; gap: 12px';
@@ -32,9 +35,18 @@ const NUM = 'font-variant-numeric: tabular-nums';
 const FEE = /FEE|ค่าธรรมเนียม/iu;
 const amt = (v: string) => money(v, { paren: true });
 const glAmount = (g: { debit: string; credit: string }) => fromCents(toCents(g.debit) - toCents(g.credit));
-const days = (a: string, b: string) => Math.round(Math.abs(Date.parse(a) - Date.parse(b)) / 86_400_000);
+/** เลขเอกสารของ journal (ไม่มีเอกสาร = เลข journal) */
+const noOf = (j: MJournal) => j.doc_no ?? j.journal_no;
+/** 'PV2611-0031', 'PV2611-0032' … → 'PV2611-0031 + 0032 + 0033 (3 ใบ)' ตามแบบร่าง */
+function multiLabel(js: MJournal[]): string {
+  const nos = js.map(noOf).sort();
+  const head = nos[0]!;
+  const pre = head.slice(0, head.lastIndexOf('-') + 1);
+  return `${[head, ...nos.slice(1).map((n) => (pre && n.startsWith(pre) ? n.slice(pre.length) : n))].join(' + ')} (${nos.length} ใบ)`;
+}
+const sumOf = (js: MJournal[]) => fromCents(js.reduce((t, j) => t + toCents(j.amount), 0n));
 
-export function BankReconScreen({ banks, account, year, period, from, asOf, rec, matchedGl }: Props) {
+export function BankReconScreen({ banks, account, year, period, from, asOf, rec }: Props) {
   const router = useRouter();
   const file = useRef<HTMLInputElement>(null);
   const [tab, setTab] = useState<'open' | 'matched' | 'carried'>('open');
@@ -47,12 +59,9 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
   const carried = rec.unmatchedStatement.filter((s) => s.line_date < from);
   const glInMonth = rec.unmatchedGl.filter((g) => g.journal_date >= from);
   const diffZero = toCents(rec.diff) === 0n;
-
-  /** ข้อเสนอจับคู่: รายการในสมุดที่ยังไม่จับคู่ ยอดเท่ากัน (ทิศเดียวกัน) วันที่ใกล้สุด */
-  function proposal(s: StLine): GlLine | null {
-    const c = rec.unmatchedGl.filter((g) => toCents(glAmount(g)) === toCents(s.amount));
-    return c.sort((a, b) => days(a.journal_date, s.line_date) - days(b.journal_date, s.line_date))[0] ?? null;
-  }
+  const closed = rec.closed !== null;
+  /** ข้อเสนอจับคู่จาก API: 1 ต่อ 1 (ยอดตรง ±3 วัน) หรือ 1 ต่อหลาย (journal ของรอบจ่ายเดียวกัน ผลรวมตรง) */
+  const proposal = (s: StLine): Proposal | null => rec.proposals.find((p) => p.lineId === s.id) ?? null;
 
   async function run(fn: () => Promise<string | null>) {
     setBusy(true); setMsg(null);
@@ -62,8 +71,12 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
     setSearch(null);
     router.refresh();
   }
-  const match = (lineId: string, journalId: string | null) => run(async () => {
-    const r = await call<{ ok: boolean }>(`bank/lines/${lineId}`, 'PUT', { journalId });
+  const match = (lineId: string, journalIds: string[] | null) => run(async () => {
+    const r = await call<{ ok: boolean }>(`bank/lines/${lineId}`, 'PUT', journalIds ? { journalIds } : { journalId: null });
+    return r.ok ? null : r.error;
+  });
+  const closeMonth = () => run(async () => {
+    const r = await call<{ month: string }>(`bank/${account}/close`, 'POST', { month: asOf.slice(0, 7) });
     return r.ok ? null : r.error;
   });
   /** ค่าธรรมเนียมธนาคาร: สร้าง JV Dr 5401100 / Cr บัญชีธนาคาร ลงบัญชี แล้วจับคู่ (ScreenBankRecon.dc.html) */
@@ -74,12 +87,11 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
     if (!d.ok) return d.error;
     const p = await call<unknown>(`journals/${d.data.id}/post`, 'POST', {});
     if (!p.ok) return p.error;
-    const m = await call<{ ok: boolean }>(`bank/lines/${s.id}`, 'PUT', { journalId: d.data.id });
+    const m = await call<{ ok: boolean }>(`bank/lines/${s.id}`, 'PUT', { journalIds: [d.data.id] });
     return m.ok ? null : m.error;
   });
   async function importFile(f: File) {
-    if (!/\.csv$/iu.test(f.name)) { setMsg({ kind: 'err', text: 'ตอนนี้รองรับเฉพาะไฟล์ CSV (วันที่, รายการ, จำนวนเงิน, ยอดคงเหลือ)' }); return; }
-    const csv = await f.text();
+    const csv = await f.text(); // CSV หรือ OFX — API ตรวจรูปแบบจากเนื้อไฟล์
     await run(async () => {
       const r = await call<{ added: number; skipped: number; matched: number; remaining: number }>(`bank/${account}/statement`, 'POST', { csv, batch: f.name });
       if (!r.ok) return r.error;
@@ -118,8 +130,8 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
         </div>
         <div style={css('display: grid; grid-template-columns: minmax(0, 1fr) 48px minmax(0, 1fr); gap: 0 8px; align-items: start; font-size: 14px')}>
           <div style={css('font-size: 13px; color: #525252; padding: 0 12px 4px')}>รายการใน statement ธนาคาร</div><div></div><div style={css('font-size: 13px; color: #525252; padding: 0 12px 4px')}>รายการในสมุดบัญชี / ข้อเสนอการจับคู่</div>
-          {tab === 'matched' ? matchedGl.map((g, i) => (
-            <MatchedRow key={`${g.journal_no}-${i}`} first={i === 0} g={g} />
+          {tab === 'matched' ? rec.matchedLines.filter((l) => l.line_date >= from).map((l, i) => (
+            <MatchedRow key={l.id} first={i === 0} line={l} />
           )) : rows.map((s, i) => {
             const on = i === 0; // แบบร่าง: รายการแรกเป็นข้อเสนอที่เลือกอยู่ (กรอบน้ำเงิน)
             const p = proposal(s);
@@ -135,8 +147,10 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
                 <div style={css(`height: 100%; display: flex; align-items: center; justify-content: center; color: ${on ? '#0f62fe' : '#8d8d8d'}`)}>{p ? '⇄' : fee ? '→' : '?'}</div>
                 {p ? (
                   <div style={css(on ? RIGHT_ON : `${RIGHT}${lead}`)}>
-                    <div><div>{p.journal_no} {p.description ?? ''}</div><div style={css('font-size: 13px; color: #0e6027')}>{days(p.journal_date, s.line_date) === 0 ? 'ยอดตรง · วันที่ตรง · ความเชื่อมั่นสูง' : `ยอดตรง · วันที่ห่าง ${days(p.journal_date, s.line_date)} วัน`}</div></div>
-                    <div style={css('display: flex; align-items: center; gap: 12px')}><strong style={css(NUM)}>{amt(glAmount(p))}</strong><Button kind="primary" size={32} disabled={busy} onClick={() => void match(s.id, p.id)}>ยืนยัน</Button></div>
+                    {p.kind === 'batch'
+                      ? <div><div>{multiLabel(p.journals)}</div><div style={css('font-size: 13px; color: #0e6027')}>{`รวม ${p.journals.length} รายการ = ยอดตรง (1 ต่อหลาย)`}</div></div>
+                      : <div><div>{noOf(p.journals[0]!)} {p.journals[0]!.description ?? ''}</div><div style={css('font-size: 13px; color: #0e6027')}>{p.days === 0 ? 'ยอดตรง · วันที่ตรง · ความเชื่อมั่นสูง' : `ยอดตรง · วันที่ห่าง ${p.days} วัน`}</div></div>}
+                    <div style={css('display: flex; align-items: center; gap: 12px')}><strong style={css(NUM)}>{amt(sumOf(p.journals))}</strong><Button kind="primary" size={32} disabled={busy || closed} onClick={() => void match(s.id, p.journals.map((j) => j.id))}>ยืนยัน</Button></div>
                   </div>
                 ) : fee ? (
                   <div style={css(on ? RIGHT_ON : `${RIGHT}${lead}`)}>
@@ -148,7 +162,7 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
                     <div>
                       <div>พักไว้ก่อน: 2190100 เงินรับรอตรวจสอบ</div>
                       {search === s.id ? (
-                        <select aria-label="เลือกรายการในสมุดบัญชี" defaultValue="" disabled={busy} onChange={(e) => e.target.value && void match(s.id, e.target.value)} style={css('height: 32px; margin-top: 4px; max-width: 100%; padding: 0 8px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 13px')}>
+                        <select aria-label="เลือกรายการในสมุดบัญชี" defaultValue="" disabled={busy} onChange={(e) => e.target.value && void match(s.id, [e.target.value])} style={css('height: 32px; margin-top: 4px; max-width: 100%; padding: 0 8px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 13px')}>
                           <option value="">เลือกรายการในสมุดที่ยังไม่จับคู่</option>
                           {rec.unmatchedGl.map((g) => <option key={g.id} value={g.id}>{shortDate(g.journal_date)} · {g.journal_no} {g.description ?? ''} · {amt(glAmount(g))}</option>)}
                         </select>
@@ -156,7 +170,7 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
                     </div>
                     <div style={css('display: flex; gap: 8px')}>
                       <Button size={32} disabled={busy} onClick={() => setSearch(search === s.id ? null : s.id)}>ค้นหา</Button>
-                      <Button size={32} disabled={busy} onClick={() => void match(s.id, null)}>พักไว้</Button>
+                      <Button size={32} disabled={busy || closed} onClick={() => void match(s.id, null)}>พักไว้</Button>
                     </div>
                   </div>
                 )}
@@ -174,21 +188,23 @@ export function BankReconScreen({ banks, account, year, period, from, asOf, rec,
       <div style={css('position: sticky; bottom: 0; margin-top: auto; display: flex; justify-content: space-between; align-items: center; padding: 0 32px; height: 64px; background: #ffffff; border-top: 1px solid #e0e0e0; font-size: 14px')}>
         <span style={css('color: #525252')}>ปิดกระทบยอดได้เมื่อผลต่างเป็น 0.00 · จะล็อกรายการธนาคารของเดือนนี้</span>
         <div style={css('display: flex; gap: 8px; flex-wrap: wrap')}>
-          <button type="button" style={buttonStyle('secondary')}>พิมพ์งบกระทบยอด</button>
-          <button type="button" disabled style={buttonStyle('primary', 40, true)}>ปิดกระทบยอดเดือนนี้</button>
+          {/* TODO(Wei) ScreenBankRecon.dc.html: ยังไม่มีแบบพิมพ์งบกระทบยอด */}
+          <button type="button" disabled style={buttonStyle('secondary', 40, true)}>พิมพ์งบกระทบยอด</button>
+          <button type="button" disabled={busy || closed || !diffZero} onClick={() => void closeMonth()} style={buttonStyle('primary', 40, busy || closed || !diffZero)}>ปิดกระทบยอดเดือนนี้</button>
         </div>
       </div>
     </>
   );
 }
 
-function MatchedRow({ g, first }: { first: boolean; g: Props['matchedGl'][number] }) {
+function MatchedRow({ line, first }: { first: boolean; line: Recon['matchedLines'][number] }) {
   const lead = first ? '' : '; border-top: 0';
+  const one = line.journals.length === 1 ? line.journals[0]! : null;
   return (
     <>
-      <div style={css(`${CELL}${lead}`)}><div><div style={css(NUM)}>{shortDate(g.date)} · {g.description ?? ''}</div></div><strong style={css(NUM)}>{amt(glAmount(g))}</strong></div>
+      <div style={css(`${CELL}${lead}`)}><div><div style={css(NUM)}>{shortDate(line.line_date)} · {line.description}</div>{line.ref && <div style={css(SUB)}>{line.ref}</div>}</div><strong style={css(NUM)}>{amt(line.amount)}</strong></div>
       <div style={css('height: 100%; display: flex; align-items: center; justify-content: center; color: #8d8d8d')}>⇄</div>
-      <div style={css(`${RIGHT}${lead}`)}><div><div>{g.journal_no} {g.description ?? ''}</div></div><strong style={css(NUM)}>{amt(glAmount(g))}</strong></div>
+      <div style={css(`${RIGHT}${lead}`)}><div><div>{one ? `${noOf(one)} ${one.description ?? ''}` : multiLabel(line.journals)}</div></div><strong style={css(NUM)}>{amt(sumOf(line.journals))}</strong></div>
     </>
   );
 }
