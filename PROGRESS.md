@@ -2,15 +2,18 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-10 03:10** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 (เช้า)** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
 - **โหมด:** Wei สั่งทำต่อเนื่องข้ามคืน (2026-11-09) = **อนุมัติ Technical Plan ล่วงหน้า** · เรื่องที่ต้องให้ Wei/ผู้สอบบัญชีตัดสิน → TODO ใน §4 ไม่ตัดสินเอง
-- **M0 ✅ · M1 ✅ · M2 ✅** (merge เข้า main: engine + golden 1–10 + property 10k + นำเข้า Excel/ยอดยกมา + UI B1–B4/A4) · ถัดไป **M3 Innovera ID**
-- รันเว็บ: `pnpm db:seed` → `pnpm dev` (api :4000 · web :3010 · วันนี้ = 30/11/2569) · ภาพเทียบแบบร่าง `node scripts/screens.mjs`
+- **M0 ✅ · M1 ✅ · M2 ✅ · M3 ✅** (merge เข้า main) · กำลังทำ **M4 ขาย + รับเงิน** (branch `m4`) · Wei สั่ง 2026-11-10 "ทำต่อจนจบทุก milestone"
+- M3.5 (deploy VPS จริง) ต้องใช้เซิร์ฟเวอร์/secrets ของ Wei — เตรียมได้แค่ไฟล์ deploy + ทดสอบ backup/restore ในเครื่อง
+- รันเว็บ: `pnpm db:seed` → `pnpm dev` (id-api :4100 · id-web :3100 · accounting-api :4000 · accounting-web :3010 · วันนี้ = 30/11/2569)
+- ผู้ใช้ dev: wei@innovera.co.th (รหัสผ่าน/คีย์ 2FA ใน `apps/id-api/src/dev-seed.ts`) · `pnpm dev:session` → `.playwright/dev-session.json` · ภาพเทียบ `STATE=.playwright/dev-session.json node scripts/screens.mjs M? Screen=/path`
+- ⚠️ อย่าแก้ไฟล์ที่ mount เข้า docker ด้วย `sed -i` (เปลี่ยน inode → container เริ่มใหม่ไม่ได้) — ถ้าเผลอ: `docker compose -f docker/compose.yaml up -d --force-recreate pgbouncer`
 - repo = โฟลเดอร์นี้ (git local) · build โดย Claude Code · `pnpm verify` เขียว
 - รัน dev: `nvm use` (Node 26.13) → `pnpm install` → `pnpm db:up` → `pnpm db:migrate` → `pnpm verify` (test ใช้ DB `innovera_test` ผ่าน PgBouncer)
 
@@ -72,6 +75,10 @@
 - T2. ScreenFormula ใช้ 1154200 เป็นภาษีถูกหัก ณ ที่จ่าย แต่ fixtures/ScreenCOA ใช้ 1160100 → ใช้ 1160100 ตาม fixtures
 - T4. ลูกค้า A (C0012): `credit_limit_remaining` 452,920 = 500,000 − 47,080 (ยอดค้างเดิม) แต่ยอดค้างปัจจุบัน 42,800 → ควรเป็น 457,200 หรือ 446,500 (ถ้านับใบรออนุมัติ) · แสดงใน ScreenInvoice
 - T5. fixtures `gl_balances_2569_11_30` มีเฉพาะยอดแถวตัวอย่าง ไม่มีงบทดลอง 30/11 ครบชุดที่ดุล → บริษัท dev แสดงยอดจากรายการตัวอย่างที่ลงจริง ไม่ตรงเลขในแบบร่าง ScreenCOA (ห้ามสร้างยอดเอง) · ต้องการงบทดลองครบชุดใน fixtures
+- T6. ชุดบทบาทบริษัท: Spec v2 §3.1 (admin/staff) ≠ แบบร่าง ScreenUsers (Acct. Manager/AR Clerk/Petty Cash…) → ทำตามแบบร่าง รอยืนยัน · ScreenUserEdit ติ๊กสิทธิ์ AR Clerk ขัดกับเมทริกซ์ใน ScreenUsers (ใช้เมทริกซ์)
+- T7. ไม่มีแบบร่างหน้า "ยืนยันอีเมล" (Signup ขั้น 2) และหน้ากรอกชื่อองค์กร (ขั้น 3) → ใช้การ์ดของ ScreenTwoFactor · องค์กรแรกใช้ชื่อบริษัทแรก
+- T8. ScreenCompanyCreate ไม่มีแบบร่างขั้น 1 ข้อมูลบริษัท (ใช้ป้ายจาก ScreenSettings) · ข้อความ "ฐานข้อมูลแยก schema ต่อบริษัท" ขัดกับ ADR-001 (ตารางรวม + RLS) — ควรแก้ข้อความในแบบร่าง
+- T9. ScreenUsers ไม่มีแบบฟอร์มเชิญ · แท็บหลายแท็บใน ScreenUsers/ScreenOrgMembers ไม่มีเนื้อหา · ScreenProfile มีช่องชื่อ-นามสกุลแยก แต่ระบบมี display_name ช่องเดียว — รายการเต็มใน `docs/technical-plan-M3.md` + TODO(Wei) ในโค้ด
 - T3. golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัด IV2611-0052 ในแบบร่าง/fixtures ระบุ 4100100 → สูตร Service[IV] ใช้บัญชีรายได้ของสูตรไปก่อน
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
@@ -94,6 +101,8 @@
 - แก้แบบร่าง → เผยแพร่เวอร์ชันใหม่ → ดาวน์โหลดกลับมาเทียบ → ส่งออกทับ `design/` + อัปเดต `MANIFEST.json` + เลขเวอร์ชันใน `CLAUDE.md`, `design/README.md`, `docs/page-map.md`, ไฟล์นี้
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
+
+- **2026-11-10 เช้า** · Claude Code · **M3 เสร็จ (merge เข้า main)**: `packages/auth` (Argon2id, TOTP RFC 6238, backup codes, AES-GCM, EdDSA JWT, เมทริกซ์สิทธิ์ · coverage 100% lines) · migration 0006 · id-api (signup/verify/login/2FA/lockout/refresh rotation+reuse detection/reset/companies/invites/org/profile · 25 test บน DB+Redis จริง) · accounting-api AuthGuard (JWT + membership + สิทธิ์ต่อ route + บังคับ 2FA) · id-web 9 หน้า + accounting-web 4 หน้า (ทำโดย subagent 2 ตัว ตรวจซ้ำแล้ว) · e2e Playwright signup→2FA→invite→accept ผ่าน · ASVS L2 `docs/asvs-l2-M3.md` · `pnpm verify` เขียว (id-api 25 · db 46 · auth 18 · golden 30 · ledger 23) · DB test ของ id-api แยกเป็น `innovera_test_id`
 
 - **2026-11-10 03:10** · Claude Code · **M2 เสร็จ (merge เข้า main)**: `packages/ui` + accounting-api GL endpoints + หน้า ScreenCOA/ScreenJournal/ScreenFormula/ScreenLedger/ScreenOpeningBalance · ยอดยกมา JV0000-0001 งวด 0 ปิดแข็ง · migrations 0003–0005 · Playwright 1.65.0 + ภาพเทียบ 1440px `docs/screens/M2/` · `pnpm verify` เขียว (db 46 · ledger 23 · golden 17 · contracts 11 · tax-th 9 · ui 7) · เพิ่ม T5
 

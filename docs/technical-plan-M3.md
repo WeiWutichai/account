@@ -1,6 +1,6 @@
 # Technical Plan — M3 Innovera ID (ขั้นต่ำ)
 
-> สถานะ: **อนุมัติล่วงหน้า** (Wei สั่งทำต่อเนื่องข้ามคืน 2026-11-09) · อ้างอิง `PLAN.md` §2 (Innovera ID), §6 (M3) · Spec v2 §3, §5.1 · แบบร่าง 12 ไฟล์ใน `docs/page-map.md` (A1–A7, G2)
+> สถานะ: **เสร็จ 2026-11-10** · อนุมัติล่วงหน้า (Wei สั่งทำต่อเนื่องข้ามคืน 2026-11-09) · อ้างอิง `PLAN.md` §2 (Innovera ID), §6 (M3) · Spec v2 §3, §5.1 · แบบร่าง 12 ไฟล์ใน `docs/page-map.md` (A1–A7, G2)
 
 ## 1. ส่งมอบ / Gate (PLAN §6)
 ส่งมอบ: signup / ยืนยันอีเมล / login / 2FA (TOTP + backup codes) / lockout / ลืมรหัสผ่าน / เชิญ + รับคำเชิญ / บทบาทองค์กร · UI A1–A7 + G2 · OAuth 2.1 server **เลื่อนไป M7**
