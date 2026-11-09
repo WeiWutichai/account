@@ -33,7 +33,7 @@ export default async function PeriodClosePage() {
     api<Period[]>(`/v1/periods?year=${year}`),
     api<{ code: string; name: string }[]>(`/v1/accounts?year=${year}&period=${current}`),
     api<{ expense: string }[]>(`/v1/assets?month=${y}-${pad(current)}`),
-    api<AuditRow[]>('/v1/audit?entity=period').catch(() => [] as AuditRow[]),
+    api<{ rows: AuditRow[] }>('/v1/audit?entity=period&limit=1000').then((r) => r.rows).catch(() => [] as AuditRow[]),
     api<Aging>(`/v1/reports/aging?asOf=${end(current)}&side=AR`),
     api<Aging>(`/v1/reports/aging?asOf=${end(current)}&side=AP`),
     ...upTo.map((n) => api<Statements>(`/v1/reports/statements?year=${year}&period=${n}`)),
