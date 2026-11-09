@@ -11,7 +11,8 @@
     "./import": "./src/import.ts",
     "./ledger": "./src/ledger-service.ts",
     "./queries": "./src/queries.ts",
-    "./sales": "./src/sales.ts"
+    "./sales": "./src/sales.ts",
+    "./transfer": "./src/company-transfer.ts"
   },
   "scripts": {
     "lint": "eslint src test",
@@ -20,7 +21,9 @@
     "migrate": "tsx src/migrate-cli.ts up",
     "migrate:down": "tsx src/migrate-cli.ts down",
     "seed:dev": "tsx src/dev-seed.ts",
-    "reset:dev": "tsx src/migrate-cli.ts reset"
+    "reset:dev": "tsx src/migrate-cli.ts reset",
+    "company:export": "tsx src/transfer-cli.ts export",
+    "company:import": "tsx src/transfer-cli.ts import"
   },
   "dependencies": {
     "@innovera/ledger": "workspace:*",
