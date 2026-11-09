@@ -87,9 +87,20 @@ export async function depreciationFor(db: Db, companyId: string, ym: string) {
   const assets = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.fixed_asset').selectAll().where('status', '=', 'active').orderBy('code').execute());
   return assets.map((a) => {
     const sch = depreciationSchedule({ cost: a.cost as MoneyString, salvage: a.salvage as MoneyString, lifeYears: Number(a.life_years), startDate: a.start_date });
+    const cutoff = a.opening_accum_date?.slice(0, 7) ?? null;
     const row = sch.find((s) => s.month === ym);
-    const skip = a.opening_accum_date && ym <= a.opening_accum_date.slice(0, 7);
-    return { code: a.code, name: a.name, expense: a.expense_account, accum: a.accum_account, amount: row && !skip ? row.amount : '0.00', accumulated: row?.accumulated ?? null, nbv: row?.nbv ?? null };
+    const skip = cutoff !== null && ym <= cutoff;
+    // ค่าเสื่อมสะสม = ยกมาจากทะเบียนเดิม (ถ้ามี) + เดือนหลังวันยกมาถึงเดือนนี้ · ไม่เกินทุน − ซาก
+    const depreciable = Money.parse(a.cost).minus(Money.parse(a.salvage));
+    let accumulated: Money;
+    if (cutoff) accumulated = Money.parse(a.opening_accum).plus(Money.sum(sch.filter((s) => s.month > cutoff && s.month <= ym).map((s) => Money.of(s.amount))));
+    else accumulated = Money.sum(sch.filter((s) => s.month <= ym).map((s) => Money.of(s.amount)));
+    if (accumulated.gt(depreciable)) accumulated = depreciable;
+    return {
+      code: a.code, name: a.name, expense: a.expense_account, accum: a.accum_account, asset: a.asset_account, startDate: a.start_date, lifeYears: a.life_years, cost: a.cost, salvage: a.salvage, status: a.status,
+      openingAccum: a.opening_accum, openingAccumDate: a.opening_accum_date,
+      amount: row && !skip ? row.amount : '0.00', accumulated: accumulated.toString(), nbv: Money.parse(a.cost).minus(accumulated).toString(),
+    };
   });
 }
 

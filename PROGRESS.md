@@ -2,14 +2,15 @@
 
 > **อ่านไฟล์นี้ก่อนเมื่อเริ่ม chat ใหม่** ถัดไปอ่าน `CLAUDE.md` (กติกา) → `PLAN.md` (แผน Phase 1)
 > อัปเดตไฟล์นี้ทุกครั้งที่จบงานชิ้นหนึ่ง: แก้ "สถานะล่าสุด" + เพิ่มบรรทัดใน "บันทึกงาน" (ใหม่อยู่บน) + อัปเดต md5
-> อัปเดตล่าสุด: **2026-11-10 (สาย)** โดย Claude Code
+> อัปเดตล่าสุด: **2026-11-10 (บ่าย)** โดย Claude Code
 
 ---
 
 ## 1. สถานะล่าสุด (สรุป 30 วินาที)
 
 - **โหมด:** Wei สั่งทำต่อเนื่องข้ามคืน (2026-11-09) = **อนุมัติ Technical Plan ล่วงหน้า** · เรื่องที่ต้องให้ Wei/ผู้สอบบัญชีตัดสิน → TODO ใน §4 ไม่ตัดสินเอง
-- **M0 ✅ · M1 ✅ · M2 ✅ · M3 ✅ · M4 ✅** (merge เข้า main) · **M3.5** เตรียมในเครื่องครบ รอ VPS/secrets ของ Wei · **M5** backend ✅ (UI ค้าง) · **M6** backend กำลังทำ · Wei สั่ง 2026-11-10 "ทำต่อจนจบทุก milestone"
+- **M0–M6 ✅ · M8 ✅** (merge เข้า main) · **M7** backend ✅ (API ภายนอก · webhooks · MCP · audit hash chain) — UI 4 หน้าค้าง · **M3.5** เตรียมในเครื่องครบ รอ VPS/secrets ของ Wei (T12) · Wei สั่ง 2026-11-10 "ทำต่อจนจบทุก milestone"
+- ผู้ใช้ dev คนที่สอง acct.mgr@innovera.co.th (ผู้จัดการบัญชี · ใช้อนุมัติใบสำคัญจ่ายตามหลักแบ่งหน้าที่) · `DEV_USER=approver pnpm dev:session` · Console (admin) http://localhost:3200
 - รีเซ็ตข้อมูล dev: `pnpm db:reset && pnpm dev:session` (เอกสารขาย/ซื้อจาก fixtures สร้างผ่าน service จริง เลขที่ตรง fixtures)
 - M3.5 (deploy VPS จริง) ต้องใช้เซิร์ฟเวอร์/secrets ของ Wei — เตรียมได้แค่ไฟล์ deploy + ทดสอบ backup/restore ในเครื่อง
 - รันเว็บ: `pnpm db:seed` → `pnpm dev` (id-api :4100 · id-web :3100 · accounting-api :4000 · accounting-web :3010 · วันนี้ = 30/11/2569)
@@ -84,6 +85,9 @@
 - T11. ไม่มี spec ไฟล์นำเข้า RD Prep (ภ.ง.ด.3/53) ในเครื่อง → ทำรูปแบบไว้ชั่วคราว (`rdPrepTxt` ใน packages/db/src/reports.ts) ต้องตรวจกับ spec + validator ก่อนยื่นจริง (Gate M6)
 - T12. M3.5 ต้องให้ Wei: VPS ในไทย · DNS · `deploy/.env` · ที่เก็บ backup นอกเครื่อง · ผู้ให้บริการอีเมล — ขั้นตอนใน `docs/technical-plan-M3.5.md`
 - T13. ข้อขัดแย้งย่อยในแบบร่าง M4 (วันในสัปดาห์ 27/11/2569 = ศุกร์ ไม่ใช่พฤหัส · ยอดตัวอย่างไม่สอดคล้องกันบางจุด · {YY} พ.ศ./ค.ศ. · ไม่มีแบบร่างรายการ RV/BN, SO, DN) — รายการเต็มเป็น TODO(Wei) ในโค้ดของแต่ละหน้า
+- T14. M7 ใช้ API key ต่อบริษัทแทน OAuth 2.1 + PKCE ที่ PLAN ระบุ — ต้องยืนยันว่าพอสำหรับนำร่อง TMS หรือต้องทำ OAuth ก่อน
+- T15. แบบร่าง Console/CompanyCreate ยังเขียนว่า "schema ต่อบริษัท" ขัดกับ ADR-001 (ตารางรวม + RLS) · ชื่อบทบาททีม Innovera ในแบบร่าง (superadmin/read-only) ≠ ระบบ (support/engineer/billing/ops/admin)
+- T16. เงินสดย่อย: fixtures reimburse_journal ไม่มีบรรทัดภาษีหักของ PC2611-005 (45.00) — ระบบลงตามกติกา "หักตอนจ่ายจริง" · ScreenPeriodClose ไม่มีปุ่มเปิดงวดคืน/ปิดปี (backend มีแล้ว) — ต้องตัดสินที่วาง
 - T3. golden 1 ให้ Service[IV] เครดิต 4100200 แต่บรรทัด IV2611-0052 ในแบบร่าง/fixtures ระบุ 4100100 → สูตร Service[IV] ใช้บัญชีรายได้ของสูตรไปก่อน
 
 **ข้อสังเกตที่ยังไม่แก้ (ไม่บล็อก M0–M3)**
@@ -106,6 +110,8 @@
 - แก้แบบร่าง → เผยแพร่เวอร์ชันใหม่ → ดาวน์โหลดกลับมาเทียบ → ส่งออกทับ `design/` + อัปเดต `MANIFEST.json` + เลขเวอร์ชันใน `CLAUDE.md`, `design/README.md`, `docs/page-map.md`, ไฟล์นี้
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
+
+- **2026-11-10 บ่าย** · Claude Code · **M5 + M6 + M8 เสร็จ (merge เข้า main)** · M5: ซื้อ/ค่าใช้จ่าย/ลดหนี้ซื้อ/จ่ายชำระ (รอบจ่าย · สายอนุมัติ + แบ่งหน้าที่ · 50 ทวิ) · เงินสดย่อย imprest · แบบพิมพ์ D4/D7/D9 · แก้: กันจ่ายซ้ำ EXP จ่ายทันที · ยกเลิกการจ่ายยกเลิก 50 ทวิ · M6: รายงานภาษีขาย/ซื้อ · ภ.พ.30 · ภ.ง.ด.3/53 + ไฟล์ RD Prep (รอ spec · T11) · ตรวจความถูกต้อง · อายุหนี้ · งบ · ปิดงวด/ปิดปี · ทรัพย์สิน + ค่าเสื่อม · กระทบยอดธนาคาร · แบบพิมพ์ D12–D15 · M7 backend: audit hash chain · API key + /ext/v1 · webhooks (HMAC · retry 3 · dead-letter) · MCP (post_document ถูกปฏิเสธ) · M8: Console 8 หน้า · consent ก่อนเข้าดูข้อมูลลูกค้า (Gate ผ่าน e2e) · หน้าจอทำโดย subagent 7 ตัว ตรวจซ้ำแล้ว · `pnpm verify` เขียว (db 86 test)
 
 - **2026-11-10 สาย** · Claude Code · **M4 เสร็จ (merge เข้า main)**: migration 0007/0008/0011 · sales service (ร่าง/อนุมัติ/ลงบัญชีผ่าน engine · RV หลายใบ + 50 ทวิ + ค่าธรรมเนียม + โอนภาษีขาย ม.78/1 · CN/DN/DP · BN · void · แก้ข้อมูลอ้างอิง · แปลงเอกสาร · ลิงก์ลูกค้า) · เลขที่ระบุเองเลื่อนตัวนับ (ม.86/4) · 20 หน้าจอ + แบบพิมพ์ 8 แบบ (PDF A4) โดย subagent 3 ตัว ตรวจซ้ำแล้ว · e2e QO→IV→BN→RV→PDF ผ่าน · golden RV2611-0021 ตรง fixtures · **M3.5**: export/import รายบริษัท + restore test ผ่าน · image/compose/backup พร้อม (deploy จริงรอ Wei) · **M5 backend**: PO/AP/CNR/EXP/PV + WHT ตอนจ่าย + สายอนุมัติ + 50 ทวิ (PAYRUN ตรง fixtures) · **M6 backend** (เริ่ม): รายงานภาษี/อายุหนี้/งบ/ตรวจความถูกต้อง/ปิดงวด/ค่าเสื่อม/ธนาคาร
 

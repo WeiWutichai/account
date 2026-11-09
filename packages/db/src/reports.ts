@@ -102,7 +102,7 @@ export async function aging(db: Db, companyId: string, asOf: string, side: 'AR' 
         // ตัดยอด/ลดหนี้ที่เกิดถึงวันที่ asOf เท่านั้น
         sql<string>`coalesce((select sum(s.applied + s.wht) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
           where s.document_id = d.id and s.company_id = d.company_id and not s.voided and p.issue_date <= ${asOf}), 0)`.as('settled')])
-      .where('d.doc_type', 'in', types).where('d.issue_date', '<=', asOf).where((eb) => eb.or([eb('d.status', '=', 'posted'), eb.and([eb('d.status', '=', 'voided'), eb('d.voided_at', '>', new Date(`${asOf}T23:59:59+07:00`))])]))
+      .where('d.doc_type', 'in', types).where('d.pay_now', '=', false).where('d.issue_date', '<=', asOf) // EXP จ่ายทันทีไม่มีหนี้ค้าง.where((eb) => eb.or([eb('d.status', '=', 'posted'), eb.and([eb('d.status', '=', 'voided'), eb('d.voided_at', '>', new Date(`${asOf}T23:59:59+07:00`))])]))
       .execute();
     const buckets = ['current', 'b1_30', 'b31_60', 'b61_90', 'b91_120', 'over_120'] as const;
     type B = (typeof buckets)[number];

@@ -58,7 +58,7 @@ describe('consent ก่อนเข้าดู (ConsoleSupport)', () => {
     expect(Array.isArray(tb)).toBe(true);
     await expect(withSupportAccess(db, { userId: engineer }, access, 'แอบดู', async () => 1)).rejects.toThrow(/consent/u);
     const consoleLog = await db.withPublic((tx) => tx.selectFrom('public.audit_console').select(['action', 'consent_ref']).where('access_id', '=', access).orderBy('id').execute());
-    expect(consoleLog.map((l) => l.action)).toEqual(['support.request_access', 'support.consent_granted', 'support.view']);
+    expect(consoleLog.map((l) => l.action)).toEqual(['support.request_access', 'support.consent_granted', 'support.session_start', 'support.view']);
     const custLog = await db.withCompany(A, (tx) => tx.selectFrom('acct.audit_log').select('action').where('entity', '=', 'support_access').orderBy('id').execute());
     expect(custLog.map((l) => l.action)).toEqual(['support.consent_granted', 'support.view']);
     await expect(withSupportAccess(db, { userId: staff }, access, 'หลังหมดเวลา', async () => 1, new Date(Date.now() + 31 * 60_000))).rejects.toThrow(/หมดเวลา/u);
