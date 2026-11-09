@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto';
 import { sql } from 'kysely';
 import type { Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
+import { emitTx } from './hub.ts';
 
 export interface OpsActor { userId: string | null; role: CompanyRole }
 const MANAGERS: readonly CompanyRole[] = ['owner', 'accounting_manager'];
@@ -38,6 +39,7 @@ export async function closePeriod(db: Db, companyId: string, actor: OpsActor, p:
     await tx.updateTable('acct.period').set({ status: p.to, closed_at: new Date(), closed_by: actor.userId }).where('fiscal_year', '=', p.fiscalYear).where('period_no', '=', p.periodNo).execute();
     await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor.userId, action: 'period.close', entity: 'period', entity_id: `${p.fiscalYear}-${p.periodNo}`,
       before: JSON.stringify({ status: cur.status }), after: JSON.stringify({ status: p.to }), prev_hash: null, hash: null }).execute();
+    await emitTx(tx, companyId, 'period.closed', { fiscal_year: p.fiscalYear, period_no: p.periodNo, status: p.to });
   });
 }
 

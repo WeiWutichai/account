@@ -6,6 +6,7 @@ import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
+import { emitTx } from './hub.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -203,6 +204,7 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
     }
     if (deposits.length) await tx.updateTable('acct.settlement').set({ voided: false }).where('document_id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'posted', { docNo, journalNo: j.journalNo });
+    await emitTx(tx, companyId, 'document.posted', { id, doc_type: d.doc_type, doc_no: docNo, external_source: d.external_source, external_ref: d.external_ref, grand_total: d.grand_total, journal_no: j.journalNo });
     return { docNo, journalNo: j.journalNo };
   });
 }
@@ -267,6 +269,8 @@ export async function receivePayment(db: Db, companyId: string, actor: Actor, in
         cheque_date: input.cheque.chequeDate, amount: totals.cashIn, document_id: rv.id, contact_id: input.contactId, deposited_on: null, cleared_on: null }).execute();
     }
     await event(tx, companyId, rv.id, actor.userId, 'posted', { docNo, journalNo: j.journalNo });
+    await emitTx(tx, companyId, 'payment.received', { id: rv.id, doc_no: docNo, contact_id: input.contactId, cash_in: totals.cashIn, wht: totals.wht,
+      applications: apps.map(({ o, a }) => ({ document_id: a.documentId, doc_no: o.doc.doc_no, external_ref: o.doc.external_ref, applied: a.applied, wht: a.wht })) });
     return { id: rv.id, docNo, journalNo: j.journalNo, totals, warnings, amountText: bahtText(totals.settled as MoneyString) };
   });
 }
@@ -317,6 +321,7 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
     await tx.updateTable('acct.document').set({ status: 'voided', voided_at: new Date(), void_reason: p.reason, updated_at: new Date(),
       ...(reversal ? { void_journal_id: (await tx.selectFrom('acct.journal').select('id').where('journal_no', '=', reversal).executeTakeFirstOrThrow()).id } : {}) }).where('id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'voided', { reason: p.reason, reversal });
+    await emitTx(tx, companyId, 'document.voided', { id, doc_type: d.doc_type, doc_no: d.doc_no, external_source: d.external_source, external_ref: d.external_ref, reason: p.reason, reversal });
     return { reversal };
   });
 }

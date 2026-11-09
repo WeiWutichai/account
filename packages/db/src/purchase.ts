@@ -6,6 +6,7 @@ import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Actor } from './sales.ts';
+import { emitTx } from './hub.ts';
 
 export const PURCHASE_TYPES = ['PR', 'PO', 'AP', 'CNR', 'DNR', 'EXP'] as const;
 export type PurchaseType = (typeof PURCHASE_TYPES)[number];
@@ -161,6 +162,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     if (d.doc_type === 'CNR') await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: d.grand_total, wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
     const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, certs);
     await event(tx, companyId, id, actor.userId, 'posted', { docNo, journalNo: j.journalNo, certificates: issued });
+    await emitTx(tx, companyId, 'document.posted', { id, doc_type: d.doc_type, doc_no: docNo, external_source: d.external_source, external_ref: d.external_ref, grand_total: d.grand_total, journal_no: j.journalNo });
     return { docNo, journalNo: j.journalNo, certificates: issued };
   });
 }
@@ -263,6 +265,8 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), approval_level: 1, updated_at: new Date() }).where('id', '=', id).execute();
     const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, [...certs.values()], opts.certNos);
     await event(tx, companyId, id, actor.userId, 'approved', { docNo, journalNo: j.journalNo, certificates: issued.map((c) => c.certNo) });
+    await emitTx(tx, companyId, 'payment.paid', { id, doc_no: docNo, contact_id: d.contact_id, paid: d.grand_total, wht: d.wht, certificates: issued.map((c) => c.certNo),
+      bills: settlements.map((x) => ({ document_id: x.document_id, applied: x.applied, wht: x.wht })) });
     return { docNo, journalNo: j.journalNo, certificates: issued, needsDirector: Money.parse(d.grand_total).gt(Money.of(PAY_APPROVAL.l2Limit)) };
   });
 }

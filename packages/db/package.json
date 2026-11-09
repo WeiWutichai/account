@@ -15,7 +15,8 @@
     "./transfer": "./src/company-transfer.ts",
     "./purchase": "./src/purchase.ts",
     "./reports": "./src/reports.ts",
-    "./close-ops": "./src/close-ops.ts"
+    "./close-ops": "./src/close-ops.ts",
+    "./hub": "./src/hub.ts"
   },
   "scripts": {
     "lint": "eslint src test",

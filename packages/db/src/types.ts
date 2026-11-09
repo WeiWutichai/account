@@ -46,6 +46,7 @@ export interface PublicDB {
   'public.email_token': { id: Generated<string>; user_id: string; purpose: 'verify_email' | 'reset_password'; token_hash: string; attempts: Generated<number>; created_at: Ts; expires_at: Ts; used_at: Ts | null };
   'public.outbox_email': { id: Generated<string>; to_email: string; template: string; payload: Json; created_at: Ts; sent_at: Ts | null };
   'public.doc_share': { token_hash: string; company_id: string; document_id: string; created_at: Ts; expires_at: Ts | null; revoked_at: Ts | null };
+  'public.api_client': { id: Generated<string>; company_id: string; name: string; kind: 'tms' | 'mcp' | 'custom'; key_prefix: string; key_hash: string; scopes: string[]; created_by: string | null; created_at: Ts; last_used_at: Ts | null; revoked_at: Ts | null };
   'public.login_event': { id: Generated<string>; at: Ts; user_id: string | null; email: string; event: string; ip_hash: string | null; user_agent: string | null };
 }
 
@@ -79,6 +80,9 @@ export interface AcctDB {
     source_document_id: string | null; created_at: Ts };
   'acct.depreciation_run': { company_id: string; fiscal_year: number; period_no: number; journal_id: string; total: string; detail: ColumnType<unknown, string, string>; created_at: Ts };
   'acct.report_format': { company_id: string; id: Generated<string>; name: string; definition: ColumnType<unknown, string, string>; updated_at: Ts };
+  'acct.webhook_endpoint': { company_id: string; id: Generated<string>; url: string; secret: string; events: string[]; active: Generated<boolean>; api_client_id: string | null; created_at: Ts };
+  'acct.webhook_delivery': { company_id: string; id: Generated<string>; endpoint_id: string; event: string; payload: ColumnType<unknown, string, string>; status: Generated<'pending' | 'sent' | 'dead'>;
+    attempts: Generated<number>; next_attempt_at: Generated<Date>; last_error: string | null; created_at: Ts; sent_at: Ts | null };
   'acct.company_setting': { company_id: string; key: string; value: ColumnType<unknown, string, string>; updated_at: Ts };
   'acct.settlement': { company_id: string; id: Generated<string>; payment_id: string; document_id: string; applied: string; wht: Money; wht_base: string | null; vat_due: Money; voided: Generated<boolean>; created_at: Ts };
   'acct.billing_item': { company_id: string; billing_id: string; document_id: string; line_no: number };
