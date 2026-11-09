@@ -60,3 +60,10 @@ export function whtOnReceipt(p: { base: MoneyString; rate: string; certified: Mo
 }
 export { bahtText, thaiNumber } from './baht.ts';
 export { FREELANCE_DEFAULT, pndOf, WHT_TYPES, whtTypeFor, type FreelanceWhtConfig } from './wht-types.ts';
+
+/** เลขประจำตัวผู้เสียภาษี 13 หลัก ตรวจ checksum (FR-TN-02 · ตัวเดียวกับ apps/id-api/src/org.ts validTaxId) */
+export function validateTaxId(id: string): boolean {
+  if (!/^\d{13}$/u.test(id)) return false;
+  const sum = [...id.slice(0, 12)].reduce((s, d, i) => s + Number(d) * (13 - i), 0);
+  return (11 - (sum % 11)) % 10 === Number(id[12]);
+}

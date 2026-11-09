@@ -5,7 +5,14 @@ import { useState } from 'react';
 import { CreateClient } from '../apps/_shared/create.tsx';
 import { BTN32P, DOT, TAG, TAG_TONE } from '../apps/_shared/hub.ts';
 
-export interface McpRow { id: string; name: string; clientId: string; kind: string; scopes: string[]; lastUsed: string; revoked: string | null }
+export interface McpRow { id: string; name: string; clientId: string; kind: string; scopes: string[]; lastUsed: string; revoked: string | null; authorizedBy: string; suspended: boolean }
+/** แถว "ล่าสุดจาก client" (acct.api_call) · review = ร่างที่สร้างยังรอตรวจ */
+export interface McpCall { id: string; when: string; text: string; status: 'ok' | 'review' | 'denied' | 'error' }
+const CALL_STATUS: Record<McpCall['status'], { text: string; color: string }> = {
+  review: { text: 'รอตรวจ', color: '#684e00' }, ok: { text: 'สำเร็จ', color: '#0e6027' }, denied: { text: 'ปฏิเสธ · ไม่มี scope', color: '#a2191f' },
+  // TODO(Wei): ข้อความสถานะเมื่อเครื่องมือทำงานผิดพลาด (ไม่ใช่การปฏิเสธสิทธิ์) ไม่มีในแบบร่าง
+  error: { text: '—', color: '#a2191f' },
+};
 
 const TH = 'padding: 0 12px; font-weight: 400';
 const TH36 = 'height: 36px; padding: 0 12px; font-weight: 400';
@@ -16,7 +23,9 @@ const STAT_L = 'color: #525252; font-size: 13px';
 const STAT_N = 'font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums';
 const POLICY = 'display: flex; gap: 8px; align-items: center';
 
-export function McpView({ rows, endpoint, active, error }: { rows: McpRow[]; endpoint: string; active: number; error: string | null }) {
+export function McpView({ rows, calls, stats, endpoint, active, error }: {
+  rows: McpRow[]; calls: McpCall[]; stats: { calls: number; denied: number; drafts: number | null }; endpoint: string; active: number; error: string | null;
+}) {
   const [open, setOpen] = useState(false);
   return (
     <div style={css('padding: 24px 32px 32px; display: flex; flex-direction: column; gap: 24px')}>
@@ -31,10 +40,9 @@ export function McpView({ rows, endpoint, active, error }: { rows: McpRow[]; end
           <span style={css('color: #525252')}>Streamable HTTP · Authorization: Bearer &lt;API key&gt;</span>
         </div>
         <div><span style={css(STAT_L)}>Client ที่ใช้งาน</span><div style={css(STAT_N)}>{active}</div></div>
-        {/* TODO(backend): นับการเรียกใช้ 7 วัน / ถูกปฏิเสธเพราะเกินสิทธิ์ — ext/MCP ยังไม่บันทึกสถิติการเรียก */}
-        <div><span style={css(STAT_L)}>เรียกใช้ 7 วัน</span><div style={css(STAT_N)}>—</div><span style={css('color: #525252')}>ถูกปฏิเสธเพราะเกินสิทธิ์ —</span></div>
-        {/* TODO(backend): เอกสารร่างยังไม่ผูกกับ api_client ที่สร้าง (มีแค่ external_source ที่ client ส่งมาเอง) → นับไม่ได้ */}
-        <div><span style={css(STAT_L)}>ร่างที่สร้างโดย client รอตรวจ</span><div style={css(`${STAT_N}; color: #684e00`)}>—</div><span style={css('color: #525252')}>อยู่ในคิวหน้าแรก</span></div>
+        <div><span style={css(STAT_L)}>เรียกใช้ 7 วัน</span><div style={css(STAT_N)}>{stats.calls.toLocaleString('en-US')}</div><span style={css('color: #525252')}>ถูกปฏิเสธเพราะเกินสิทธิ์ {stats.denied.toLocaleString('en-US')}</span></div>
+        {/* TODO(Wei): "อยู่ในคิวหน้าแรก" — คิวหน้าแรกยังไม่แยกร่างที่สร้างโดย client (จำนวนนับจาก document.created_by_client) */}
+        <div><span style={css(STAT_L)}>ร่างที่สร้างโดย client รอตรวจ</span><div style={css(`${STAT_N}; color: #684e00`)}>{stats.drafts ?? '—'}</div><span style={css('color: #525252')}>อยู่ในคิวหน้าแรก</span></div>
       </div>
 
       <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
@@ -48,10 +56,9 @@ export function McpView({ rows, endpoint, active, error }: { rows: McpRow[]; end
           <tbody>
             {rows.map((r) => r.revoked ? (
               <tr key={r.id} data-testid="mcp-row" style={css('border-top: 1px solid #e0e0e0; color: #525252')}>
-                {/* TODO(backend): ผู้เพิกถอน + เหตุผล ("โดย Wei · เหตุผล: เลิกใช้") ยังไม่เก็บ — DELETE /v1/api-clients/:id ไม่รับเหตุผล */}
                 <td style={css('height: 48px; padding: 0 12px')}><div style={css('font-weight: 500; text-decoration: line-through')}>{r.name}</div><div style={css('font-size: 13px')}>{r.revoked}</div></td>
                 <td style={css('padding: 0 12px')}>{r.kind}</td>
-                <td style={css('padding: 0 12px')}>—</td>
+                <td style={css('padding: 0 12px')}>{r.authorizedBy}</td>
                 <td style={css('padding: 0 12px; font-size: 13px')}>{r.scopes.join(', ')}</td>
                 <td style={css('padding: 0 12px')}>{r.lastUsed}</td>
                 <td style={css('padding: 0 12px')}><span style={css(`${TAG}; ${TAG_TONE.error}`)}><span style={css(DOT)} />เพิกถอนแล้ว</span></td>
@@ -61,14 +68,15 @@ export function McpView({ rows, endpoint, active, error }: { rows: McpRow[]; end
               <tr key={r.id} data-testid="mcp-row" style={css('border-top: 1px solid #e0e0e0')}>
                 <td style={css('height: 48px; padding: 0 12px')}><div style={css('font-weight: 500')}>{r.name}</div><div style={css('font-size: 13px; color: #525252')}>client_id {r.clientId}</div></td>
                 <td style={css('padding: 0 12px')}>{r.kind}</td>
-                {/* TODO(backend): GET /v1/api-clients ไม่ส่ง created_by → แสดงผู้อนุญาตไม่ได้ */}
-                <td style={css('padding: 0 12px')}>—</td>
+                {/* TODO(Wei): แบบร่างต่อท้ายบทบาท/ขอบเขต ("Wei · Owner" · "สิทธิ์ไม่เกินผู้อนุญาต") — v1 แสดงเฉพาะชื่อผู้อนุญาต */}
+                <td style={css('padding: 0 12px')}>{r.authorizedBy}</td>
                 <td style={css('padding: 0 12px; font-size: 13px')}>{r.scopes.map((s) => <span key={s} style={css(CHIP)}>{s}</span>)}</td>
                 <td style={css(TDG)}>{r.lastUsed}</td>
-                {/* API key v1 ไม่มีวันหมดอายุ (TODO(Wei) T14: token 1 ชม./refresh ตามแบบร่างเป็นของ OAuth) */}
-                <td style={css(TDG)}>—</td>
+                {/* API key v1 ไม่มีวันหมดอายุ (TODO(Wei) T14: token 1 ชม./refresh ตามแบบร่างเป็นของ OAuth)
+                    TODO(Wei): สถานะ "ระงับชั่วคราว" และปุ่มเปิดกลับไม่มีในแบบร่างหน้านี้ — แสดงป้ายด้วยคำจาก ScreenRevoke.dc.html · เปิดกลับ = POST /v1/api-clients/:id/resume (ยังไม่มีปุ่ม) */}
+                <td style={css(TDG)}>{r.suspended ? <span style={css(`${TAG}; ${TAG_TONE.warning}`)}><span style={css(DOT)} />ระงับชั่วคราว</span> : '—'}</td>
                 <td style={css('padding: 0 12px; white-space: nowrap')}>
-                  {/* TODO(backend): แก้ scopes ของ client ยังไม่มี endpoint (แบบร่างลิงก์ไป ScreenUserEdit) → แสดงเป็นข้อความเทา */}
+                  {/* TODO(Wei): แบบร่างลิงก์ "แก้สิทธิ์" ไป ScreenUserEdit (หน้าสิทธิ์ผู้ใช้ ไม่มีช่อง scopes ของ client) — backend มี PUT /v1/api-clients/:id/scopes แล้ว รอแบบร่างหน้าแก้ scopes → แสดงเป็นข้อความเทา */}
                   <span style={css('color: #8d8d8d')} title="ยังไม่รองรับ">แก้สิทธิ์</span> · <a href={`/settings/revoke?client=${encodeURIComponent(r.id)}`} style={css('text-decoration: none; color: #da1e28')}>เพิกถอน</a>
                 </td>
               </tr>
@@ -109,9 +117,15 @@ export function McpView({ rows, endpoint, active, error }: { rows: McpRow[]; end
           </fieldset>
           <div style={css('background: #f4f4f4; border: 1px solid #e0e0e0')}>
             <div style={css('padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between')}><strong style={css('font-weight: 600')}>ล่าสุดจาก client</strong><a href="/settings/audit" style={css('font-size: 13px; text-decoration: none')}>ดูทั้งหมดใน Audit log</a></div>
-            {/* TODO(backend): การเรียกเครื่องมือ MCP/API ยังไม่บันทึกลง audit log → ไม่มีรายการให้แสดง */}
             <table style={css('width: 100%; border-collapse: collapse; font-size: 13px')}><tbody>
-              <tr><td style={css('height: 30px; padding: 0 16px; color: #525252')}>—</td></tr>
+              {calls.map((c, i) => (
+                <tr key={c.id} data-testid="mcp-call" style={i ? css('border-top: 1px solid #e0e0e0') : undefined}>
+                  <td style={css('height: 30px; padding: 0 16px; color: #525252; white-space: nowrap')}>{c.when}</td>
+                  <td style={css('padding: 0 8px')}>{c.text}</td>
+                  <td style={css(`padding: 0 16px; text-align: right; color: ${CALL_STATUS[c.status].color}`)}>{CALL_STATUS[c.status].text}</td>
+                </tr>
+              ))}
+              {!calls.length && <tr><td style={css('height: 30px; padding: 0 16px; color: #525252')}>—</td></tr>}
             </tbody></table>
           </div>
         </section>

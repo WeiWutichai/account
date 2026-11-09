@@ -14,11 +14,9 @@ export default async function AssetsPage() {
     api<AssetRow[]>(`/v1/assets?month=${ym}`),
     api<{ code: string; name: string }[]>(`/v1/accounts?year=${year}&period=${period}`),
   ]);
-  // ลงค่าเสื่อมงวดนี้แล้วหรือยัง: หา JV "ค่าเสื่อมราคา n/ปี" (runDepreciation · packages/db/src/close-ops.ts) ในแยกประเภทบัญชีค่าเสื่อม
-  // TODO(backend): ควรมี API สถานะ acct.depreciation_run ต่องวด (journal_no, total) แทนการค้นจากแยกประเภท
-  const expense = [...new Set(assets.map((a) => a.expense))];
-  const ledgers = await Promise.all(expense.map((a) => api<{ rows: { journal_no: string; description: string | null }[] }>(`/v1/ledger?account=${a}&from=${ym}-01&to=${end}`)));
-  const journalNo = ledgers.flatMap((l) => l.rows).find((r) => r.description === `ค่าเสื่อมราคา ${period}/${year}`)?.journal_no ?? null;
+  // ลงค่าเสื่อมงวดนี้แล้วหรือยัง: สถานะ acct.depreciation_run ต่องวด (GET /v1/assets/depreciation)
+  const runs = await api<{ period_no: number; journal_no: string; total: string }[]>(`/v1/assets/depreciation?year=${year}`);
+  const journalNo = runs.find((r) => r.period_no === period)?.journal_no ?? null;
   return (
     <Shell active="assets">
       <AssetsScreen year={year} period={period} monthEnd={end} assets={assets} journalNo={journalNo} names={Object.fromEntries(accounts.map((a) => [a.code, a.name]))} />

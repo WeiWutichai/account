@@ -127,6 +127,16 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
     ],
   },
   {
+    // ScreenPurchaseCreditNote "CNR[Credit] ตั้งเครดิตผู้ขาย": บิลเดิมจ่ายแล้ว (ลดหนี้เกินยอดค้าง) — บรรทัดเหมือน CNR
+    // ส่วนที่เกินยอดค้างคงเป็นยอดเดบิตของผู้ขายในบัญชีเจ้าหนี้ (เครดิตคงเหลือ) ใช้หักในการจ่ายครั้งถัดไป
+    code: 'CNR[Credit]', docType: 'CNR', name: 'ใบลดหนี้ซื้อ — ตั้งเครดิตผู้ขาย', book: 'PJ',
+    lines: [
+      { side: 'Dr', account: AP, amount: 'grand_total' },
+      { side: 'Cr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },
+      { side: 'Cr', account: { default: '1170100' }, amount: 'vat' },
+    ],
+  },
+  {
     code: 'DNR', docType: 'DNR', name: 'ใบเพิ่มหนี้ซื้อ (ภาษีซื้อเพิ่ม)', book: 'PJ',
     lines: [
       { side: 'Dr', account: { from: ['line', 'product'] }, amount: 'line.amount', perLine: true },

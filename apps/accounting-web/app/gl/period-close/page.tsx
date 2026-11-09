@@ -5,7 +5,13 @@ import { currentPeriod, Shell } from '../../lib/shell';
 import { fromCents, toCents } from '../../sales/_lib/num';
 import { PeriodCloseScreen, type Check, type PeriodRow } from './_screen';
 
-interface Period { period_no: number; status: 'open' | 'soft_closed' | 'hard_closed'; closed_at: string | null; draftJournals: number; pendingDocuments: number }
+type FilingState = 'filed' | 'draft' | null;
+interface Period {
+  period_no: number; status: 'open' | 'soft_closed' | 'hard_closed'; closed_at: string | null; draftJournals: number; pendingDocuments: number;
+  /** จำนวนรายการบัญชีที่ผ่านแล้วในงวด · ค่าเสื่อมที่ลงแล้ว (acct.depreciation_run) · สถานะยื่นแบบ (acct.tax_filing) · ชื่อผู้ปิดงวด */
+  journals: number; depreciation: { journal_no: string; total: string } | null; tax: { pp30: FilingState; pnd: FilingState } | null;
+  closedByName: string | null; accrual_reviewed_at: string | null;
+}
 interface TbLine { account: string; debit: string; credit: string; balance: string }
 interface Statements { pl: { revenue: TbLine[]; expense: TbLine[]; totalRevenue: string; totalExpense: string; profit: string }; bs: { assets: TbLine[]; liabilities: TbLine[]; equity: TbLine[] } }
 /** จำนวนรายการ statement (ไม่ใช่ยอดเงิน) */
@@ -27,7 +33,7 @@ export default async function PeriodClosePage() {
     api<Period[]>(`/v1/periods?year=${year}`),
     api<{ code: string; name: string }[]>(`/v1/accounts?year=${year}&period=${current}`),
     api<{ expense: string }[]>(`/v1/assets?month=${y}-${pad(current)}`),
-    api<AuditRow[]>('/v1/audit?entity=period').catch(() => [] as AuditRow[]),
+    api<{ rows: AuditRow[] }>('/v1/audit?entity=period&limit=1000').then((r) => r.rows).catch(() => [] as AuditRow[]),
     api<Aging>(`/v1/reports/aging?asOf=${end(current)}&side=AR`),
     api<Aging>(`/v1/reports/aging?asOf=${end(current)}&side=AP`),
     ...upTo.map((n) => api<Statements>(`/v1/reports/statements?year=${year}&period=${n}`)),
@@ -43,7 +49,7 @@ export default async function PeriodClosePage() {
     return bad ? { ok: false, diff: bad.diff, account: bad.account } : { ok: true, diff: '0.00', account: '' };
   };
   const rows: PeriodRow[] = periods.filter((p) => p.period_no >= 1 && p.period_no <= 13).map((p) => ({
-    no: p.period_no, status: p.status, closedAt: p.closed_at, drafts: p.draftJournals + p.pendingDocuments,
+    no: p.period_no, status: p.status, closedAt: p.closed_at, closedBy: p.closedByName, drafts: p.draftJournals + p.pendingDocuments, pp30: p.tax?.pp30 ?? null, pnd: p.tax?.pnd ?? null,
     profit: p.period_no <= current ? money2(profit(p.period_no) - profit(p.period_no - 1)) : null,
     bank: p.period_no <= current ? bankText(p.period_no) : null,
   }));
@@ -55,17 +61,17 @@ export default async function PeriodClosePage() {
   const cr = all.reduce((s, l) => s + cents(l.credit), 0n);
   const suspense = all.filter((l) => l.account === '2190100' || l.account === '1190100').reduce((s, l) => s + (cents(l.balance) < 0n ? -cents(l.balance) : cents(l.balance)), 0n);
   const agingDiff = [cents(arAging.gl.diff), cents(apAging.gl.diff)];
-  // ค่าเสื่อมเดือนนี้: หา JV "ค่าเสื่อมราคา n/ปี" ในแยกประเภทบัญชีค่าเสื่อม (runDepreciation ใน packages/db/src/close-ops.ts)
-  // TODO(backend): ควรมี API สถานะ acct.depreciation_run ต่องวดแทนการค้นจากแยกประเภท
+  // ค่าเสื่อมเดือนนี้: สถานะ acct.depreciation_run ของงวด (GET /v1/periods)
   const expAccounts = [...new Set(assets.map((a) => a.expense))];
-  const depLedgers = await Promise.all(expAccounts.map((a) => api<{ rows: { journal_no: string; description: string | null }[] }>(`/v1/ledger?account=${a}&from=${y}-${pad(current)}-01&to=${end(current)}`)));
-  const depJv = depLedgers.flatMap((l) => l.rows).find((r) => r.description === `ค่าเสื่อมราคา ${current}/${year}`)?.journal_no ?? null;
+  const curPeriod = periods.find((p) => p.period_no === current);
+  const depJv = curPeriod?.depreciation?.journal_no ?? null;
   const curRow = rows.find((r) => r.no === current);
+  const taxFiled = !!curPeriod?.tax && curPeriod.tax.pp30 !== 'draft' && curPeriod.tax.pnd !== 'draft';
   const bank = curRow?.bank ?? null;
   const nextMonth = current === 12 ? 1 : current + 1;
   const checks: Check[] = [
     { mark: curRow?.drafts ? 'x' : 'ok', text: 'ไม่มีเอกสารสถานะร่างลงวันที่ในงวด', right: String(curRow?.drafts ?? 0) },
-    { mark: dr === cr ? 'ok' : 'x', text: 'รายการบัญชี Dr = Cr ทุกรายการ', right: money(money2(dr)) }, // TODO(backend): จำนวนรายการบัญชีในงวด (แบบร่าง "1,284 รายการ") — ยังไม่มี API
+    { mark: dr === cr ? 'ok' : 'x', text: 'รายการบัญชี Dr = Cr ทุกรายการ', right: `${new Intl.NumberFormat('en-US').format(curPeriod?.journals ?? 0)} รายการ` },
     { mark: suspense === 0n ? 'ok' : 'x', text: 'บัญชีพักไม่มียอดคงเหลือ (2190100, 1190100)', right: money(money2(suspense)) },
     { mark: agingDiff.every((d) => d === 0n) ? 'ok' : 'x', text: 'อายุหนี้ AR/AP ตรงกับ GL', right: agingDiff.every((d) => d === 0n) ? '0.00' : `${money(money2(agingDiff[0]!))} / ${money(money2(agingDiff[1]!))}` },
     // TODO(Wei) ScreenPeriodClose.dc.html: ค่าเสื่อมยังไม่บันทึก จัดเป็น "!" (ก่อนปิดแข็ง) หรือ "✕" (ก่อนปิดอ่อน) — แบบร่างแสดงเฉพาะกรณีบันทึกแล้ว
@@ -73,9 +79,11 @@ export default async function PeriodClosePage() {
     // TODO(M7): สถานะ webhook จาก TMS ยังไม่มี — แสดง "—"
     { mark: 'na', text: 'รายการจาก TMS นำเข้าครบ (ไม่มีค้างใน webhook)', right: '—' },
     { mark: bank?.ok ? 'ok' : 'x', text: 'กระทบยอดธนาคารครบทุกบัญชี', right: bank ? (bank.ok ? 'ครบ' : `${bank.account} ผลต่าง ${money(bank.diff)}`) : '—', href: href('bank') },
-    // TODO(backend) ScreenPeriodClose.dc.html: ยังไม่มีการบันทึกสถานะ "ยื่นแล้ว" ของ ภ.พ.30 / ภ.ง.ด. — ถือเป็นร่างเสมอ (ครบกำหนดตาม tax.filing.online_extension)
-    { mark: 'warn', text: 'ภ.พ.30 / ภ.ง.ด. บันทึกว่ายื่นแล้ว', right: `ยังเป็นร่าง (ครบกำหนด 15 / 23 ${thaiMonth(nextMonth)})`, href: href('tax') },
-    { mark: 'warn', text: 'รายการปรับปรุงค้างรับ–ค้างจ่าย (accrual) ทบทวนแล้ว', right: '', button: 'ยืนยันทบทวนแล้ว' },
+    // สถานะ "ยื่นแล้ว" จาก acct.tax_filing · ครบกำหนด 15 / 23 ตาม tax.filing.online_extension (รอผู้สอบบัญชี)
+    { mark: taxFiled ? 'ok' : 'warn', text: 'ภ.พ.30 / ภ.ง.ด. บันทึกว่ายื่นแล้ว', right: taxFiled ? 'ยื่นแล้ว' : `ยังเป็นร่าง (ครบกำหนด 15 / 23 ${thaiMonth(nextMonth)})`, href: href('tax') },
+    curPeriod?.accrual_reviewed_at
+      ? { mark: 'ok', text: 'รายการปรับปรุงค้างรับ–ค้างจ่าย (accrual) ทบทวนแล้ว', right: '' }
+      : { mark: 'warn', text: 'รายการปรับปรุงค้างรับ–ค้างจ่าย (accrual) ทบทวนแล้ว', right: '', button: 'ยืนยันทบทวนแล้ว', action: `periods/${year}/${current}/accrual-reviewed` },
   ];
   const reopens = audit.filter((a) => a.action === 'period.reopen').map((a) => {
     const after = (typeof a.after === 'string' ? JSON.parse(a.after) : a.after) as { reason?: string } | null;

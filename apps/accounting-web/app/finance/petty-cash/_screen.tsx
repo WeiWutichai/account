@@ -1,11 +1,13 @@
 'use client';
 // F5 เงินสดย่อย (imprest) — design/project/ScreenPettyCash.dc.html
 // รายการย่อย (PC) ไม่ลง GL จนเบิกชดเชย → 1 journal (Dr ค่าใช้จ่าย · Dr ภาษีซื้อเฉพาะใบกำกับเต็มรูป · Cr ธนาคาร · Cr 2150300 ถ้ามีหัก ณ ที่จ่าย) + 50 ทวิ ของรายการที่หัก
-// TODO(backend): หลายกองเงินสดย่อย (ตัวเลือก "กองคลังสินค้า · วงเงิน 10,000" / "+ ตั้งกองใหม่") · ชื่อกอง/ผู้ถือกอง · การตรวจนับ ("นับเงิน / ตรวจกอง", "ตรวจนับล่าสุด")
-//   · แนบรูปบิล ("ถ่ายบิลเพิ่ม") ยังไม่มีใน API — ชื่อกอง/ผู้ถือแสดงตามข้อความแบบร่าง · ปุ่มที่ยังไม่มี API เป็นสถานะ "ใช้ไม่ได้"
+// หลายกอง: ตัวเลือกกองจาก API (ชื่อ · วงเงิน) → ?fund= · ชื่อกอง/ผู้ถือตามทะเบียนกอง (ยังไม่ตั้งกอง = ข้อความแบบร่าง) · ตรวจนับ = POST /v1/petty-cash/count
+// TODO(Wei) ScreenPettyCash.dc.html: "+ ตั้งกองใหม่" ไม่มีแบบฟอร์มในแบบร่าง (รหัส/ชื่อกอง/ผู้ถือ/วงเงิน) — API POST /v1/petty-cash/funds พร้อมแล้ว · ตัวเลือกคงไว้ในสถานะใช้ไม่ได้
+// TODO(Wei) ScreenPettyCash.dc.html: แบบฟอร์ม "นับเงิน / ตรวจกอง" ไม่มีในไฟล์ — ใช้ช่อง "เงินสดนับได้" ตามกล่อง "ตรวจนับล่าสุด" (ใบสำคัญจ่าย = รายการรอเบิกชดเชย คำนวณโดยระบบ)
+// TODO(backend): แนบรูปบิล ("ถ่ายบิลเพิ่ม") ยังไม่มีใน API — ปุ่มเป็นสถานะ "ใช้ไม่ได้"
 // TODO(Wei) ScreenPettyCash.dc.html: แบบฟอร์ม "+ บันทึกจ่าย" ไม่มีในไฟล์ — ใช้ชื่อช่องตามหัวตาราง (วันที่ · รายการ · บัญชีค่าใช้จ่าย · ผู้เบิก · ภาษีซื้อ · จำนวนเงิน · หลักฐาน) + หัก ณ ที่จ่าย/ผู้รับเงิน
 // TODO(Wei) ScreenPettyCash.dc.html: "เบิกชดเชย … → สร้าง PV" — API ลง journal 1 ใบ (สมุด PV) ไม่ได้สร้างเอกสารใบสำคัญจ่าย · จ่ายจาก 1100100 ตามตัวอย่างการลงบัญชีในแบบร่าง (ยังไม่มีช่องเลือกบัญชี)
-import { Button, css, money, parseThaiDate, S, thaiDate, TopBar } from '@innovera/ui';
+import { Button, css, href, money, parseThaiDate, S, thaiDate, TopBar } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { cents, fromCents, norm, roundDiv } from '../_shared/num';
@@ -14,7 +16,12 @@ export interface PettyItem {
   id: string; doc_no: string; issue_date: string; grand_total: string; vat: string; evidence: string | null; paid_by: string | null; vat_mode: string | null;
   batch_ref: string | null; description: string; account_code: string | null; wht_type: string | null; payee: string | null; individual: boolean | null;
 }
-export interface PettySummary { account: string; imprest: string; spentPending: string; onHand: string; inputVatPending: string; items: PettyItem[] }
+interface Fund { id: string; code: string; name: string; holder: string | null; imprest: string; isDefault: boolean }
+interface LastCount { count_date: string; counted_by_name: string | null; cash_counted: string; vouchers: string; difference: string }
+export interface PettySummary {
+  account: string; imprest: string; spentPending: string; onHand: string; inputVatPending: string; items: PettyItem[];
+  fund: Fund | null; funds: Fund[]; lastCount: LastCount | null;
+}
 interface Props {
   today: string; summary: PettySummary; lastReimbursed: string | null;
   accounts: { code: string; name: string }[]; accountNames: Record<string, string>;
@@ -41,6 +48,13 @@ export function PettyCashScreen({ today, summary, lastReimbursed, accounts, acco
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
+  const [counting, setCounting] = useState(false);
+  const [counted, setCounted] = useState('');
+  const fund = summary.fund;
+  // ยังไม่ตั้งกอง → ชื่อกอง/ผู้ถือตามข้อความแบบร่าง
+  const fundName = fund?.name ?? 'กองสำนักงานใหญ่';
+  const holder = fund ? fund.holder : '[พนักงานธุรการ]';
+  const last = summary.lastCount;
   const [f, setF] = useState({ date: thaiDate(today), description: '', accountCode: accounts[0]?.code ?? '', amount: '', vatMode: 'none', inputVat: '', whtType: '', contact: '', evidence: EVIDENCE[0]!, paidBy: '' });
 
   const typeOf = (k: string | null) => whtTypes.find((t) => t.key === k);
@@ -57,7 +71,7 @@ export function PettyCashScreen({ today, summary, lastReimbursed, accounts, acco
     if (!pending.length) return;
     if (!window.confirm(`เบิกชดเชย ${money(summary.spentPending)} · ${pending.length} รายการ`)) return;
     setBusy(true); setMsg(null);
-    const res = await fetch('/api/proxy/petty-cash/reimburse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ date: today, payFrom: '1100100' }) });
+    const res = await fetch('/api/proxy/petty-cash/reimburse', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ date: today, payFrom: '1100100', fundId: fund?.id ?? null }) });
     const r = (await res.json()) as { journalNo?: string; paid?: string; certificates?: { certNo: string }[]; error?: string | string[] };
     setBusy(false);
     if (!res.ok) { setMsg({ kind: 'err', text: Array.isArray(r.error) ? r.error.join(' · ') : (r.error ?? 'เบิกชดเชยไม่สำเร็จ') }); return; }
@@ -75,7 +89,7 @@ export function PettyCashScreen({ today, summary, lastReimbursed, accounts, acco
     setBusy(true);
     const res = await fetch('/api/proxy/petty-cash', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({
       date, description: f.description.trim(), accountCode: f.accountCode, amount, vatMode: f.vatMode, inputVat: f.vatMode === 'full_invoice' ? (norm(f.inputVat) || '0.00') : null,
-      whtType: f.whtType || null, contactId: c?.id ?? null, evidence: f.evidence, paidBy: f.paidBy.trim(),
+      whtType: f.whtType || null, contactId: c?.id ?? null, evidence: f.evidence, paidBy: f.paidBy.trim(), fundId: fund?.id ?? null,
     }) });
     const r = (await res.json()) as { id?: string; docNo?: string; error?: string | string[] };
     setBusy(false);
@@ -83,6 +97,20 @@ export function PettyCashScreen({ today, summary, lastReimbursed, accounts, acco
     setMsg({ kind: 'ok', text: `บันทึก ${r.docNo ?? ''} แล้ว` });
     setAdding(false);
     setF({ ...f, description: '', amount: '', inputVat: '', whtType: '', contact: '' });
+    router.refresh();
+  }
+
+  async function saveCount() {
+    setMsg(null);
+    const cash = norm(counted);
+    if (!cash || cents(cash) < 0n) { setMsg({ kind: 'err', text: 'จำนวนเงินไม่ถูกต้อง' }); return; }
+    setBusy(true);
+    const res = await fetch('/api/proxy/petty-cash/count', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fundId: fund?.id ?? null, date: today, cashCounted: cash }) });
+    const r = (await res.json()) as { difference?: string; error?: string | string[] };
+    setBusy(false);
+    if (!res.ok) { setMsg({ kind: 'err', text: Array.isArray(r.error) ? r.error.join(' · ') : (r.error ?? 'บันทึกไม่สำเร็จ') }); return; }
+    setCounting(false);
+    setCounted('');
     router.refresh();
   }
 
@@ -109,15 +137,19 @@ export function PettyCashScreen({ today, summary, lastReimbursed, accounts, acco
 
   return (
     <>
-      <TopBar crumb="การเงิน / เงินสดย่อย / กองสำนักงานใหญ่" right={
-        <select aria-label="กองเงินสดย่อย" style={css('height: 32px; padding: 0 12px; border: 1px solid #8d8d8d; background: #ffffff; font-family: inherit; font-size: 13px')}>
-          <option>{`กองสำนักงานใหญ่ · วงเงิน ${imprestShort(summary.imprest)}`}</option>
+      <TopBar crumb={`การเงิน / เงินสดย่อย / ${fundName}`} right={
+        <select aria-label="กองเงินสดย่อย" value={fund?.id ?? ''} onChange={(e) => e.target.value && router.push(`${href('pettycash')}?fund=${e.target.value}`)}
+          style={css('height: 32px; padding: 0 12px; border: 1px solid #8d8d8d; background: #ffffff; font-family: inherit; font-size: 13px')}>
+          {summary.funds.length
+            ? summary.funds.map((x) => <option key={x.id} value={x.id}>{`${x.name} · วงเงิน ${imprestShort(x.imprest)}`}</option>)
+            : <option value="">{`${fundName} · วงเงิน ${imprestShort(summary.imprest)}`}</option>}
+          <option value="+" disabled>+ ตั้งกองใหม่</option>
         </select>} />
       <div style={css(S.content)}>
         <div style={css('display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px')}>
-          <div><h1 style={css(S.h1)}>เงินสดย่อย — กองสำนักงานใหญ่</h1><span style={css(S.sub)}>{`ระบบ imprest · ผู้ถือ [พนักงานธุรการ] · วงเงิน ${money(summary.imprest)}`}</span></div>
+          <div><h1 style={css(S.h1)}>{`เงินสดย่อย — ${fundName}`}</h1><span style={css(S.sub)}>{`ระบบ imprest${holder ? ` · ผู้ถือ ${holder}` : ''} · วงเงิน ${money(summary.imprest)}`}</span></div>
           <div style={css('display: flex; gap: 8px')}>
-            <Button size={36} disabled title="ยังไม่มี API การตรวจนับ">นับเงิน / ตรวจกอง</Button>
+            <Button size={36} disabled={!fund} onClick={() => setCounting(!counting)} aria-expanded={counting}>นับเงิน / ตรวจกอง</Button>
             <Button size={36} kind="primary" onClick={() => setAdding(!adding)} aria-expanded={adding}>+ บันทึกจ่าย</Button>
           </div>
         </div>
@@ -198,10 +230,14 @@ export function PettyCashScreen({ today, summary, lastReimbursed, accounts, acco
             <div style={css('padding: 8px 16px; font-size: 13px; color: #525252; border-top: 1px solid #e0e0e0')}>{`วงเงินกอง (${summary.account} ${accountNames[summary.account] ?? 'เงินสดย่อย'} ${imprestShort(summary.imprest)}) คงที่ ไม่กระทบจากการจ่ายรายวัน`}</div>
           </section>
           <section style={css('flex: 1 1 320px; border: 1px solid #e0e0e0; padding: 16px; font-size: 14px; display: flex; flex-direction: column; gap: 8px')}><strong>ตรวจนับล่าสุด</strong>
-            {/* TODO(backend): ข้อมูลการตรวจนับ (วันที่ · ผู้นับ · ผล · เงินสดนับได้ · ใบสำคัญจ่าย) ยังไม่มีใน API */}
-            <div style={css('display: flex; justify-content: space-between')}><span>—</span><span style={css('color: #525252')}>—</span></div>
-            <div style={css('display: flex; justify-content: space-between; color: #525252')}><span>เงินสดนับได้</span><span style={css('font-variant-numeric: tabular-nums')}>—</span></div>
-            <div style={css('display: flex; justify-content: space-between; color: #525252')}><span>ใบสำคัญจ่าย</span><span style={css('font-variant-numeric: tabular-nums')}>—</span></div>
+            {/* ผลต่าง ≠ 0 แสดงเป็นยอด (แบบร่างมีแต่ "ตรงกัน") · ผู้นับ = ชื่อที่บันทึกไว้ (ชื่อผู้ใช้จาก Innovera ID ยังไม่มีใน accounting-api) */}
+            <div style={css('display: flex; justify-content: space-between')}><span>{last ? `${thaiDate(last.count_date)}${last.counted_by_name ? ` · ${last.counted_by_name}` : ''}` : '—'}</span>
+              {last ? (cents(last.difference) === 0n ? <span style={css('color: #0e6027')}>ตรงกัน</span> : <span style={css('color: #a2191f; font-variant-numeric: tabular-nums')}>{money(last.difference, { paren: true })}</span>) : <span style={css('color: #525252')}>—</span>}</div>
+            {counting ? (
+              <label style={css(LABEL)}>เงินสดนับได้<input value={counted} inputMode="decimal" onChange={(e) => setCounted(e.target.value)} style={css(`${INPUT}; text-align: right; font-variant-numeric: tabular-nums`)} /></label>
+            ) : <div style={css('display: flex; justify-content: space-between; color: #525252')}><span>เงินสดนับได้</span><span style={css('font-variant-numeric: tabular-nums')}>{last ? money(last.cash_counted) : '—'}</span></div>}
+            <div style={css('display: flex; justify-content: space-between; color: #525252')}><span>ใบสำคัญจ่าย</span><span style={css('font-variant-numeric: tabular-nums')}>{counting ? money(summary.spentPending) : last ? money(last.vouchers) : '—'}</span></div>
+            {counting && <div style={css('display: flex; gap: 8px; justify-content: flex-end')}><Button size={32} onClick={() => setCounting(false)}>ยกเลิก</Button><Button kind="primary" size={32} disabled={busy || !counted.trim()} onClick={() => void saveCount()}>บันทึก</Button></div>}
             <span style={css('color: #525252')}>นับครั้งถัดไปแนะนำ: ก่อนเบิกชดเชย หรือสิ้นเดือน</span>
           </section>
         </div>

@@ -1,9 +1,9 @@
 // context ของ request (M3): ผู้ใช้จาก access token ของ Innovera ID + บริษัทที่เลือก (x-company-id · FR-TN-04) + membership/สิทธิ์จาก DB
 // ทุก route ใน /v1 ผ่าน AuthGuard · ไม่มี route ไหนอ่านข้ามบริษัท (PLAN §2)
-import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, SetMetadata, UnauthorizedException, BadRequestException } from '@nestjs/common';
+import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable, SetMetadata, UnauthorizedException, BadRequestException, type CallHandler, type NestInterceptor } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { can, effectivePermissions, verifyAccess, type Action, type Area, type CompanyRole as AuthRole, type Permissions } from '@innovera/auth';
-import type { Db } from '@innovera/db';
+import { withAuditContext, type AuditContext, type Db } from '@innovera/db';
 import type { CompanyRole } from '@innovera/ledger';
 import { createRemoteJWKSet } from 'jose';
 import type { Request } from 'express';
@@ -87,3 +87,23 @@ function ctxOf(req: Request): ReqCtx {
 export const companyOf = (req: Request): string => ctxOf(req).companyId;
 export const roleOf = (req: Request): CompanyRole => ctxOf(req).ledgerRole;
 export const userOf = (req: Request): ReqCtx => ctxOf(req);
+/** user id สำหรับเขียนลงฐาน (โหมด dev headers = null) */
+export const actorIdOf = (req: Request): string | null => { const u = ctxOf(req).userId; return u === 'dev' ? null : u; };
+
+/** IP ของผู้เรียก (Express req.ip — main.ts ตั้ง trust proxy ให้เชื่อ x-forwarded-for จาก proxy ของ accounting-web ในเครือข่ายภายใน) */
+export const ipOf = (req: Request): string | null => (req.ip ?? req.socket.remoteAddress ?? '').replace(/^::ffff:/u, '') || null;
+export function channelOf(path: string): AuditContext['channel'] {
+  if (path.startsWith('/ext/v1/mcp')) return 'mcp';
+  return path.startsWith('/ext/') ? 'api' : 'web';
+}
+
+/** ส่งช่องทาง/IP/API client ของ request เข้า withCompany → ค่าตั้งต้นของ acct.audit_log.channel/ip/api_client_id (migration 0016)
+ *  รันหลัง guard (ApiKeyGuard ตั้ง req.api แล้ว) · Nest ผูก next.handle() กับ async context ตอนเรียก จึงสืบทอดถึง handler */
+@Injectable()
+export class AuditContextInterceptor implements NestInterceptor {
+  intercept(ctx: ExecutionContext, next: CallHandler) {
+    if (ctx.getType() !== 'http') return next.handle();
+    const req = ctx.switchToHttp().getRequest<Request & { api?: { id: string } }>();
+    return withAuditContext({ channel: channelOf(req.path), ip: ipOf(req), clientId: req.api?.id ?? null }, () => next.handle());
+  }
+}

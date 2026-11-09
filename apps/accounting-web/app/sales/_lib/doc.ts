@@ -10,11 +10,13 @@ export type DocStatus = 'draft' | 'pending_approval' | 'approved' | 'posted' | '
 export interface DocRow {
   id: string; doc_type: DocType; doc_no: string | null; status: DocStatus; issue_date: string; due_date: string | null;
   grand_total: string; subtotal: string; vat: string; wht: string; tax_mode: string | null; created_at: string; ref_document_id: string | null; sent_at: string | null;
-  contact_id: string | null; contact_code: string | null; contact_name: string | null; settled: string; outstanding: string | null;
+  contact_id: string | null; contact_code: string | null; contact_name: string | null; contact_tax_id?: string | null; external_source?: string | null; settled: string; outstanding: string | null;
 }
 export interface DocLine {
   id: string; line_no: number; line_type: 'item' | 'heading' | 'note'; product_code: string | null; description: string;
   qty: string | null; unit_price: string | null; discount: string; amount: string; vat_rate: string | null; account_code: string | null;
+  /** ต้นทุนประมาณรวมของบรรทัด · ต้นทุนต่อหน่วยของสินค้า · รหัสภาษี/เหตุยกเว้น VAT ของสินค้า (GET /v1/documents/:id) */
+  est_cost?: string | null; product_est_cost?: string | null; product_vat_code?: 'vat7' | 'exempt' | 'zero' | null; vat_exempt_reason?: string | null; unit?: string | null;
 }
 export interface Doc {
   id: string; doc_type: DocType; doc_no: string | null; status: DocStatus; issue_date: string; due_date: string | null; contact_id: string | null;
@@ -22,10 +24,16 @@ export interface Doc {
   rule_code: string | null; tax_mode: 'on_payment' | 'immediate' | null; ref_document_id: string | null; address: string | null; notes: string | null; reference: string | null;
   journal_id: string | null; created_by: string | null; approved_by: string | null; approved_at: string | null; created_at: string; updated_at: string;
   voided_at: string | null; void_reason: string | null; receive_account: string | null; credit_days: number | null; sent_at: string | null;
+  salesperson?: string | null; project_code?: string | null; payment_terms?: string | null; price_level?: number | null; print_count?: number;
 }
-export interface DocEvent { at: string; actor: string | null; event: string; detail: Record<string, unknown> }
+/** actor_name = ชื่อผู้ทำจาก Innovera ID (null = ระบบ/API) */
+export interface DocEvent { at: string; actor: string | null; actor_name: string | null; event: string; detail: Record<string, unknown> }
 export interface Settlement { id: string; doc_no: string | null; doc_type: DocType; issue_date: string; applied: string; wht: string; vat_due: string; voided: boolean; due_date?: string | null; grand_total?: string }
-export interface Contact { id: string; code: string; name: string; kind: string; tax_id?: string | null; branch_code?: string | null }
+/** GET /v1/contacts (listContacts) · credit_remaining = วงเงิน − ลูกหนี้คงค้าง (null = ไม่กำหนดวงเงิน) */
+export interface Contact {
+  id: string; code: string; name: string; kind: string; tax_id?: string | null; branch_code?: string | null; credit_days?: number | null; credit_limit?: string | null;
+  credit_remaining?: string | null; price_level?: number; contact_person?: string | null; external_source?: string | null;
+}
 /** GET /v1/documents/:id */
 export interface DocDetail {
   doc: Doc; lines: DocLine[]; contact: Contact | null; events: DocEvent[]; settlementsIn: Settlement[]; settlementsOut: Settlement[];
@@ -33,6 +41,8 @@ export interface DocDetail {
   journal: { journal_no: string; line_no: number; account_code: string; name: string; debit: string; credit: string }[];
   ref: { id: string; doc_no: string | null; doc_type: DocType; grand_total: string; issue_date: string } | null;
   outstanding: string | null; amountText: string;
+  /** ชื่อผู้สร้าง/ผู้อนุมัติ (Innovera ID) · API client ที่สร้างเอกสาร (document.created_by_client) */
+  created_by_name: string | null; approved_by_name: string | null; created_by_client_name: string | null;
 }
 /** POST /v1/documents/preview */
 export interface Totals {

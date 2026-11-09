@@ -2,7 +2,7 @@
 import type { Db } from './index.ts';
 import { fromTuples } from '@innovera/ledger';
 import { postJournal } from './ledger-service.ts';
-import { approvePayment, approvePurchase, createPaymentRun, savePettyCash, savePurchaseDraft, type PurchaseDraftInput } from './purchase.ts';
+import { approvePayment, approvePurchase, countPettyCash, createPaymentRun, createPettyCashFund, savePettyCash, savePurchaseDraft, type PurchaseDraftInput } from './purchase.ts';
 import { submitDocument, type Actor } from './sales.ts';
 
 type Fx = Record<string, unknown> & { type: string; date?: string; due?: string; contact?: string; status?: string; desc?: string; grand_total?: string; subtotal?: string;
@@ -17,6 +17,11 @@ const WHT_BY_RATE: Record<string, string> = { '0.01': 'transport_domestic', '0.0
 export async function seedPurchaseDocuments(db: Db, companyId: string, docs: Record<string, Fx>): Promise<string[]> {
   const ids: Record<string, string> = {};
   const contacts = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code']).execute());
+  // บัญชีรับโอนของผู้ขาย (fixtures contacts[].bank) → contact.bank_account (คอลัมน์ "บัญชีรับโอน" + ไฟล์โอนชุด ใน ScreenPayment)
+  const banks = (docs as unknown as Record<string, unknown>).__contactBanks as Record<string, string | null> | undefined;
+  for (const [code, bank] of Object.entries(banks ?? {})) {
+    if (bank) await db.withCompany(companyId, (tx) => tx.updateTable('acct.contact').set({ bank_account: bank }).where('code', '=', code).where('bank_account', 'is', null).execute());
+  }
   const cid = (code?: string) => contacts.find((c) => c.code === code)?.id;
   // TODO(Wei): บิลซื้อหลายใบใน fixtures ไม่มีวันที่ (AP2611-0088/0091/0080/0094) → ใช้ 15/11/2569
   const dateOf = (d: Fx) => ce(d.date ?? '2569-11-15');
@@ -61,9 +66,15 @@ export async function seedPurchaseDocuments(db: Db, companyId: string, docs: Rec
     if (v) await approvePayment(db, companyId, approver, v.id, { docNo: no, certNos: [pv.wht_cert] });
   }
   // เงินสดย่อย: ตั้งวงเงิน + รายการที่แสดงในแบบร่าง (ยังไม่เบิกชดเชย) — TODO(Wei): อีก 6 รายการ (17,346.00) ไม่มีรายละเอียดใน fixtures
-  const pc = (docs as unknown as Record<string, unknown>).__petty as { imprest: string; items_shown: { date?: string; no: string; desc?: string; account?: string; vat?: string; amount: string; input_vat?: string; wht?: string; evidence?: string; by?: string }[] } | undefined;
+  const pc = (docs as unknown as Record<string, unknown>).__petty as { fund?: string; imprest: string; last_count?: string; count_sheet?: { cash_counted: string }; items_shown: { date?: string; no: string; desc?: string; account?: string; vat?: string; amount: string; input_vat?: string; wht?: string; evidence?: string; by?: string }[] } | undefined;
   if (pc) {
     await postJournal(db, companyId, { date: '2026-10-01', lines: fromTuples([['Dr', '1000200', pc.imprest], ['Cr', '1100100', pc.imprest]]), role: 'owner', description: 'ตั้งวงเงินเงินสดย่อย' });
+    // กองตั้งต้นตาม fixtures petty_cash (fund/imprest) · ชื่อกอง/ผู้ถือตามข้อความแบบร่าง ScreenPettyCash · ตรวจนับล่าสุดตาม last_count + count_sheet (ผู้นับตามแบบร่าง)
+    // TODO(Wei): แบบร่างมีกองที่สอง "กองคลังสินค้า · วงเงิน 10,000" แต่ fixtures ไม่มีข้อมูลกองนี้ → ไม่สร้าง
+    const fund = await createPettyCashFund(db, companyId, { code: pc.fund ?? 'office', name: 'กองสำนักงานใหญ่', holder: '[พนักงานธุรการ]', imprest: pc.imprest as never, glAccount: '1000200', isDefault: true });
+    if (pc.last_count && pc.count_sheet) {
+      await countPettyCash(db, companyId, { userId: null, role: 'accounting_manager' }, { fundId: fund.id, date: ce(pc.last_count), cashCounted: pc.count_sheet.cash_counted as never, countedByName: '[ผู้จัดการบัญชี]' });
+    }
     for (const i of pc.items_shown.filter((x) => x.date)) {
       await savePettyCash(db, companyId, clerk, { date: ce(i.date!), description: i.desc!, accountCode: i.account!, amount: i.amount, vatMode: i.vat as 'none', inputVat: i.input_vat ?? null,
         whtType: i.wht ? 'hire_of_work' : null, contactId: i.wht ? cid('P0001')! : null, evidence: i.evidence!, paidBy: i.by!, docNo: i.no });

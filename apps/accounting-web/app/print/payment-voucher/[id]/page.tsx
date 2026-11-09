@@ -39,9 +39,10 @@ export default async function PrintPaymentVoucher({ params }: { params: Promise<
   const acctName = d.journal.find((j) => j.account_code === doc.receive_account)?.name ?? '';
   const method = doc.reference ?? 'transfer';
   const chq = (d.cheques ?? []).find((c) => c.status !== 'cancelled');
-  // TODO(backend) PrintPaymentVoucher.dc.html: "เข้าบัญชี [ธนาคาร] xxx-x-x1234-x" — ทะเบียนบัญชีธนาคารของผู้ขายยังไม่มีใน API
+  // "เข้าบัญชี [ธนาคาร] xxx-x-x1234-x" = บัญชีรับโอนของผู้ขาย (contact.bank_account) · TODO(Wei): fixtures มีแค่เลขที่บัญชี ไม่มีชื่อธนาคาร
+  const to = d.contact?.bank_account ? ` เข้าบัญชี ${d.contact.bank_account}` : '';
   const how = chq ? `จ่ายเช็ค ${chq.bank} เลขที่ ${chq.cheque_no} ลงวันที่ ${thaiDate(chq.cheque_date)} จากบัญชี ${doc.receive_account ?? ''} ${acctName.replace(/^เงินฝากธนาคาร\s*/u, '')}`
-    : method === 'cash' ? `จ่ายเงินสดจาก ${doc.receive_account ?? ''} ${acctName}` : `โอนจาก ${doc.receive_account ?? ''} ${acctName.replace(/^เงินฝากธนาคาร\s*/u, '')}`;
+    : method === 'cash' ? `จ่ายเงินสดจาก ${doc.receive_account ?? ''} ${acctName}` : `โอนจาก ${doc.receive_account ?? ''} ${acctName.replace(/^เงินฝากธนาคาร\s*/u, '')}${to}`;
   const certText = mine.map((c) => `หนังสือรับรอง 50 ทวิ เลขที่ ${c.cert_no} (ภ.ง.ด.${c.pnd}, ${pct(c.rate)}%)`).join(' · ');
   const dr = add('0.00', ...d.journal.map((j) => j.debit));
   const cr = add('0.00', ...d.journal.map((j) => j.credit));

@@ -9,11 +9,17 @@ import type { BillRow, Cert, PvInfo } from './_screen';
 /** GET /v1/payables (packages/db/src/purchase.ts payables) */
 export interface Payable {
   id: string; doc_no: string; doc_type: string; issue_date: string; due_date: string | null; grand_total: string; vendor_ref: string | null;
-  contact_id: string; contact_code: string; contact_name: string; outstanding: string;
+  contact_id: string; contact_code: string; contact_name: string; bank_account: string | null; outstanding: string;
   wht: { type: string; label: string; section: string | null; base: string; rate: string; amount: string; pendingAuditor: boolean }[];
 }
 /** เอกสารซื้อ/จ่าย — ฟิลด์เพิ่มจาก DocDetail ฝั่งขาย */
-export type PurchaseDetail = DocDetail & { doc: DocDetail['doc'] & { batch_ref: string | null; vendor_ref: string | null; created_by: string | null; approved_by: string | null } };
+export type PurchaseDetail = DocDetail & {
+  doc: DocDetail['doc'] & { batch_ref: string | null; vendor_ref: string | null; created_by: string | null; approved_by: string | null; approval_level: number };
+  contact: (NonNullable<DocDetail['contact']> & { bank_account?: string | null }) | null;
+};
+/** GET /v1/approval-settings (packages/db/src/purchase.ts approvalSettings) — วงเงินสายอนุมัติจากค่าตั้งบริษัท */
+export interface ApprovalSettings { payment: { l2Limit: string }; purchaseOrder: { l2Limit: string; overPoTolerance: string } }
+export const approvalSettings = (): Promise<ApprovalSettings> => api<ApprovalSettings>('/v1/approval-settings');
 export interface CertRow {
   id: string; cert_no: string; pnd: string; income_type: string; income_section: string | null; pay_date: string; base: string; rate: string; amount: string;
   pending_auditor: boolean; voided: boolean; code: string; name: string; tax_id: string | null; payment_no: string | null; payment_id: string;
@@ -49,7 +55,7 @@ export async function payableRows(): Promise<BillRow[]> {
     return {
       id: p.id, docNo: p.doc_no, contactId: p.contact_id, contact: `${p.contact_code} ${p.contact_name}`, due: p.due_date ?? p.issue_date,
       outstanding: p.outstanding, wht: fromCents(wht), pct: pctOf(fromCents(wht), fromCents(base)), paid: fromCents(cents(p.outstanding) - wht),
-      pendingAuditor: p.wht.some((w) => w.pendingAuditor && w.type !== 'error'), whtError: err?.label ?? null, paidOn: null, pvId: null,
+      pendingAuditor: p.wht.some((w) => w.pendingAuditor && w.type !== 'error'), whtError: err?.label ?? null, paidOn: null, pvId: null, bank: p.bank_account,
       ...billNote(await detail(p.id)),
     };
   }));
@@ -72,16 +78,18 @@ export async function runOf(pv: PurchaseDetail): Promise<{ pvs: PurchaseDetail[]
   const rows: BillRow[] = [];
   for (const x of pvs) {
     for (const s of x.settlementsOut) {
+      if (s.doc_type === 'CNR') continue; // เครดิตผู้ขายที่ใช้หัก (ไม่ใช่บิล)
       const b = await detail(s.id);
       rows.push({
         id: `${x.doc.id}:${s.id}`, docNo: s.doc_no, contactId: x.doc.contact_id ?? '', contact: x.contact ? `${x.contact.code} ${x.contact.name}` : '', due: s.due_date ?? s.issue_date,
         outstanding: fromCents(cents(s.applied) + cents(s.wht)), wht: s.wht, pct: pctOf(s.wht, s.wht_base), paid: s.applied,
         pendingAuditor: certs.some((c) => c.paymentId === x.doc.id && c.pendingAuditor), whtError: null, paidOn: x.doc.status === 'posted' ? x.doc.issue_date : null, pvId: x.doc.id,
+        bank: x.contact?.bank_account ?? null,
         ...billNote(b),
       });
     }
   }
-  const pvInfo: PvInfo[] = pvs.map((x) => ({ id: x.doc.id, docNo: x.doc.doc_no, status: x.doc.status, contact: x.contact?.name ?? '', paid: x.doc.grand_total }));
+  const pvInfo: PvInfo[] = pvs.map((x) => ({ id: x.doc.id, docNo: x.doc.doc_no, status: x.doc.status, contact: x.contact?.name ?? '', paid: x.doc.grand_total, level: x.doc.approval_level ?? 0 }));
   return { pvs, rows, certs, pvInfo };
 }
 

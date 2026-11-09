@@ -26,7 +26,7 @@ export default async function PrintPurchaseOrder({ params, searchParams }: { par
   const person = [c?.contact_person, c?.email].filter(Boolean).join(' ');
   return (
     <Sheet>
-      <Header ctx={ctx} title="ใบสั่งซื้อ" en="PURCHASE ORDER" badge={badgeOf(sp)} />
+      <Header ctx={ctx} title="ใบสั่งซื้อ" en="PURCHASE ORDER" badge={badgeOf(sp, doc)} doc={doc} />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="ผู้ขาย" c={c} address={doc.address ?? c?.address ?? '[ที่อยู่ผู้ขาย]'} nameSuffix={c ? ` · ${c.code}` : ''}
           taxLine={`เลขประจำตัวผู้เสียภาษีอากร ${c?.tax_id ?? ''}${person ? ` · ผู้ติดต่อ ${person}` : ''}`} />

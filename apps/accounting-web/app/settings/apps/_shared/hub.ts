@@ -3,11 +3,28 @@
 import { thaiDate } from '@innovera/ui';
 import { bangkok, whenText } from '../../../sales/_lib/doc.ts';
 
-export interface ApiClient { id: string; name: string; kind: 'tms' | 'mcp' | 'custom'; key_prefix: string; scopes: string[]; created_at: string; last_used_at: string | null; revoked_at: string | null }
+export interface ApiClient {
+  id: string; name: string; kind: 'tms' | 'mcp' | 'custom'; key_prefix: string; scopes: string[]; created_at: string; last_used_at: string | null; revoked_at: string | null;
+  created_by: string | null; created_by_name: string | null; revoked_by_name: string | null; revoke_reason: string | null;
+  status: 'active' | 'suspended'; suspended_until: string | null; calls_7d: number; denied_7d: number; drafts_pending: number;
+}
+/** GET /v1/api-clients/activity · /v1/api-clients/:id/activity */
+export interface ApiActivity {
+  recent: { id: string; client_id: string; client_name: string | null; at: string; kind: 'api' | 'mcp'; tool: string; status: 'ok' | 'denied' | 'error'; detail: string | null;
+    document_id: string | null; doc_no: string | null; doc_type: string | null; doc_status: string | null; grand_total: string | null }[];
+  drafts: { id: string; doc_type: string; doc_no: string | null; status: string; grand_total: string; issue_date: string; created_by_client: string }[];
+  contacts: number;
+  last24h: { tool: string; status: 'ok' | 'denied' | 'error'; n: number }[];
+}
 export interface WebhookEndpoint { id: string; url: string; events: string[]; active: boolean; api_client_id: string | null; created_at: string }
 export interface WebhookDelivery { id: string; endpoint_id: string; event: string; status: 'pending' | 'sent' | 'dead'; attempts: number; last_error: string | null; created_at: string; sent_at: string | null; next_attempt_at: string | null }
 export interface Webhooks { endpoints: WebhookEndpoint[]; deliveries: WebhookDelivery[] }
-export interface AuditRow { id: string; at: string; actor_id: string | null; action: string; entity: string; entity_id: string; before: unknown; after: unknown; hash: string | null; prev_hash: string | null }
+export interface AuditRow {
+  id: string; at: string; actor_id: string | null; actor_name: string | null; action: string; entity: string; entity_id: string; before: unknown; after: unknown; hash: string | null; prev_hash: string | null;
+  channel: 'web' | 'api' | 'mcp' | 'system' | null; ip: string | null; api_client_id: string | null; client_name: string | null; client_kind: string | null; doc_no: string | null; journal_no: string | null;
+}
+/** GET /v1/audit (แบ่งหน้าฝั่ง server) */
+export interface AuditPage { rows: AuditRow[]; count: number; limit: number; offset: number; actors: { id: string; name: string }[] }
 export interface AuditVerify { ok: boolean; rows: number; brokenAt: string | null }
 
 /** scope ที่ออกให้ได้ (packages/db/src/hub.ts API_SCOPES — CHECK ใน DB) · ไม่มี post/pay/periods/users/settings */

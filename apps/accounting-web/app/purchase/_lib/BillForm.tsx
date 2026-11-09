@@ -10,7 +10,9 @@ import { fromCents, subMoney, toCents } from '../../sales/_lib/num.ts';
 import { F, Msg } from '../../sales/_lib/ui';
 import { accCode, blankPLine, netLines, pLinePayload, type PLineRow, pRowFromLine, usePTotals, validP } from './lines.ts';
 import { PJournal } from './PJournal';
-import { type Account, EVENT_TEXT, monthBE, outstandingOf, type Payable, pct, pDocNo, type PContact, type PDetail, pHref, pndOf, personText, pStatusTag, type WhtTypeDef, whtOptionText } from './types.ts';
+import {
+  type Account, defaultWhtKeys, defaultWhtText, EVENT_TEXT, monthBE, outstandingOf, type Payable, pct, pDocNo, type PContact, type PDetail, pHref, pndOf, personText, pStatusTag, type WhtTypeDef, whtOptionText,
+} from './types.ts';
 import { docAction, P, PHeader, Pending } from './ui';
 import { useVendorRefs } from './vendorRefs.ts';
 import { expectedWht, sumWht } from './wht.ts';
@@ -42,7 +44,8 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   const [date, setDate] = useState(thaiDate(d?.issue_date ?? today));
   const [due, setDue] = useState(d?.due_date ? thaiDate(d.due_date) : po?.contact?.credit_days ? thaiDate(addDays(today, po.contact.credit_days)) : '');
   const [vendorRef, setVendorRef] = useState(d?.vendor_ref ?? '');
-  const [claimMonth, setClaimMonth] = useState(0);
+  // เดือนที่ใช้ภาษีซื้อ = จำนวนเดือนที่เลื่อนจากเดือนตามบิล (0–6)
+  const [claimMonth, setClaimMonth] = useState(d?.vat_claim_month ? (Number(d.vat_claim_month.slice(0, 4)) * 12 + Number(d.vat_claim_month.slice(5, 7))) - (Number(d.issue_date.slice(0, 4)) * 12 + Number(d.issue_date.slice(5, 7))) : 0);
   const [rows, setRows] = useState<PLineRow[]>(detail ? detail.lines.filter((l) => l.line_type === 'item').map(pRowFromLine) : po ? poRows() : [blankPLine()]);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
@@ -50,7 +53,17 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   const vendor = vendors.find((c) => vendorText === label(c) || vendorText.startsWith(`${c.code} `)) ?? null;
   const vInfo = vendor && detail?.contact?.id === vendor.id ? detail.contact : vendor && po?.contact?.id === vendor.id ? po.contact : vendor;
   const refs = useVendorRefs(vendor?.id ?? null);
-  const dup = vendorRef.trim() ? (refs ?? []).find((r) => r.id !== id && r.ref === vendorRef.trim()) ?? null : null;
+  const dup = vendorRef.trim() ? (refs ?? []).find((r) => r.id !== id && r.ref.toLowerCase() === vendorRef.trim().toLowerCase()) ?? null : null;
+  // ข้อมูลผู้ขายจากทะเบียน (GET /v1/contacts) — เอกสารเดิมใช้ข้อมูลในเอกสาร ถ้าเลือกผู้ขายใหม่ใช้ทะเบียน
+  const vReg = vendor ? vendors.find((c) => c.id === vendor.id) ?? null : null;
+  const whtDefault = defaultWhtText(vReg, whtTypes);
+  /** เลือกผู้ขาย → บรรทัดที่ยังไม่ระบุ WHT ใช้ประเภทเงินได้ตั้งต้นของผู้ขาย */
+  function pickVendor(text: string) {
+    setVendorText(text);
+    const v = vendors.find((c) => text === label(c));
+    const k = defaultWhtKeys(v)[0];
+    if (k && editable && !tms) setRows((rs) => rs.map((r) => (r.wht ? r : { ...r, wht: k })));
+  }
   const expense = accounts.filter((a) => a.type === 'expense' && a.active);
   const iso = parseThaiDate(date);
   const net = netLines(rows, totals, idx);
@@ -69,6 +82,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   const payload = () => ({
     docType: 'AP' as const, contactId: vendor?.id ?? '', issueDate: iso ?? '', dueDate: due ? parseThaiDate(due) : null, vendorRef: vendorRef.trim() || null,
     priceInclVat: d?.price_incl_vat ?? false, refDocumentId: d?.ref_document_id ?? po?.doc.id ?? null, notes: d?.notes ?? null, reference: d?.reference ?? null,
+    vatClaimMonth: iso && claimMonth > 0 ? (() => { const t = Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1 + claimMonth; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; })() : null,
     lines: rows.filter(validP).map(pLinePayload),
   });
   async function save(quiet = false): Promise<string | null> {
@@ -133,16 +147,15 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
         {tab === 'doc' && <>
           <section style={css('display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px')}>
             <datalist id="ap-vendors">{vendors.map((c) => <option key={c.id} value={label(c)} />)}</datalist>
-            {/* TODO(backend): ประเภทเงินได้ตั้งต้นของผู้ขาย ("WHT ตั้งต้น 1% ค่าขนส่ง / 3% ค่าติดตั้ง") และเลขผู้เสียภาษีของผู้ขายที่เพิ่งเลือก ยังไม่มีใน /v1/contacts */}
-            <label style={css(LABEL2)}>ผู้ขาย<input list="ap-vendors" readOnly={!editable || tms} value={vendorText} onChange={(e) => setVendorText(e.target.value)} style={IN} />
-              <span style={css('font-size: 13px; color: #525252')}>{pnd ? `${personText(vInfo?.tax_id)} · ภ.ง.ด.${pnd}` : '—'}</span></label>
+            <label style={css(LABEL2)}>ผู้ขาย<input list="ap-vendors" readOnly={!editable || tms} value={vendorText} onChange={(e) => pickVendor(e.target.value)} style={IN} />
+              <span style={css('font-size: 13px; color: #525252')}>{pnd ? [`${personText(vInfo?.tax_id)} · ภ.ง.ด.${pnd}`, whtDefault].filter(Boolean).join(' · ') : '—'}</span></label>
             <label style={css(LABEL)}>วันที่บิล<input readOnly={amountsLocked} value={date} onChange={(e) => setDate(e.target.value)} style={css(P.inputNum)} /></label>
             <label style={css(LABEL)}>ครบกำหนด<input readOnly={!editable} value={due} onChange={(e) => setDue(e.target.value)} style={css(P.inputNum)} /></label>
             <label style={css(LABEL)}>เลขใบกำกับของผู้ขาย<input readOnly={amountsLocked} value={vendorRef} onChange={(e) => setVendorRef(e.target.value)} style={IN} />
               {vendorRef.trim() && refs && (dup
                 ? <span style={css('font-size: 13px; color: #a2191f')}>เลขใบกำกับซ้ำ · <a href={pHref({ id: dup.id, doc_type: 'AP' })}>{pDocNo({ doc_no: dup.docNo })}</a></span>
                 : <span style={css('font-size: 13px; color: #0e6027')}>ไม่ซ้ำกับบิลเดิมของผู้ขายรายนี้</span>)}</label>
-            {/* TODO(backend): เดือนที่ใช้ภาษีซื้อ (เลื่อนได้ ≤ 6 เดือน) ยังไม่มีฟิลด์ใน PurchaseDraftInput — ตอนนี้ใช้เดือนตามบิลเสมอ */}
+            {/* เดือนที่ใช้ภาษีซื้อ (ม.82/3 เลื่อนได้ ≤ 6 เดือน) → PurchaseDraftInput.vatClaimMonth */}
             <label style={css(LABEL)}>เดือนที่ใช้ภาษีซื้อ<select disabled={!editable} value={claimMonth} onChange={(e) => setClaimMonth(Number(e.target.value))} style={IN}>{months.map((m, k) => <option key={m} value={k}>{m}{k === 0 ? ' (ตามบิล)' : ''}</option>)}</select><span style={css('font-size: 13px; color: #525252')}>เลื่อนได้ไม่เกิน 6 เดือน</span></label>
             {/* TODO(backend): สูตร Cash[AP] ซื้อสด ยังไม่มี — savePurchaseDraft ใช้ Credit[AP] กับ AP เสมอ */}
             <label style={css(LABEL)}>สูตรลงบัญชี<select disabled={!editable} value="Credit[AP]" onChange={() => undefined} style={IN}><option value="Credit[AP]">Credit[AP] ซื้อเชื่อ</option><option value="Cash[AP]" disabled>Cash[AP] ซื้อสด</option></select></label>
@@ -178,7 +191,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
                   );
                 })}
                 {/* TODO(Wei): แบบร่างบิลซื้อ (จาก TMS) ไม่มีปุ่มเพิ่มบรรทัด — บิลที่กรอกเองใช้ "+ เพิ่มรายการ" จาก ScreenPurchaseOrder/ScreenExpense */}
-                {editable && !tms && <tr style={css('border-top: 1px solid #e0e0e0')}><td colSpan={8} style={css('padding: 0 12px')}><Button kind="ghost" size={32} onClick={() => setRows([...rows, blankPLine()])}>+ เพิ่มรายการ</Button></td></tr>}
+                {editable && !tms && <tr style={css('border-top: 1px solid #e0e0e0')}><td colSpan={8} style={css('padding: 0 12px')}><Button kind="ghost" size={32} onClick={() => setRows([...rows, { ...blankPLine(), wht: defaultWhtKeys(vReg)[0] ?? '' }])}>+ เพิ่มรายการ</Button></td></tr>}
               </tbody>
             </table>
           </section>
@@ -192,8 +205,8 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
                 ? <span style={css('color: #a2191f')}>งวด {monthBE(iso)} ปิดแล้ว</span>
                 : <span style={css('color: #0e6027')}>งวด {monthBE(iso)} ยังเปิด{period.status === 'soft_closed' ? ' (soft close)' : ''} ✓</span>)}
               {pnd && <span style={css('color: #0e6027')}>ผู้ขาย{personText(vInfo?.tax_id)} → ภ.ง.ด.{pnd} ✓</span>}
-              {/* TODO(backend): ทะเบียนผู้ติดต่อยังไม่มีบัญชีธนาคารสำหรับโอน → แสดงคำเตือนเสมอ */}
-              {vendor && <span style={css('color: #684e00')}>ผู้ขายยังไม่มีบัญชีธนาคารสำหรับโอน — <a href="/master/contacts">เพิ่ม</a></span>}
+              {/* TODO(Wei): ข้อความเมื่อผู้ขายมีบัญชีธนาคารแล้ว ไม่มีในแบบร่าง → ไม่แสดง */}
+              {vendor && !vReg?.bank_account && <span style={css('color: #684e00')}>ผู้ขายยังไม่มีบัญชีธนาคารสำหรับโอน — <a href={`/master/contacts?id=${vendor.id}`}>เพิ่ม</a></span>}
             </section>
             <table style={css('flex: 0 1 340px; border-collapse: collapse; font-size: 15px')}><tbody>
               <tr><td style={css(P.sumTd)}>มูลค่าก่อนภาษี</td><td style={css(P.sumNum)}>{money(totals?.net ?? d?.subtotal)}</td></tr>

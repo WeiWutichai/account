@@ -1,12 +1,12 @@
 // M4 ขาย + รับเงิน (docs/technical-plan-M4.md) — เอกสาร QO/SO/IV/CN/DN/DP/BN/RV · ลงบัญชีผ่าน Posting Engine · ทุกอย่างใน withCompany (RLS)
 import { docTotals, Money, post, receiptTotals, type CompanyRole, type MoneyString, type RuleDefinition } from '@innovera/ledger';
-import { bahtText, whtOnReceipt } from '@innovera/tax-th';
+import { bahtText, validateTaxId, whtOnReceipt } from '@innovera/tax-th';
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
-import { emitTx } from './hub.ts';
+import { emitTx, userNames } from './hub.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -25,6 +25,7 @@ export interface SalesLineInput {
   discount?: MoneyString;
   vat?: boolean;
   accountCode?: string | null;
+  estCost?: MoneyString | null;    // ต้นทุนประมาณรวมของบรรทัด (ใบเสนอราคา · ScreenQuote)
 }
 export interface SalesDraftInput {
   docType: Exclude<SalesType, 'BN' | 'RV'>;
@@ -42,6 +43,11 @@ export interface SalesDraftInput {
   creditDays?: number | null;
   receiveAccount?: string | null;  // DP / ขายสด: บัญชีที่รับเงินเข้า
   deposits?: { documentId: string; amount: MoneyString }[]; // IV หักมัดจำ (ฐานก่อน VAT)
+  // ใบเสนอราคา (ScreenQuote): พนักงานขาย · โครงการ (มิติ) · เงื่อนไขชำระ · ระดับราคา
+  salesperson?: string | null;
+  projectCode?: string | null;
+  paymentTerms?: string | null;
+  priceLevel?: number | null;
   lines: SalesLineInput[];
 }
 export interface Actor { userId: string | null; role: CompanyRole }
@@ -64,8 +70,21 @@ export function totalsOf(input: Pick<SalesDraftInput, 'lines' | 'priceInclVat' |
   return { ...t, vat: vat.toString(), grandTotal: Money.of(t.net).plus(vat).toString(), deposit: deposit.toString(), receivable: receivable.toString() };
 }
 
+/** เหตุการณ์ของเอกสารที่บันทึกลง audit log ด้วย (ScreenAudit: สร้าง/แก้ไขร่าง/ส่งอนุมัติ/อนุมัติ/ผ่านรายการ/ยกเลิก) · reference_edited บันทึกแยกใน auditEdit */
+const AUDITED_EVENTS: Record<string, string> = {
+  created: 'document.create', edited: 'document.edit_draft', submitted: 'document.submit', rejected: 'document.reject',
+  approved: 'document.approve', posted: 'document.post', voided: 'document.void',
+};
 export async function event(tx: CompanyTx, companyId: string, documentId: string, actor: string | null, ev: string, detail: unknown = {}) {
   await tx.insertInto('acct.document_event').values({ company_id: companyId, document_id: documentId, actor, event: ev, detail: JSON.stringify(detail) }).execute();
+  const action = AUDITED_EVENTS[ev];
+  if (action) {
+    const d = await tx.selectFrom('acct.document').select(['doc_type', 'doc_no', 'status', 'grand_total', 'journal_id']).where('id', '=', documentId).executeTakeFirst();
+    // ยกเลิกเอกสารที่มี journal: voidJournalTx บันทึก journal.void แล้ว — ไม่บันทึกซ้ำ
+    if (ev === 'voided' && d?.journal_id) return;
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor, action, entity: 'document', entity_id: documentId, before: null,
+      after: JSON.stringify({ ...(detail && typeof detail === 'object' ? detail : {}), doc_type: d?.doc_type ?? null, status: d?.status ?? null, grand_total: d?.grand_total ?? null }), prev_hash: null, hash: null }).execute();
+  }
 }
 export async function docOrThrow(tx: CompanyTx, id: string) {
   const d = await tx.selectFrom('acct.document').selectAll().where('id', '=', id).executeTakeFirst();
@@ -92,6 +111,8 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
   if (!SALES_TYPES.includes(input.docType)) throw new LedgerError('ประเภทเอกสารไม่ถูกต้อง');
   if (!input.lines.some((l) => (l.lineType ?? 'item') === 'item')) throw new LedgerError('ต้องมีอย่างน้อย 1 รายการ');
   if ((input.docType === 'CN' || input.docType === 'DN') && !input.refDocumentId) throw new LedgerError('ใบลดหนี้/เพิ่มหนี้ต้องอ้างใบกำกับภาษี');
+  if (input.priceLevel !== undefined && input.priceLevel !== null && (!Number.isInteger(input.priceLevel) || input.priceLevel < 1 || input.priceLevel > 5)) throw new LedgerError('ระดับราคาต้องเป็น 1–5');
+  for (const l of input.lines) if (l.estCost && !/^\d+(\.\d{1,2})?$/u.test(l.estCost)) throw new LedgerError(`ต้นทุนประมาณของ "${l.description}" ไม่ถูกต้อง`);
   const t = totalsOf(input);
   return db.withCompany(companyId, async (tx) => {
     const values = {
@@ -100,6 +121,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       tax_mode: input.taxMode ?? (input.docType === 'IV' ? 'on_payment' : null), rule_code: input.ruleCode ?? DEFAULT_RULE[input.docType] ?? null,
       address: input.address ?? null, notes: input.notes ?? null, reference: input.reference ?? null, ref_document_id: input.refDocumentId ?? null,
       credit_days: input.creditDays ?? null, receive_account: input.receiveAccount ?? null, updated_at: new Date(),
+      salesperson: input.salesperson?.trim() || null, project_code: input.projectCode?.trim() || null, payment_terms: input.paymentTerms?.trim() || null, price_level: input.priceLevel ?? null,
     };
     let docId = id;
     if (docId) {
@@ -121,7 +143,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       await tx.insertInto('acct.document_line').values({
         company_id: companyId, document_id: docId, line_no: i + 1, line_type: l.lineType ?? 'item', product_code: l.productCode ?? null, description: l.description,
         qty: item ? l.qty! : null, unit_price: item ? l.unitPrice! : null, discount: l.discount ?? '0.00', amount: item ? t.lines[k++]!.amount : '0.00',
-        vat_rate: item ? ((l.vat ?? true) ? '0.0700' : null) : null, account_code: l.accountCode ?? null,
+        vat_rate: item ? ((l.vat ?? true) ? '0.0700' : null) : null, account_code: l.accountCode ?? null, est_cost: item ? l.estCost ?? null : null,
       }).execute();
     }
     // มัดจำที่หัก: settlement จาก DP → IV (ยังไม่มีผลจนกว่าจะลงบัญชี — voided = true จนอนุมัติ)
@@ -302,8 +324,13 @@ export async function createBilling(db: Db, companyId: string, actor: Actor, inp
 // ---------- ยกเลิก (ScreenDocVoid) / แก้ข้อมูลอ้างอิง (ScreenDocEdit) ----------
 
 export async function voidDocument(db: Db, companyId: string, actor: Actor, id: string, p: { reason: string; date?: string }) {
+  return db.withCompany(companyId, (tx) => voidDocumentTx(tx, companyId, actor, id, p));
+}
+
+/** ยกเลิกเอกสารภายใน transaction ที่มีอยู่ (เช่น เช็คคืน = ยกเลิกใบรับชำระ + กลับรายการนำฝาก ใน transaction เดียว) */
+export async function voidDocumentTx(tx: CompanyTx, companyId: string, actor: Actor, id: string, p: { reason: string; date?: string }) {
   if (!p.reason.trim()) throw new LedgerError('ต้องระบุเหตุผลการยกเลิก');
-  return db.withCompany(companyId, async (tx) => {
+  {
     const d = await docOrThrow(tx, id);
     if (d.status === 'voided') throw new LedgerError('เอกสารถูกยกเลิกแล้ว');
     const active = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
@@ -325,11 +352,24 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
     await event(tx, companyId, id, actor.userId, 'voided', { reason: p.reason, reversal });
     await emitTx(tx, companyId, 'document.voided', { id, doc_type: d.doc_type, doc_no: d.doc_no, external_source: d.external_source, external_ref: d.external_ref, reason: p.reason, reversal });
     return { reversal };
-  });
+  }
 }
 
 /** หลังผ่านรายการแก้ได้เฉพาะข้อมูลอ้างอิง (CLAUDE.md) — ยอด/ภาษี/บัญชีแก้ไม่ได้ */
 export const REFERENCE_FIELDS = ['address', 'notes', 'reference', 'due_date'] as const;
+/** งวดของเอกสาร: ปิดแข็ง → แก้ไม่ได้ทุกช่อง · ปิดอ่อน → ผู้จัดการบัญชีขึ้นไป (ScreenDocEdit) */
+async function assertEditable(tx: CompanyTx, actor: Actor, issueDate: string) {
+  const p = await tx.selectFrom('acct.period').select(['status', 'period_no', 'fiscal_year']).where('starts_on', '<=', issueDate).where('ends_on', '>=', issueDate)
+    .where('period_no', '>=', 1).where('period_no', '<=', 12).executeTakeFirst();
+  if (p?.status === 'hard_closed') throw new LedgerError(`งวด ${p.period_no}/${p.fiscal_year} ปิดแข็งแล้ว — ต้องเปิดงวดคืนพร้อมเหตุผลก่อนแก้ไข`);
+  if (p?.status === 'soft_closed' && !['owner', 'accounting_manager'].includes(actor.role)) throw new LedgerError(`งวด ${p.period_no}/${p.fiscal_year} ปิดอ่อนแล้ว — ผู้จัดการบัญชีขึ้นไปเท่านั้นที่แก้ได้`);
+}
+
+async function auditEdit(tx: CompanyTx, companyId: string, actor: Actor, id: string, before: unknown, after: unknown) {
+  await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor.userId, action: 'document.edit_posted', entity: 'document', entity_id: id,
+    before: JSON.stringify(before), after: JSON.stringify(after), prev_hash: null, hash: null }).execute();
+}
+
 export async function editReference(db: Db, companyId: string, actor: Actor, id: string, input: Partial<Record<(typeof REFERENCE_FIELDS)[number], string | null>> & Record<string, unknown> & { reason?: string }) {
   const { reason, ...patch } = input;
   const bad = Object.keys(patch).filter((k) => !(REFERENCE_FIELDS as readonly string[]).includes(k));
@@ -337,9 +377,66 @@ export async function editReference(db: Db, companyId: string, actor: Actor, id:
   return db.withCompany(companyId, async (tx) => {
     const d = await docOrThrow(tx, id);
     if (d.status === 'voided') throw new LedgerError('เอกสารถูกยกเลิกแล้ว');
+    await assertEditable(tx, actor, d.issue_date);
     const before = Object.fromEntries(Object.keys(patch).map((k) => [k, (d as Record<string, unknown>)[k] ?? null]));
     await tx.updateTable('acct.document').set({ ...(patch as Record<string, string | null>), updated_at: new Date() }).where('id', '=', id).execute();
     await event(tx, companyId, id, actor.userId, 'reference_edited', { before, after: patch, ...(reason ? { reason } : {}) });
+    await auditEdit(tx, companyId, actor, id, before, { ...patch, reason: reason ?? null });
+  });
+}
+
+export interface PurchaseEditInput {
+  partyTaxId?: string | null; vendorRef?: string | null; vendorInvoiceDate?: string | null; projectCode?: string | null;
+  lines?: { lineId: string; accountCode: string }[]; reason: string; date: string; // date = วันที่ของ JV โอนย้ายบัญชี
+}
+
+/**
+ * แก้บิลซื้อ/ค่าใช้จ่ายที่ผ่านรายการแล้ว (ScreenDocEdit): เลขผู้เสียภาษีผู้ขาย (อัปเดตรายงานภาษีซื้อ · ยอดไม่เปลี่ยน) · เลขที่/วันที่ใบกำกับผู้ขาย (วันที่ภายในงวดเดียวกัน)
+ * · มิติ/โครงการ (ไม่กระทบ GL) · บัญชีค่าใช้จ่ายของบรรทัด → JV โอนย้ายบัญชี Dr ใหม่ / Cr เดิม (ผูกเอกสารต้นทาง)
+ * จำนวนเงิน / VAT / อัตราหัก / ผู้ขาย แก้ไม่ได้ — ยกเลิกแล้วออกใหม่ หรือออกใบลดหนี้/เพิ่มหนี้
+ */
+export async function editPurchaseDoc(db: Db, companyId: string, actor: Actor, id: string, input: PurchaseEditInput) {
+  if (!input.reason?.trim()) throw new LedgerError('ต้องระบุเหตุผลการแก้ไข');
+  return db.withCompany(companyId, async (tx) => {
+    const d = await docOrThrow(tx, id);
+    if (!['AP', 'EXP'].includes(d.doc_type)) throw new LedgerError('แก้ได้เฉพาะบิลซื้อและค่าใช้จ่าย');
+    if (d.status !== 'posted') throw new LedgerError('แก้ได้เฉพาะเอกสารที่ผ่านรายการแล้ว');
+    await assertEditable(tx, actor, d.issue_date);
+    const patch: Record<string, string | null> = {};
+    if (input.partyTaxId !== undefined) {
+      if (input.partyTaxId && !validateTaxId(input.partyTaxId)) throw new LedgerError('เลขประจำตัวผู้เสียภาษีของผู้ขายไม่ถูกต้อง (13 หลัก · checksum)');
+      patch.party_tax_id = input.partyTaxId || null;
+    }
+    if (input.vendorRef !== undefined) patch.vendor_ref = input.vendorRef || null;
+    if (input.vendorInvoiceDate !== undefined) {
+      if (input.vendorInvoiceDate && input.vendorInvoiceDate.slice(0, 7) !== d.issue_date.slice(0, 7)) throw new LedgerError('วันที่ในใบกำกับของผู้ขายแก้ได้ภายในงวดเดียวกันเท่านั้น');
+      patch.vendor_invoice_date = input.vendorInvoiceDate || null;
+    }
+    if (input.projectCode !== undefined) patch.project_code = input.projectCode || null;
+    const before: Record<string, unknown> = Object.fromEntries(Object.keys(patch).map((k) => [k, (d as Record<string, unknown>)[k] ?? null]));
+    let journalNo: string | null = null;
+    const moves = [];
+    for (const m of input.lines ?? []) {
+      const l = await tx.selectFrom('acct.document_line').select(['id', 'account_code', 'amount', 'description']).where('id', '=', m.lineId).where('document_id', '=', id).executeTakeFirst();
+      if (!l) throw new LedgerError('ไม่พบบรรทัดของเอกสาร');
+      if (!l.account_code || l.account_code === m.accountCode) continue;
+      const acct = await tx.selectFrom('acct.account').select(['code', 'is_control']).where('code', '=', m.accountCode).executeTakeFirst();
+      if (!acct || acct.is_control || !(m.accountCode.startsWith('5') || /^15[1-4]/u.test(m.accountCode))) throw new LedgerError(`บัญชี ${m.accountCode} ใช้เป็นบัญชีค่าใช้จ่าย/สินทรัพย์ไม่ได้`);
+      moves.push({ ...l, to: m.accountCode });
+    }
+    if (moves.length) {
+      const lines = moves.flatMap((m) => [{ side: 'Dr' as const, account: m.to, amount: Money.parse(m.amount) }, { side: 'Cr' as const, account: m.account_code!, amount: Money.parse(m.amount) }]);
+      const j = await postJournalTx(tx, companyId, { date: input.date, lines, role: actor.role, book: 'GJ', sourceDocumentId: id, description: `โอนย้ายบัญชี ${d.doc_no ?? ''}: ${input.reason.trim()}` });
+      journalNo = j.journalNo;
+      for (const m of moves) await tx.updateTable('acct.document_line').set({ account_code: m.to }).where('id', '=', m.id).execute();
+      before.lines = moves.map((m) => ({ lineId: m.id, account: m.account_code }));
+    }
+    if (!Object.keys(patch).length && !moves.length) throw new LedgerError('ไม่มีช่องที่เปลี่ยน');
+    if (Object.keys(patch).length) await tx.updateTable('acct.document').set({ ...patch, updated_at: new Date() }).where('id', '=', id).execute();
+    const after = { ...patch, ...(moves.length ? { lines: moves.map((m) => ({ lineId: m.id, account: m.to })), journal: journalNo } : {}), reason: input.reason.trim() };
+    await event(tx, companyId, id, actor.userId, 'reference_edited', { before, after });
+    await auditEdit(tx, companyId, actor, id, before, after);
+    return { changed: Object.keys(patch).length + moves.length, journalNo };
   });
 }
 
@@ -352,7 +449,8 @@ export async function convertDocument(db: Db, companyId: string, actor: Actor, i
   const newId = await saveSalesDraft(db, companyId, actor, {
     docType: to, contactId: src.doc.contact_id!, issueDate: p.issueDate ?? today(), priceInclVat: src.doc.price_incl_vat, billDiscount: src.doc.bill_discount,
     address: src.doc.address, notes: src.doc.notes, reference: src.doc.doc_no, refDocumentId: id, creditDays: src.doc.credit_days,
-    lines: src.lines.map((l) => ({ lineType: l.line_type, productCode: l.product_code, description: l.description, qty: l.qty ?? undefined, unitPrice: l.unit_price ?? undefined, discount: l.discount, vat: l.vat_rate !== null, accountCode: l.account_code })),
+    salesperson: src.doc.salesperson, projectCode: src.doc.project_code, paymentTerms: src.doc.payment_terms, priceLevel: src.doc.price_level,
+    lines: src.lines.map((l) => ({ lineType: l.line_type, productCode: l.product_code, description: l.description, qty: l.qty ?? undefined, unitPrice: l.unit_price ?? undefined, discount: l.discount, vat: l.vat_rate !== null, accountCode: l.account_code, estCost: l.est_cost })),
   } as SalesDraftInput);
   await db.withCompany(companyId, (tx) => event(tx, companyId, id, actor.userId, 'converted', { to, id: newId }));
   return newId;
@@ -360,12 +458,24 @@ export async function convertDocument(db: Db, companyId: string, actor: Actor, i
 
 // ---------- อ่าน ----------
 
+/** เอกสาร + ประวัติ (events[].actor_name = ชื่อจาก Innovera ID · created_by_client_name = API client ที่สร้าง) */
 export async function getDocument(db: Db, companyId: string, id: string) {
+  const r = await loadDocument(db, companyId, id);
+  if (!r) return null;
+  const names = await userNames(db, [...r.events.map((e) => e.actor), r.doc.created_by, r.doc.approved_by]);
+  const client = r.doc.created_by_client
+    ? await db.withPublic((tx) => tx.selectFrom('public.api_client').select('name').where('id', '=', r.doc.created_by_client!).executeTakeFirst())
+    : undefined;
+  return { ...r, events: r.events.map((e) => ({ ...e, actor_name: e.actor ? names[e.actor] ?? null : null })),
+    created_by_name: r.doc.created_by ? names[r.doc.created_by] ?? null : null, approved_by_name: r.doc.approved_by ? names[r.doc.approved_by] ?? null : null,
+    created_by_client_name: client?.name ?? null };
+}
+async function loadDocument(db: Db, companyId: string, id: string) {
   return db.withCompany(companyId, async (tx) => {
     const doc = await tx.selectFrom('acct.document').selectAll().where('id', '=', id).executeTakeFirst();
     if (!doc) return null;
     const lines = await tx.selectFrom('acct.document_line as l').leftJoin('acct.product as p', (j) => j.onRef('p.code', '=', 'l.product_code').onRef('p.company_id', '=', 'l.company_id'))
-      .selectAll('l').select('p.unit').where('l.document_id', '=', id).orderBy('l.line_no').execute();
+      .selectAll('l').select(['p.unit', 'p.est_cost as product_est_cost', 'p.vat_code as product_vat_code', 'p.vat_exempt_reason']).where('l.document_id', '=', id).orderBy('l.line_no').execute();
     const cheques = await tx.selectFrom('acct.cheque').selectAll().where('document_id', '=', id).execute();
     const contact = doc.contact_id ? await tx.selectFrom('acct.contact').selectAll().where('id', '=', doc.contact_id).executeTakeFirst() : null;
     const events = await tx.selectFrom('acct.document_event').select(['at', 'actor', 'event', 'detail']).where('document_id', '=', id).orderBy('at').orderBy('id').execute();
@@ -389,19 +499,61 @@ export async function listDocuments(db: Db, companyId: string, f: DocFilter = {}
   return db.withCompany(companyId, async (tx) => {
     let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
       .select(['d.id', 'd.doc_type', 'd.doc_no', 'd.status', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.subtotal', 'd.vat', 'd.wht', 'd.tax_mode', 'd.created_at', 'd.ref_document_id', 'd.sent_at', 'd.vendor_ref', 'd.external_source', 'd.external_ref', 'd.pay_now', 'd.batch_ref',
-        'c.id as contact_id', 'c.code as contact_code', 'c.name as contact_name',
-        sql<string>`coalesce((select sum(s.applied + s.wht) from acct.settlement s where s.document_id = d.id and s.company_id = d.company_id and not s.voided), 0)`.as('settled')])
+        'd.salesperson', 'd.project_code', 'c.id as contact_id', 'c.code as contact_code', 'c.name as contact_name', 'c.tax_id as contact_tax_id',
+        // ยอดตัดชำระ = รับ/จ่าย (รวมภาษีถูกหัก) + ใบลดหนี้ — ตรงกับ outstandingTx (ไม่นับมัดจำที่หักในใบ ซึ่งหักจาก grand_total แล้ว)
+        sql<string>`coalesce((select sum(case when p.doc_type in ('RV', 'PV') then s.applied + s.wht else s.applied end) from acct.settlement s
+          join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
+          where s.document_id = d.id and s.company_id = d.company_id and not s.voided and p.doc_type in ('RV', 'PV', 'CN', 'CNR')), 0)`.as('settled')])
       .orderBy('d.issue_date', 'desc').orderBy('d.doc_no', 'desc').limit(f.limit ?? 500);
     if (f.docType) q = q.where('d.doc_type', 'in', Array.isArray(f.docType) ? f.docType : [f.docType]);
     if (f.status) q = q.where('d.status', '=', f.status as never);
     if (f.from) q = q.where('d.issue_date', '>=', f.from);
     if (f.to) q = q.where('d.issue_date', '<=', f.to);
     if (f.contactId) q = q.where('d.contact_id', '=', f.contactId);
-    if (f.q) q = q.where((eb) => eb.or([eb('d.doc_no', 'ilike', `%${f.q}%`), eb('c.name', 'ilike', `%${f.q}%`), eb('c.code', 'ilike', `%${f.q}%`)]));
+    if (f.q) q = q.where((eb) => eb.or([eb('d.doc_no', 'ilike', `%${f.q}%`), eb('c.name', 'ilike', `%${f.q}%`), eb('c.code', 'ilike', `%${f.q}%`), eb('c.tax_id', 'ilike', `%${f.q}%`),
+      eb('d.vendor_ref', 'ilike', `%${f.q}%`)]));
     const rows = await q.execute();
     // ยอดค้าง: ขาย IV/DN · ซื้อ AP/EXP(ไม่ได้จ่ายทันที)/DNR
     const open = (r: (typeof rows)[number]) => r.status === 'posted' && (['IV', 'DN', 'AP', 'DNR'].includes(r.doc_type) || (r.doc_type === 'EXP' && !r.pay_now));
     return rows.map((r) => ({ ...r, outstanding: open(r) ? Money.parse(r.grand_total).minus(Money.parse(r.settled)).toString() : null }));
+  });
+}
+
+/**
+ * เลขใบกำกับของผู้ขายที่บันทึกแล้ว (ScreenPurchaseBill "ไม่ซ้ำกับบิลเดิมของผู้ขายรายนี้") · ไม่นับเอกสารที่ยกเลิก
+ * ref = ตรวจเลขเดียว (เทียบแบบไม่สนช่องว่างหัวท้าย/ตัวพิมพ์) · exclude = เอกสารที่กำลังแก้
+ */
+export async function vendorRefs(db: Db, companyId: string, p: { contactId: string; ref?: string; excludeId?: string; types?: string[] }) {
+  return db.withCompany(companyId, async (tx) => {
+    let q = tx.selectFrom('acct.document').select(['id', 'doc_no', 'doc_type', 'status', 'vendor_ref', 'issue_date'])
+      .where('contact_id', '=', p.contactId).where('vendor_ref', 'is not', null).where('status', '!=', 'voided')
+      .where('doc_type', 'in', p.types?.length ? p.types : ['AP', 'EXP', 'CNR', 'DNR']).orderBy('issue_date', 'desc');
+    if (p.ref) q = q.where(sql<string>`lower(trim(vendor_ref))`, '=', p.ref.trim().toLowerCase());
+    if (p.excludeId) q = q.where('id', '!=', p.excludeId);
+    const rows = await q.execute();
+    return rows.map((r) => ({ ...r, vendor_ref: r.vendor_ref!.trim() }));
+  });
+}
+
+/** ค่าที่เคยใช้ในเอกสาร (ตัวเลือก "พนักงานขาย" / "โครงการ (มิติ)" ใน ScreenQuote) — ยังไม่มีทะเบียนพนักงานขาย/โครงการ */
+export async function documentFieldValues(db: Db, companyId: string) {
+  return db.withCompany(companyId, async (tx) => {
+    const sp = await tx.selectFrom('acct.document').select('salesperson').distinct().where('salesperson', 'is not', null).orderBy('salesperson').execute();
+    const pj = await tx.selectFrom('acct.document').select('project_code').distinct().where('project_code', 'is not', null).orderBy('project_code').execute();
+    return { salespersons: sp.map((r) => r.salesperson!), projects: pj.map((r) => r.project_code!) };
+  });
+}
+
+/** บันทึกการพิมพ์ต้นฉบับ (ครั้งที่ 2 เป็นต้นไปพิมพ์เป็นสำเนา) · คืนจำนวนครั้งหลังบันทึก */
+export async function markPrinted(db: Db, companyId: string, actor: Actor, id: string): Promise<{ printCount: number }> {
+  return db.withCompany(companyId, async (tx) => {
+    const r = await tx.updateTable('acct.document').set((eb) => ({ print_count: eb('print_count', '+', 1) })).where('id', '=', id).where('status', '!=', 'draft')
+      .returning('print_count').executeTakeFirst();
+    if (!r) throw new LedgerError('ไม่พบเอกสาร หรือเอกสารยังเป็นร่าง');
+    // ไม่ลง document_event (ประวัติเอกสารในแบบร่างไม่มีรายการ "พิมพ์") — เก็บใน audit_log
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor.userId, action: 'document.print', entity: 'document', entity_id: id,
+      before: null, after: JSON.stringify({ print_count: r.print_count }), prev_hash: null, hash: null }).execute();
+    return { printCount: r.print_count };
   });
 }
 

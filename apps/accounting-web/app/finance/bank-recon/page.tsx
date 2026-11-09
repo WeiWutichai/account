@@ -16,17 +16,11 @@ export default async function BankReconPage({ searchParams }: { searchParams: Pr
   // บัญชีเงินฝากธนาคาร (11001xx–11002xx ในผังบริการ) · ชื่อแสดงตัดคำว่า "เงินฝากธนาคาร" ตามแบบร่าง
   const banks = accounts.filter((a) => /^1100\d{3}$/u.test(a.code) && a.name.includes('ธนาคาร')).map((a) => ({ code: a.code, label: `${a.code} ${a.name.replace(/^เงินฝากธนาคาร\s*/u, '')}` }));
   const account = banks.find((b) => b.code === sp.account)?.code ?? banks[0]?.code ?? '1100100';
-  const [rec, ledger] = await Promise.all([
-    api<Recon>(`/v1/bank/${account}/reconciliation?asOf=${asOf}`),
-    api<{ rows: { date: string; journal_no: string; description: string | null; debit: string; credit: string }[] }>(`/v1/ledger?account=${account}&from=${from}&to=${asOf}`),
-  ]);
-  // รายการในสมุดเดือนนี้ที่จับคู่แล้ว = ทุกรายการในแยกประเภทเดือนนี้ − รายการที่ยังไม่จับคู่
-  // TODO(backend): GET bank/:account/reconciliation ควรคืนรายการ statement ที่จับคู่แล้ว (พร้อม journal) — ตอนนี้คืนแค่จำนวน
-  const open = new Set(rec.unmatchedGl.map((g) => g.journal_no));
-  const matchedGl = ledger.rows.filter((r) => !open.has(r.journal_no));
+  // รายการ statement ที่จับคู่แล้วพร้อม journal (1 ต่อหลาย) · ข้อเสนอการจับคู่ · สถานะปิดกระทบยอดของเดือน — จาก GET bank/:account/reconciliation
+  const rec = await api<Recon>(`/v1/bank/${account}/reconciliation?asOf=${asOf}`);
   return (
     <Shell active="bank">
-      <BankReconScreen banks={banks} account={account} year={year} period={period} from={from} asOf={asOf} rec={rec} matchedGl={matchedGl} />
+      <BankReconScreen banks={banks} account={account} year={year} period={period} from={from} asOf={asOf} rec={rec} />
     </Shell>
   );
 }

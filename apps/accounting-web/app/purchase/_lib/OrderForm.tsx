@@ -3,18 +3,20 @@
 import { Button, ButtonLink, css, money, parseThaiDate, shortDate, thaiDate } from '@innovera/ui';
 import { bangkok } from '../../sales/_lib/doc.ts';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Msg } from '../../sales/_lib/ui';
 import { blankPLine, netLines, pLinePayload, type PLineRow, pRowFromLine, usePTotals, validP } from './lines.ts';
 import { docAction, P, PHeader, Pending, Seg } from './ui';
-import { type Account, pct, pDocNo, type PContact, type PDetail, pndOf, pStatusTag, type WhtTypeDef } from './types.ts';
+import { type Account, defaultWhtKeys, pct, pDocNo, type PContact, type PDetail, pndOf, pStatusTag, type WhtTypeDef } from './types.ts';
 import { expectedWht, sumWht } from './wht.ts';
 import { call } from '../../sales/_lib/client.ts';
 import { toCents } from '../../sales/_lib/num.ts';
 
 type Kind = 'PR' | 'PO';
-// TODO(backend): วงเงินสายอนุมัติ PO ไม่มีใน API — ใช้ fixtures PO2611-0018.approval_limit_l2 (300,000) ตามแบบร่าง · backend ยังไม่บังคับระดับกรรมการ
-const L2_LIMIT = '300000.00';
+// วงเงินสายอนุมัติ PO: GET /v1/approval-settings (ค่าตั้งบริษัท · ค่าตั้งต้น fixtures PO2611-0018.approval_limit_l2 = 300,000) · approvePurchase บังคับกรรมการเมื่อเกิน
+const L2_DEFAULT = '300000.00';
+/** '300000.00' → '300,000' ตามรูปแบบในแบบร่าง */
+const limitText = (v: string) => money(v).replace(/\.00$/u, '');
 // TODO(backend): เงื่อนไขชำระไม่มีฟิลด์ใน PurchaseDraftInput — เก็บใน notes
 const TERMS = ['เครดิต 30 วันหลังรับบิล', 'มัดจำ 30% + ที่เหลือเมื่อส่งมอบ', 'จ่ายทันที'] as const;
 const LABEL = 'display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252';
@@ -45,7 +47,9 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
   const vendor = vendors.find((c) => vendorText === label(c) || vendorText.startsWith(`${c.code} `)) ?? null;
   const vendorInfo = vendor && src?.contact?.id === vendor.id ? src.contact : vendor;
   const expense = accounts.filter((a) => a.type === 'expense' && a.active);
-  const wht = expectedWht(netLines(rows, totals, idx), whtTypes);
+  // บรรทัดที่ไม่ระบุประเภทเงินได้ → ใช้ WHT ตั้งต้นของผู้ขาย (contact.default_wht · ประเภทแรกถ้ามีหลายประเภท)
+  const vendorWht = defaultWhtKeys(vendors.find((c) => c.id === vendor?.id))[0] ?? null;
+  const wht = expectedWht(netLines(rows, totals, idx).map((l) => ({ ...l, whtType: l.whtType ?? vendorWht })), whtTypes);
   const rates = [...new Set(wht.map((w) => `${pct(w.rate)}%`))];
 
   const payload = () => ({
@@ -84,7 +88,9 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
   const refPr = detail?.ref ?? (pr ? { id: pr.doc.id, doc_no: pr.doc.doc_no } : null);
   const sub = [refPr ? `สร้างจากใบขอซื้อ ${pDocNo(refPr)}${pr?.doc.status === 'approved' || detail?.ref ? ' (อนุมัติแล้ว)' : ''}` : null, 'ไม่ลงบัญชี', 'ใช้ควบคุมงบและเทียบกับบิลซื้อที่เข้ามา'].filter(Boolean).join(' · ');
   const grand = totals?.grandTotal ?? d?.grand_total ?? null;
-  const over = toCents(grand) > toCents(L2_LIMIT);
+  const [l2Limit, setL2Limit] = useState(L2_DEFAULT);
+  useEffect(() => { void call<{ purchaseOrder: { l2Limit: string } }>('approval-settings').then((r) => { if (r.ok) setL2Limit(r.data.purchaseOrder.l2Limit); }); }, []);
+  const over = toCents(grand) > toCents(l2Limit);
   const approvedAt = d?.status === 'approved' ? ddmm(d.approved_at) : '';
   const step = (ok: string, wait: boolean) => (ok ? <span style={css('color: #0e6027')}>อนุมัติ · {ok}</span> : wait ? <span style={css('color: #684e00')}>รอ</span> : <span style={css('color: #525252')}>—</span>);
   const IN = css(P.input);
@@ -106,7 +112,6 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
 
         <section style={css('display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px 24px')}>
           <datalist id="po-vendors">{vendors.map((c) => <option key={c.id} value={label(c)} />)}</datalist>
-          {/* TODO(backend): ผู้ติดต่อ/อีเมล/เลขผู้เสียภาษีของผู้ขายที่เพิ่งเลือก — GET /v1/contacts ส่งแค่ id/code/name/kind */}
           <label style={css(LABEL2)}>ผู้ขาย<input list="po-vendors" readOnly={!editable} value={vendorText} onChange={(e) => setVendorText(e.target.value)} style={IN} />
             <span style={css('font-size: 13px; color: #525252')}>เครดิต {vendorInfo?.credit_days ?? '—'} วัน · ภ.ง.ด.{vendorInfo?.tax_id ? pndOf(vendorInfo.tax_id) : '—'} · ผู้ติดต่อ {[vendorInfo?.contact_person ?? '—', vendorInfo?.email].filter(Boolean).join(' ')}</span></label>
           <label style={css(LABEL)}>วันที่สั่งซื้อ<input readOnly={!editable} value={date} onChange={(e) => setDate(e.target.value)} style={css(P.inputNum)} /></label>
@@ -151,18 +156,19 @@ export function OrderForm({ detail, pr, vendors, accounts, whtTypes, today, rece
           <section style={css('flex: 1 1 400px; display: flex; flex-direction: column; gap: 16px')}>
             <div style={css(`${P.box}; gap: 8px`)}><strong>สายอนุมัติ (ตามวงเงิน PO)</strong>
               <div style={css('display: flex; justify-content: space-between')}><span>1. หัวหน้าแผนก (PR)</span>{refPr ? step(pr?.doc.status === 'approved' ? ddmm(pr.doc.approved_at) : '', !!pr && pr.doc.status === 'pending_approval') : kind === 'PR' ? step(approvedAt, d?.status === 'pending_approval') : <span style={css('color: #525252')}>ไม่ต้อง</span>}</div>
-              <div style={css('display: flex; justify-content: space-between')}><span>2. ผู้จัดการบัญชี (PO ≤ 300,000)</span>{kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span style={css('color: #525252')}>—</span>}</div>
-              <div style={css(over ? 'display: flex; justify-content: space-between' : 'display: flex; justify-content: space-between; color: #525252')}><span>3. กรรมการ (PO &gt; 300,000)</span>{over && kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span>ไม่ต้อง</span>}</div>
+              <div style={css('display: flex; justify-content: space-between')}><span>{`2. ผู้จัดการบัญชี (PO ≤ ${limitText(l2Limit)})`}</span>{kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span style={css('color: #525252')}>—</span>}</div>
+              <div style={css(over ? 'display: flex; justify-content: space-between' : 'display: flex; justify-content: space-between; color: #525252')}><span>{`3. กรรมการ (PO > ${limitText(l2Limit)})`}</span>{over && kind === 'PO' ? step(approvedAt, d?.status === 'pending_approval') : <span>ไม่ต้อง</span>}</div>
               {/* TODO(backend): "เตือน: งบ … Q4 จะใช้ถึง N% หลังอนุมัติ PO นี้" — ยังไม่มีข้อมูลงบประมาณ */}
             </div>
-            {/* TODO(backend): "ถ้ายอด AP เกิน PO มากกว่า 5% ต้องให้ผู้อนุมัติ PO ยืนยัน" และ "PO ปิดอัตโนมัติ" ยังไม่บังคับใน approvePurchase */}
+            {/* approvePurchase: AP ที่อ้าง PO ยอดรวมเกินเกณฑ์ (ค่าตั้ง · 5%) ต้อง confirmOverPo โดยผู้อนุมัติ PO/กรรมการ · รับบิลครบ → PO ปิดอัตโนมัติ (closed_at)
+                TODO(Wei) ScreenPurchaseOrder.dc.html: "หรือกดปิดเอง" — แบบร่างไม่มีปุ่มปิด PO */}
             <div style={css(`${P.box}; gap: 6px`)}><strong>เมื่อบิลซื้อเข้ามา</strong><span style={css('color: #525252')}>· สร้าง AP จาก PO นี้ได้บางส่วน (ยอดค้างรับแสดงในคอลัมน์ &quot;รับบิลแล้ว&quot;) · บัญชี/VAT/มิติ ถูกเติมให้จาก PO · ถ้ายอด AP เกิน PO มากกว่า 5% ต้องให้ผู้อนุมัติ PO ยืนยัน · PO ปิดอัตโนมัติเมื่อรับบิลครบหรือกดปิดเอง</span></div>
           </section>
           <table style={css('flex: 0 1 340px; border-collapse: collapse; font-size: 15px')}><tbody>
             <tr><td style={css(P.sumTd)}>รวมก่อนภาษี</td><td style={css(P.sumNum)}>{money(totals?.net ?? d?.subtotal)}</td></tr>
             <tr><td style={css(P.sumTd)}>ภาษีมูลค่าเพิ่ม 7%</td><td style={css(P.sumNum)}>{money(totals?.vat ?? d?.vat)}</td></tr>
             <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css(P.sumTotal)}>มูลค่าสั่งซื้อ</td><td style={css(P.sumTotalNum)}>{money(grand)}</td></tr>
-            {/* TODO(backend): PO ไม่มีคอลัมน์ประเภทเงินได้ในแบบร่าง และผู้ขายยังไม่มีประเภทเงินได้ตั้งต้น → ยอดคาดไว้คิดจาก wht_type ของบรรทัดเท่านั้น (PO2611-0018 ใน dev seed ไม่มี → 0.00 ไม่ใช่ 6,300.00 ตาม fixtures) */}
+            {/* PO ไม่มีคอลัมน์ประเภทเงินได้ในแบบร่าง → ยอดคาดไว้คิดจาก wht_type ของบรรทัด หรือ WHT ตั้งต้นของผู้ขาย */}
             <tr style={css('color: #525252; font-size: 13px')}><td style={css('height: 28px')}>หัก ณ ที่จ่ายที่คาดไว้ ({rates.join(' + ') || '—'}){wht.some((w) => w.pendingAuditor) ? <> <Pending /></> : null} — รับรู้ตอนจ่ายจริง</td><td style={css(P.sumNum)}>{money(sumWht(wht))}</td></tr>
           </tbody></table>
         </div>

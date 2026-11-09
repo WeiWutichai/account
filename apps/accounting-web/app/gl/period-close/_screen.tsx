@@ -5,7 +5,8 @@
 // TODO(Wei) ScreenPeriodClose.dc.html: แบบร่างไม่มีปุ่ม "เปิดงวดคืน" (มีแต่ "ประวัติการเปิดงวดย้อนหลัง") — backend พร้อม (POST periods/:year/:no/reopen {reason} เฉพาะเจ้าของ + audit) · ต้องกำหนดตำแหน่งปุ่ม/ช่องกรอกเหตุผล
 // TODO(Wei) ScreenPeriodClose.dc.html: แบบร่างไม่มีปุ่ม "ปิดปี" (POST periods/:year/year-end ลงงวด 13) — กล่อง "ปิดปีบัญชี (เตรียมการ)" แสดงตามแบบร่างเท่านั้น
 // TODO(Wei) ScreenPeriodClose.dc.html: บรรทัด "ภาษีเงินได้นิติบุคคลค้างจ่าย" ในตัวอย่างปิดปี — ยอดประมาณการภาษีเงินได้ต้องให้ผู้สอบบัญชีกำหนด (backend ไม่ได้คำนวณ) จึงแสดง "—"
-// TODO(backend) ScreenPeriodClose.dc.html: คอลัมน์ ภ.พ.30 / ภ.ง.ด. (ยื่นแล้ว/ร่าง) · ชื่อผู้ปิดงวด · รายการปรับปรุงผู้สอบบัญชี / ภ.ง.ด.50 / ภ.ง.ด.51 · "ยืนยันทบทวนแล้ว" · "พิมพ์ชุดรายงานปิดงวด" ยังไม่มี API
+// คอลัมน์ ภ.พ.30 / ภ.ง.ด. = acct.tax_filing · ปิดโดย = public.app_user · "ยืนยันทบทวนแล้ว" = POST periods/:year/:no/accrual-reviewed
+// TODO(Wei) ScreenPeriodClose.dc.html: รายการปรับปรุงผู้สอบบัญชี / ภ.ง.ด.50 / ภ.ง.ด.51 · "พิมพ์ชุดรายงานปิดงวด" — ยังไม่มีข้อมูล/แบบพิมพ์ (ไม่มีระบบบันทึกรายการผู้สอบบัญชีและการยื่น ภ.ง.ด.50/51)
 import { buttonStyle, css, money, Tag, thaiDate, thaiMonth } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { Fragment, useState } from 'react';
@@ -14,8 +15,10 @@ import { sumMoney } from '../../sales/_lib/num';
 import { Msg } from '../../sales/_lib/ui';
 
 type Status = 'open' | 'soft_closed' | 'hard_closed';
-export interface PeriodRow { no: number; status: Status; closedAt: string | null; drafts: number; profit: string | null; bank: { ok: boolean; diff: string; account: string } | null }
-export interface Check { mark: 'ok' | 'x' | 'warn' | 'na'; text: string; right: string; href?: string; button?: string }
+type Filing = 'filed' | 'draft' | null;
+export interface PeriodRow { no: number; status: Status; closedAt: string | null; closedBy: string | null; drafts: number; profit: string | null; bank: { ok: boolean; diff: string; account: string } | null; pp30: Filing; pnd: Filing }
+/** action = path ของ accounting-api ที่ปุ่ม (button) เรียก (POST) */
+export interface Check { mark: 'ok' | 'x' | 'warn' | 'na'; text: string; right: string; href?: string; button?: string; action?: string }
 interface Props { year: number; current: number; rows: PeriodRow[]; checks: Check[]; reopens: { at: string; period: string; reason: string }[]; yearEnd: { revenue: string; expense: string; profit: string } }
 
 const TD = 'padding: 0 12px';
@@ -34,6 +37,9 @@ function Dot({ text, tone }: { text: string; tone: string }) {
 }
 const TONE: Record<Status, string> = { hard_closed: 'background: #e0e0e0; color: #161616', soft_closed: 'background: #edf5ff; color: #0043ce', open: 'background: #fcf4d6; color: #684e00' };
 const LABEL: Record<Status, string> = { hard_closed: 'ปิดแข็ง', soft_closed: 'ปิดอ่อน', open: 'เปิด' };
+const FILING: Record<'filed' | 'draft', string> = { filed: 'ยื่นแล้ว', draft: 'ร่าง' };
+/** ปิดโดย: ชื่อผู้ปิด + วันที่ (แบบร่าง "[ผู้จัดการบัญชี] 25/10") */
+const closer = (r: PeriodRow) => [r.closedBy ?? '', ddmm(r.closedAt)].filter(Boolean).join(' ');
 
 export function PeriodCloseScreen({ year, current, rows, checks, reopens, yearEnd }: Props) {
   const router = useRouter();
@@ -61,6 +67,14 @@ export function PeriodCloseScreen({ year, current, rows, checks, reopens, yearEn
     setBusy(false);
     if (!r.ok) { setMsg({ kind: 'err', text: r.error }); return; }
     setMsg({ kind: 'ok', text: `${to === 'soft_closed' ? 'ปิดอ่อน' : 'ปิดแข็ง'} ${month(no)} แล้ว` });
+    router.refresh();
+  }
+  async function runAction(c: Check) {
+    if (!c.action) return;
+    setBusy(true); setMsg(null);
+    const r = await call<{ ok: boolean }>(c.action, 'POST', {});
+    setBusy(false);
+    if (!r.ok) { setMsg({ kind: 'err', text: r.error }); return; }
     router.refresh();
   }
 
@@ -96,10 +110,10 @@ export function PeriodCloseScreen({ year, current, rows, checks, reopens, yearEn
                 <tr style={css('border-top: 1px solid #e0e0e0; color: #525252')}>
                   <td style={css('height: 40px; padding: 0 12px')}>{thaiMonth(grouped[0]!.no)} – {month(grouped.at(-1)!.no)}</td>
                   <td style={css(TD)}><Dot text="ปิดแข็ง" tone={TONE.hard_closed} /></td>
-                  <td style={css(TD)}>—</td><td style={css(TD)}>—</td>
+                  <td style={css(TD)}>{grouped.every((g) => g.pp30 === 'filed') ? 'ยื่นแล้ว' : '—'}</td><td style={css(TD)}>{grouped.every((g) => g.pnd !== 'draft') && grouped.some((g) => g.pnd === 'filed') ? 'ยื่นแล้ว' : '—'}</td>
                   <td style={css(TD)}>{grouped.every((g) => !g.bank) ? '—' : grouped.every((g) => !g.bank || g.bank.ok) ? 'ครบ' : 'มีผลต่าง'}</td>
                   <td style={css(NUM)}>{money(sumMoney(grouped.map((g) => g.profit)), { paren: true })}</td>
-                  <td style={css(TD)}>{ddmm(grouped.at(-1)!.closedAt)}</td><td style={css(TD)}></td>
+                  <td style={css(TD)}>{closer(grouped.at(-1)!)}</td><td style={css(TD)}></td>
                 </tr>
               )}
               {rest.map((r) => {
@@ -110,11 +124,11 @@ export function PeriodCloseScreen({ year, current, rows, checks, reopens, yearEn
                   <tr key={r.no} style={css(`border-top: 1px solid #e0e0e0${isCur ? '; background: #e0e0e0' : future ? '; color: #525252' : ''}`)}>
                     <td style={css(`height: 40px; padding: 0 12px${isCur ? '; font-weight: 600' : ''}`)}>{month(r.no)}</td>
                     <td style={css(TD)}><Dot text={label} tone={TONE[r.status]} /></td>
-                    <td style={css(`${TD}${isCur ? '; color: #684e00' : ''}`)}>{isCur ? 'ร่าง' : '—'}</td>
-                    <td style={css(`${TD}${isCur ? '; color: #684e00' : ''}`)}>{isCur ? 'ร่าง' : '—'}</td>
+                    <td style={css(`${TD}${r.pp30 === 'draft' && !future ? '; color: #684e00' : ''}`)}>{r.pp30 && !future ? FILING[r.pp30] : '—'}</td>
+                    <td style={css(`${TD}${r.pnd === 'draft' && !future ? '; color: #684e00' : ''}`)}>{r.pnd && !future ? FILING[r.pnd] : '—'}</td>
                     <td style={css(`${TD}${r.bank && !r.bank.ok ? '; color: #a2191f' : ''}`)}>{bankCell(r)}</td>
                     <td style={css(NUM)}>{r.profit === null ? '—' : money(r.profit, { paren: true })}</td>
-                    <td style={css(TD)}>{r.status === 'open' ? '—' : ddmm(r.closedAt)}</td>
+                    <td style={css(TD)}>{r.status === 'open' ? '—' : closer(r)}</td>
                     <td style={css(TD)}>{action(r)}</td>
                   </tr>
                 );
@@ -141,7 +155,7 @@ export function PeriodCloseScreen({ year, current, rows, checks, reopens, yearEn
                   <tr key={c.text} style={css(i ? 'border-top: 1px solid #e0e0e0' : '')}>
                     <td style={css(`height: 40px; padding: 0 16px; width: 24px; color: ${color}`)}>{sym}</td>
                     <td style={css('padding: 0 16px 0 0')}>{c.href ? <a href={c.href} style={css('text-decoration: none')}>{c.text}</a> : c.text}</td>
-                    <td style={css(`padding: 0 16px; text-align: right; ${c.button ? '' : tone}`)}>{c.button ? <button type="button" style={buttonStyle('secondary', 32)}>{c.button}</button> : c.right}</td>
+                    <td style={css(`padding: 0 16px; text-align: right; ${c.button ? '' : tone}`)}>{c.button ? <button type="button" disabled={busy} onClick={() => void runAction(c)} style={buttonStyle('secondary', 32, busy)}>{c.button}</button> : c.right}</td>
                   </tr>
                 );
               })}

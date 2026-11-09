@@ -3,15 +3,39 @@
 import { docTotals, Money } from '@innovera/ledger';
 import { Decimal } from 'decimal.js';
 import type { Db } from './index.ts';
+import { importCheque } from './master.ts';
 import { approveDocument, createBilling, receivePayment, saveSalesDraft, submitDocument, voidDocument, type Actor, type SalesDraftInput } from './sales.ts';
 
 type Fx = Record<string, unknown> & { type: string; date?: string; due?: string; contact?: string; status?: string; desc?: string; subtotal?: string; vat?: string; grand_total?: string; total?: string;
-  lines?: { product?: string | null; desc: string; qty?: string; price?: string; price_incl_vat?: string; amount?: string; account?: string; returned_qty?: string }[]; rule?: string; price_incl_vat?: boolean };
+  lines?: { product?: string | null; desc: string; qty?: string; price?: string; price_incl_vat?: string; amount?: string; account?: string; returned_qty?: string; est_cost?: string }[]; rule?: string; price_incl_vat?: boolean;
+  salesperson?: string; dimension?: { project?: string }; payment_terms?: string; price_level?: number };
 export const SEEDED_SALES_TYPES = ['IV', 'CN', 'DN', 'QO', 'DP', 'BN', 'RV'];
 const ce = (be: string) => `${Number(be.slice(0, 4)) - 543}${be.slice(4)}`;
 const actor: Actor = { userId: null, role: 'owner' };
 
-export async function seedSalesDocuments(db: Db, companyId: string, docs: Record<string, Fx>): Promise<string[]> {
+type ChequeFx = { number: string; bank: string; date: string; payer: string; ref: string; amount: string; status: string; deposited_on?: string; cleared_on?: string; reason?: string };
+let chequesFx: ChequeFx[] = [];
+const chequeFx = (no: string) => chequesFx.find((c) => c.number === no);
+
+/** เช็ครับใน fixtures ที่ใบรับชำระไม่อยู่ในชุดตัวอย่าง (RV2611-0018/0019/0009 · RV2610-0017) → ทะเบียนเช็คยกมา ไม่ผูกเอกสาร
+ *  TODO(Wei): fixtures ไม่มีใบรับชำระ/ใบแจ้งหนี้ของเช็คเหล่านี้ → GL 1150100+1150200 ใน dev ไม่เท่า control_accounts 654,626.00 */
+export async function seedCheques(db: Db, companyId: string): Promise<string[]> {
+  const contacts = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code']).execute());
+  let n = 0;
+  for (const c of chequesFx) {
+    if (c.ref === 'RV2611-0025') continue; // สร้างจากใบรับชำระจริงแล้ว
+    const contactId = contacts.find((k) => k.code === c.payer)?.id ?? null;
+    const status = c.status === 'on_hand_postdated' ? 'on_hand' : (c.status as 'on_hand' | 'deposited' | 'cleared' | 'bounced');
+    await importCheque(db, companyId, { direction: 'received', chequeNo: c.number, bank: c.bank, chequeDate: ce(c.date), amount: c.amount as never, status, contactId,
+      payerName: contactId ? null : c.payer, refNo: c.ref, depositedOn: c.deposited_on ? ce(c.deposited_on) : null, clearedOn: c.cleared_on ? ce(c.cleared_on) : null,
+      bouncedOn: status === 'bounced' ? ce(c.date) : null, bounceReason: c.reason ?? null });
+    n++;
+  }
+  return [`ทะเบียนเช็คยกมา ${n} ฉบับ`];
+}
+
+export async function seedSalesDocuments(db: Db, companyId: string, docs: Record<string, Fx>, cheques: ChequeFx[] = []): Promise<string[]> {
+  chequesFx = cheques;
   const log: string[] = [];
   const ids: Record<string, string> = {};
   const contacts = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code']).execute());
@@ -28,7 +52,8 @@ export async function seedSalesDocuments(db: Db, companyId: string, docs: Record
         // ส่วนลดแบบ % ซ้อน (เช่น "10% + 5%" ใน QO2611-0014) เก็บเป็นยอดส่วนลดของบรรทัด = จำนวน × ราคา − จำนวนเงิน
         const gross = Money.parse(new Decimal(qty).times(price).toFixed(2));
         const disc = l.amount && !l.returned_qty ? gross.minus(Money.of(l.amount as never)) : Money.zero();
-        return { productCode: l.product ?? null, description: l.desc ?? no, qty, unitPrice: price, discount: disc.toString(), vat: true, accountCode: l.account ?? null };
+        return { productCode: l.product ?? null, description: l.desc ?? no, qty, unitPrice: price, discount: disc.toString(), vat: true, accountCode: l.account ?? null,
+          ...(l.est_cost ? { estCost: l.est_cost as never } : {}) };
       }) };
     }
     const total = d.grand_total ?? d.total!;
@@ -43,8 +68,13 @@ export async function seedSalesDocuments(db: Db, companyId: string, docs: Record
     if (!contactId) { log.push(`ข้าม ${no}: ไม่มีคู่ค้า ${d.contact}`); return null; }
     // TODO(Wei): บางเอกสารใน fixtures ไม่มีวันที่ (IV2611-0058) → ใช้วันที่ใกล้เคียงตามลำดับเลขที่
     const date = ce(d.date ?? extra.issueDate ?? '2569-11-12');
-    const id = await saveSalesDraft(db, companyId, actor, { docType, contactId, dueDate: d.due ? ce(d.due) : null, ...(d.rule ? { ruleCode: d.rule } : {}), ...linesOf(no, d), ...extra, issueDate: date } as SalesDraftInput);
+    // ใบเสนอราคา: พนักงานขาย · โครงการ · เงื่อนไขชำระ · ระดับราคา (fixtures QO2611-0014)
+    const quote = { salesperson: d.salesperson ?? null, projectCode: d.dimension?.project ?? null, paymentTerms: d.payment_terms ?? null, priceLevel: d.price_level ?? null };
+    const id = await saveSalesDraft(db, companyId, actor, { docType, contactId, dueDate: d.due ? ce(d.due) : (d['valid_until'] ? ce(String(d['valid_until'])) : null), ...(d.rule ? { ruleCode: d.rule } : {}), ...linesOf(no, d), ...quote, ...extra, issueDate: date } as SalesDraftInput);
     ids[no] = id;
+    // เอกสารที่มาจาก TMS (fixtures external) — ป้าย TMS ในรายการเอกสาร
+    const ext = d['external'] as { source: string; ref: string } | undefined;
+    if (ext) await db.withCompany(companyId, (tx) => tx.updateTable('acct.document').set({ external_source: ext.source, external_ref: ext.ref }).where('id', '=', id).execute());
     return id;
   }
   const post = async (no: string, id: string | null) => { if (id) await approveDocument(db, companyId, actor, id, { docNo: no }); };
@@ -74,18 +104,18 @@ export async function seedSalesDocuments(db: Db, companyId: string, docs: Record
   for (const [no, date] of [['BN2611-0002', '2026-11-15'], ['BN2611-0004', '2026-11-16']] as const) {
     const d = docs[no]!;
     const inv = (d.invoices as string[]).map((n) => ids[n]).filter((x): x is string => !!x);
-    await createBilling(db, companyId, actor, { contactId: cid(d.contact)!, date, dueDate: d.collect_date ? ce(d.collect_date as string) : null, documentIds: inv, docNo: no });
+    ids[no] = (await createBilling(db, companyId, actor, { contactId: cid(d.contact)!, date, dueDate: d.collect_date ? ce(d.collect_date as string) : null, documentIds: inv, docNo: no })).id;
   }
   // รับชำระ
   const rv21 = docs['RV2611-0021']! as Fx & { applications: { doc: string; applied: string; wht: string; wht_base?: string }[]; bank_account: string; bank_fee: string; fee_account: string };
   await receivePayment(db, companyId, actor, { docNo: 'RV2611-0021', contactId: cid(rv21.contact)!, date: ce(rv21.date!), receiveAccount: rv21.bank_account, fee: rv21.bank_fee, feeAccount: rv21.fee_account,
-    whtCertNo: '0045/2569', whtRate: '0.03', billingId: null, applications: rv21.applications.map((a) => ({ documentId: ids[a.doc]!, applied: a.applied, wht: a.wht, ...(a.wht_base ? { whtBase: a.wht_base } : {}) })) });
+    whtCertNo: '0045/2569', whtRate: '0.03', billingId: ids[String(rv21['ref'])] ?? null, applications: rv21.applications.map((a) => ({ documentId: ids[a.doc]!, applied: a.applied, wht: a.wht, ...(a.wht_base ? { whtBase: a.wht_base } : {}) })) });
   const rv22 = docs['RV2611-0022']!;
   await receivePayment(db, companyId, actor, { docNo: 'RV2611-0022', contactId: cid(rv22.contact)!, date: ce(rv22.date!), receiveAccount: String(rv22.pay_to), whtRate: '0.03',
     applications: [{ documentId: ids['IV2610-0047']!, applied: String(rv22.cash_in), wht: String(rv22.wht), whtBase: '10000.00' }] });
   const rv25 = docs['RV2611-0025']!;
   await receivePayment(db, companyId, actor, { docNo: 'RV2611-0025', contactId: cid(rv25.contact)!, date: ce(rv25.date!), receiveAccount: '1150100',
-    cheque: { chequeNo: String(rv25.cheque), bank: '[ธนาคาร]', chequeDate: ce(rv25.date!) }, applications: [{ documentId: ids['IV2611-0059']!, applied: String(rv25.amount) }] });
+    cheque: { chequeNo: String(rv25.cheque), bank: chequeFx(String(rv25.cheque))?.bank ?? '[ธนาคาร]', chequeDate: ce(rv25.date!) }, applications: [{ documentId: ids['IV2611-0059']!, applied: String(rv25.amount) }] });
   // TODO(Wei): IV2611-0051 สถานะ "paid" แต่ fixtures ไม่มีใบรับชำระ · RV2611-0024 อ้าง IV2611-0063 ที่ไม่มีใน fixtures → ไม่สร้าง
   log.push(`เอกสารขาย ${Object.keys(ids).length} ใบ + RV 3 ใบ + BN 2 ใบ`);
   return log;

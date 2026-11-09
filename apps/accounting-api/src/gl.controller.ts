@@ -7,7 +7,8 @@ import { post, toTuples, type PostingInput, type RuleDefinition } from '@innover
 import { ruleCheck } from './rule-check.js';
 import ExcelJS from 'exceljs';
 import type { Request, Response } from 'express';
-import { companyOf, Need, roleOf } from './context.js';
+import { recordAudit } from '@innovera/db/hub';
+import { actorIdOf, companyOf, Need, roleOf } from './context.js';
 import { DB } from './db.js';
 
 const today = (): string => process.env.APP_TODAY ?? new Date().toISOString().slice(0, 10);
@@ -36,6 +37,7 @@ export class GlController {
     ws.addRow([...TEMPLATE.ผังบัญชี, 'หมวด', 'ยอดคงเหลือ', 'สถานะ']);
     for (const r of rows) ws.addRow([r.code, r.name, r.type, r.is_control ? 'ใช่' : '', r.category ?? '', r.balance ?? '', r.active ? 'ใช้งาน' : 'ปิดใช้']);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await recordAudit(this.db, companyOf(req), { actorId: actorIdOf(req), action: 'report.export', entity: 'report', entityId: 'chart-of-accounts', after: { format: 'xlsx', year: Number(year), period: Number(period), rows: rows.length } });
     res.setHeader('Content-Disposition', 'attachment; filename="chart-of-accounts.xlsx"');
     res.end(Buffer.from(await wb.xlsx.writeBuffer()));
   }
@@ -101,6 +103,7 @@ export class GlController {
     for (const r of l.rows) ws.addRow([r.date, r.journal_no, r.book, r.description ?? '', r.contact ?? '', r.debit, r.credit, r.balance]);
     ws.addRow(['', '', '', 'รวมงวด · ยอดยกไป', '', l.total_debit, l.total_credit, l.closing]);
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    await recordAudit(this.db, companyOf(req), { actorId: actorIdOf(req), action: 'report.export', entity: 'report', entityId: `ledger:${account}`, after: { format: 'xlsx', account, from, to, rows: l.rows.length } });
     res.setHeader('Content-Disposition', `attachment; filename="ledger-${account}.xlsx"`);
     res.end(Buffer.from(await wb.xlsx.writeBuffer()));
   }

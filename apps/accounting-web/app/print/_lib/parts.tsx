@@ -1,6 +1,7 @@
 // ส่วนที่ใช้ร่วมกันของแบบพิมพ์ A4 (design/project/Print*.dc.html) — style คัดลอกจากแบบร่างตรงตัวผ่าน css() · ฟอนต์ Sarabun
 import { css, money } from '@innovera/ui';
 import { branchLabel, type Company, type ContactRow } from './data';
+import { PrintCounter } from './PrintCounter';
 
 // <helmet> ของแบบร่าง (เหมือนกันทุกไฟล์ Print* · .c มีใน PrintQuote/PrintReceiptNoVat/PrintReceiptVoucher) + ขนาดกระดาษ A4 ตอนพิมพ์/ทำ PDF
 const SHEET = `body{margin:0;background:#ffffff}
@@ -26,10 +27,11 @@ export function Sheet({ children }: { children: React.ReactNode }) {
   );
 }
 
-/** หัวกระดาษ: ข้อมูลบริษัท + ชื่อแบบพิมพ์ + ป้าย ต้นฉบับ/สำเนา */
-export function Header({ ctx, title, en, badge }: { ctx: Company; title: string; en: string; badge: string }) {
+/** หัวกระดาษ: ข้อมูลบริษัท + ชื่อแบบพิมพ์ + ป้าย ต้นฉบับ/สำเนา · doc = เอกสารที่นับการพิมพ์ต้นฉบับ */
+export function Header({ ctx, title, en, badge, doc }: { ctx: Company; title: string; en: string; badge: string; doc?: { id: string; status: string } }) {
   return (
     <div style={css('display: flex; justify-content: space-between; gap: 24px; align-items: flex-start')}>
+      {badge === 'ต้นฉบับ' && doc && doc.status !== 'draft' && <PrintCounter id={doc.id} />}
       <div style={css('display: flex; gap: 12px; align-items: flex-start')}>
         {/* TODO(backend): โลโก้บริษัทยังไม่มีใน API — แสดงกรอบตามแบบร่าง */}
         <div aria-hidden="true" style={css('width: 56px; height: 56px; border: 1px solid #8d8d8d; display: flex; align-items: center; justify-content: center; font-size: 11px; color: #525252')}>โลโก้</div>
@@ -46,9 +48,9 @@ export function Header({ ctx, title, en, badge }: { ctx: Company; title: string;
     </div>
   );
 }
-/** ป้ายต้นฉบับ/สำเนา — ?copy=1 = สำเนา (PrintReceiptTax: "สำเนาที่พิมพ์ซ้ำจะแสดงคำว่า “สำเนา”")
- * TODO(backend): นับครั้งที่พิมพ์ต้นฉบับ (พิมพ์ซ้ำ → สำเนาอัตโนมัติ) ยังไม่มีใน API */
-export const badgeOf = (sp: Record<string, string | string[] | undefined>): string => (sp.copy === '1' ? 'สำเนา' : 'ต้นฉบับ');
+/** ป้ายต้นฉบับ/สำเนา — ?copy=1 หรือพิมพ์ต้นฉบับไปแล้ว (document.print_count ≥ 1) = สำเนา (PrintReceiptTax: "สำเนาที่พิมพ์ซ้ำจะแสดงคำว่า “สำเนา”") */
+export const badgeOf = (sp: Record<string, string | string[] | undefined>, doc?: { print_count?: number }): string =>
+  (sp.copy === '1' || (doc?.print_count ?? 0) > 0 ? 'สำเนา' : 'ต้นฉบับ');
 
 /** ชื่อคู่ค้า + (สาขา) */
 export function PartyName({ c, suffix }: { c: ContactRow | null; suffix?: string }) {

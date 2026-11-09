@@ -5,7 +5,8 @@ import { badgeOf, DATE_BLANK, filler, Footer, Header, InfoBox, ItemTable6, m, NB
 
 export const metadata = { title: 'แบบพิมพ์ ใบเสนอราคา' };
 
-// TODO(backend) PrintQuote.dc.html: พนักงานขาย · หมายเหตุใต้รายการ (เช่น "ส่งมอบภายใน 60 วันหลังรับมัดจำ …") ยังไม่มีในเอกสาร/API → เว้นว่าง · ผู้ติดต่อ = contact.contact_person (ว่าง → ช่องกรอกตามแบบร่าง)
+// พนักงานขาย = document.salesperson (ว่าง → ช่องกรอกตามแบบร่าง) · เงื่อนไข = เงื่อนไขชำระของเอกสาร + หมายเหตุ · ผู้ติดต่อ = contact.contact_person (ว่าง → ช่องกรอกตามแบบร่าง)
+// TODO(backend) PrintQuote.dc.html: หมายเหตุใต้รายการ (เช่น "ส่งมอบภายใน 60 วันหลังรับมัดจำ …") ยังไม่มีฟิลด์ในเอกสาร → เว้นว่าง
 export default async function PrintQuote({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const [d, ctx] = await Promise.all([loadDoc(id, ['QO']), context()]);
@@ -13,16 +14,16 @@ export default async function PrintQuote({ params, searchParams }: { params: Pro
   const rows = itemRows(d.lines);
   return (
     <Sheet>
-      <Header ctx={ctx} title="ใบเสนอราคา" en="QUOTATION" badge={badgeOf(sp)} />
+      <Header ctx={ctx} title="ใบเสนอราคา" en="QUOTATION" badge={badgeOf(sp, doc)} doc={doc} />
       <div style={css('display: flex; gap: 12px')}>
         <PartyBox label="เรียน" c={d.contact} address={customerAddress(d)} taxLine={`เลขประจำตัวผู้เสียภาษีอากร ${d.contact?.tax_id ?? ''} · ผู้ติดต่อ ${d.contact?.contact_person ?? '[ชื่อ] ฝ่ายจัดซื้อ'}`} />
-        <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่', thaiDate(doc.issue_date)], ['ยืนราคาถึง', doc.due_date ? thaiDate(doc.due_date) : ''], ['พนักงานขาย', '[พนักงานขาย]']]} />
+        <InfoBox rows={[['เลขที่', doc.doc_no ?? ''], ['วันที่', thaiDate(doc.issue_date)], ['ยืนราคาถึง', doc.due_date ? thaiDate(doc.due_date) : ''], ['พนักงานขาย', doc.salesperson ?? '[พนักงานขาย]']]} />
       </div>
       <ItemTable6 rows={rows} fill={filler(160, 3, rows.length)} />
       <div style={css('display: flex; gap: 12px; align-items: stretch')}>
         <div style={css('flex: 1 1 auto; border: 1px solid #393939; padding: 8px 12px; display: flex; flex-direction: column; gap: 4px')}>
           <div><span className="lbl">จำนวนเงิน (ตัวอักษร)</span><br /><strong>({d.amountText})</strong></div>
-          <div><span className="lbl">เงื่อนไข</span><br />{doc.notes || NBSP}</div>
+          <div><span className="lbl">เงื่อนไข</span><br />{[doc.payment_terms, doc.notes].filter(Boolean).join(' · ') || NBSP}</div>
         </div>
         <Totals width={280} rows={[
           { label: 'รวมมูลค่า', value: m(doc.subtotal) },
