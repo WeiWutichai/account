@@ -120,10 +120,10 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
   const created = ev.find((e) => e.event === 'created');
   const submitted = [...ev].reverse().find((e) => e.event === 'submitted');
   const posted = [...ev].reverse().find((e) => e.event === 'posted' || e.event === 'approved');
-  // TODO(backend): ชื่อผู้ทำรายการ — document_event.actor เป็น user id ยังไม่มีชื่อจาก Innovera ID
+  // ชื่อผู้ทำรายการ = events[].actor_name (Innovera ID) · เอกสารจาก API = ชื่อ client
   const subParts = [
     detail?.ref ? `แปลงจาก ${docNo(detail.ref)}` : null,
-    created ? `สร้างโดย — ${bangkok(created.at).date.slice(8, 10)}/${bangkok(created.at).date.slice(5, 7)}` : null,
+    created ? `สร้างโดย ${created.actor_name ?? detail?.created_by_client_name ?? '—'} ${bangkok(created.at).date.slice(8, 10)}/${bangkok(created.at).date.slice(5, 7)}` : null,
     submitted && d?.status === 'pending_approval' ? `ส่งขออนุมัติ${/^\d/u.test(whenText(submitted.at, today)) ? ' ' : ''}${whenText(submitted.at, today)}` : null,
     posted && detail?.journal[0] ? `ลงบัญชี ${detail.journal[0].journal_no}` : null,
   ].filter(Boolean);

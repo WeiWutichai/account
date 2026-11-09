@@ -1,7 +1,7 @@
 // แก้ไขเอกสารที่ผ่านรายการแล้ว — design/project/ScreenDocEdit.dc.html
 // บิลซื้อ AP / ค่าใช้จ่าย EXP = ตามแบบร่าง (purchase-form.tsx: เลขผู้เสียภาษีผู้ขาย · เลขที่/วันที่ใบกำกับผู้ขาย · มิติ · ย้ายบัญชีค่าใช้จ่ายด้วย JV)
 // TODO(Wei): เอกสารขาย — แบบร่างไม่มีตัวอย่าง จึงใช้ช่องที่ API แก้ได้ (REFERENCE_FIELDS: ที่อยู่ · อ้างอิง · วันครบกำหนด · หมายเหตุ) และแถว "ลูกค้า"/"ภาษีขาย"
-// TODO(API): ชื่อผู้ทำในประวัติ — document_event เก็บแค่ user id (ชื่ออยู่ใน Innovera ID) จึงแสดง "—"
+// ชื่อผู้ทำในประวัติ = events[].actor_name (Innovera ID) · ไม่มีผู้ใช้ (API/ระบบ) → "—"
 // TODO(Wei): แถว "ภ.พ.30 (ร่าง) ไม่เปลี่ยน · 116,069.36" — ยอด ภ.พ.30 มาใน M6 จึงแสดงแค่ "ไม่เปลี่ยน"
 import { money, thaiDate, thaiMonth } from '@innovera/ui';
 import { notFound } from 'next/navigation';
@@ -30,7 +30,7 @@ export default async function DocEditPage({ params }: { params: Promise<{ id: st
   const month = thaiMonth(Number(d.doc.issue_date.slice(5, 7)));
   const tax = cents(d.doc.vat) > 0n ? ` (ภาษีขาย ${money(d.doc.vat)})` : '';
   const periodRow = p ? { label: `งวด ${p.period_no}/${p.fiscal_year}`, value: `${PERIOD_STATUS[p.status] ?? p.status} · ${p.status === 'hard_closed' ? 'แก้ไม่ได้' : 'แก้ได้'}`, tone: (p.status === 'hard_closed' ? 'bad' : 'ok') as 'ok' | 'bad' } : null;
-  const history = d.events.slice().reverse().map((e) => ({ when: shortStamp(e.at), what: EVENT[e.event] ?? e.event, who: '—' }));
+  const history = d.events.slice().reverse().map((e) => ({ when: shortStamp(e.at), what: EVENT[e.event] ?? e.event, who: e.actor_name ?? '—' }));
   if (['AP', 'EXP'].includes(d.doc.doc_type)) {
     const x = d.doc as typeof d.doc & { vendor_ref: string | null; vendor_invoice_date: string | null; party_tax_id: string | null; project_code: string | null };
     const ls = d.lines as unknown as { id: string; line_no: number; line_type: string; description: string | null; account_code: string | null; amount: string }[];
@@ -65,7 +65,7 @@ export default async function DocEditPage({ params }: { params: Promise<{ id: st
           ...(p ? [{ label: `งวด ${p.period_no}/${p.fiscal_year}`, value: `${PERIOD_STATUS[p.status] ?? p.status} · ${p.status === 'hard_closed' ? 'แก้ไม่ได้' : 'แก้ได้'}`, tone: (p.status === 'hard_closed' ? 'bad' : 'ok') as 'ok' | 'bad' }] : []),
           { label: 'สิทธิ์ที่ต้องใช้', value: 'ผู้จัดการบัญชี', tone: 'muted' },
         ]}
-        history={d.events.slice().reverse().map((e) => ({ when: shortStamp(e.at), what: EVENT[e.event] ?? e.event, who: '—' }))} />
+        history={d.events.slice().reverse().map((e) => ({ when: shortStamp(e.at), what: EVENT[e.event] ?? e.event, who: e.actor_name ?? '—' }))} />
     </Shell>
   );
 }

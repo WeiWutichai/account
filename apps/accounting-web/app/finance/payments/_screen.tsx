@@ -24,6 +24,8 @@ export interface PaymentView {
   id: string; docNo: string | null; status: string; date: string; payFrom: string; method: string; batchRef: string | null;
   pvs: PvInfo[]; certs: Cert[]; balance: { before: string; after: string } | null;
   submittedAt: string | null; approvedAt: string | null; voidReason: string | null;
+  /** ชื่อผู้จัดทำ/ผู้อนุมัติจาก Innovera ID (GET /v1/documents/:id events[].actor_name · approved_by_name) */
+  submittedBy: string | null; approvedBy: string | null;
 }
 interface Props { mode: 'new' | 'view'; today: string; rows: BillRow[]; view?: PaymentView; accountNames: Record<string, string> }
 
@@ -261,10 +263,9 @@ export function PaymentScreen({ mode, today, rows, view, accountNames }: Props) 
             </section>
           )}
           <section style={css(BOX)}><strong>สายอนุมัติ</strong>
-            {/* TODO(backend): ชื่อผู้จัดทำ/ผู้อนุมัติ — events.actor เป็น user id · accounting-api ยังไม่มีชื่อผู้ใช้ (Innovera ID) */}
-            <div style={css(ROW)}><span>1. บัญชี จัดทำ</span>{ro && view!.submittedAt ? <span style={css('color: #0e6027')}>{`เสร็จ · ${ddmm(new Date(new Date(view!.submittedAt).getTime() + 7 * 3_600_000).toISOString().slice(0, 10))}`}</span> : <span style={css('color: #525252')}>—</span>}</div>
+            <div style={css(ROW)}><span>1. บัญชี จัดทำ</span>{ro && view!.submittedAt ? <span style={css('color: #0e6027')}>{`เสร็จ · ${view!.submittedBy ? `${view!.submittedBy} ` : ''}${ddmm(new Date(new Date(view!.submittedAt).getTime() + 7 * 3_600_000).toISOString().slice(0, 10))}`}</span> : <span style={css('color: #525252')}>—</span>}</div>
             <div style={css(ROW)}><span>2. ผู้จัดการบัญชี อนุมัติ (≤ 1,000,000)</span>
-              {allPosted && view!.approvedAt ? <span style={css('color: #0e6027')}>{`อนุมัติ · ${stamp(view!.approvedAt)}`}</span>
+              {allPosted && view!.approvedAt ? <span style={css('color: #0e6027')}>{`อนุมัติ · ${view!.approvedBy ? `${view!.approvedBy} ` : ''}${stamp(view!.approvedAt)}`}</span>
                 : pending ? <Button kind="primary" size={32} disabled={busy} onClick={() => void approve()}>อนุมัติ</Button>
                 : <span style={css('color: #525252')}>—</span>}</div>
             {/* TODO(backend) ScreenPayment.dc.html: ระดับ 3 กรรมการ (เกิน 1,000,000) — API ใช้วงเงินผู้อนุมัติแทนขั้นแยก (approval_level = 1 เสมอ · needsDirector เป็นแค่ธง) */}

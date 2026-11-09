@@ -9,6 +9,9 @@ async function forward(req: Request, { params }: { params: Promise<{ path: strin
   const headers: Record<string, string> = apiHeaders((n) => jar.get(n)?.value);
   const ct = req.headers.get('content-type');
   if (ct) headers['content-type'] = ct;
+  // IP ของผู้ใช้สำหรับ audit log (accounting-api เชื่อ x-forwarded-for จาก proxy ภายในเท่านั้น)
+  const xff = req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip');
+  if (xff) headers['x-forwarded-for'] = xff;
   const res = await fetch(`${ACCOUNTING_API}/v1/${path.join('/')}${url.search}`, {
     method: req.method, headers, ...(req.method === 'GET' ? {} : { body: Buffer.from(await req.arrayBuffer()) }),
   });
