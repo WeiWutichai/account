@@ -315,6 +315,8 @@ export async function voidDocument(db: Db, companyId: string, actor: Actor, id: 
       reversal = r.journalNo;
     }
     await tx.updateTable('acct.settlement').set({ voided: true }).where('payment_id', '=', id).execute();
+    // ยกเลิกการจ่าย = ยกเลิก 50 ทวิ ที่ออกจากการจ่ายนั้น (ไม่เข้า ภ.ง.ด.)
+    await tx.updateTable('acct.wht_certificate').set({ voided: true }).where('payment_id', '=', id).execute();
     await tx.updateTable('acct.cheque').set({ status: 'cancelled' }).where('document_id', '=', id).execute();
     // ใบที่ยกเลิกถูกถอดออกจากใบวางบิล (ScreenDocVoid "จะถอดออกให้")
     await tx.deleteFrom('acct.billing_item').where('document_id', '=', id).execute();

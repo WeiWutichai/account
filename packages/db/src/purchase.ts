@@ -120,7 +120,7 @@ export async function whtForBill(tx: CompanyTx, billId: string, settle: Money) {
 
 // ---------- อนุมัติ / ลงบัญชีเอกสารซื้อ ----------
 
-export async function approvePurchase(db: Db, companyId: string, actor: Actor, id: string, opts: { docNo?: string } = {}) {
+export async function approvePurchase(db: Db, companyId: string, actor: Actor, id: string, opts: { docNo?: string; certNos?: string[] } = {}) {
   return db.withCompany(companyId, async (tx) => {
     const d = await docOrThrow(tx, id);
     if (d.status !== 'draft' && d.status !== 'pending_approval') throw new LedgerError(`เอกสารสถานะ ${d.status} อนุมัติไม่ได้`);
@@ -160,7 +160,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: def.book, prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, wht: wht.toString(), approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
     if (d.doc_type === 'CNR') await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: d.grand_total, wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
-    const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, certs);
+    const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, certs, opts.certNos);
     await event(tx, companyId, id, actor.userId, 'posted', { docNo, journalNo: j.journalNo, certificates: issued });
     await emitTx(tx, companyId, 'document.posted', { id, doc_type: d.doc_type, doc_no: docNo, external_source: d.external_source, external_ref: d.external_ref, grand_total: d.grand_total, journal_no: j.journalNo });
     return { docNo, journalNo: j.journalNo, certificates: issued };
@@ -207,6 +207,7 @@ export async function createPayment(db: Db, companyId: string, actor: Actor, inp
     for (const b of input.bills) {
       const o = await outstandingTx(tx, b.documentId);
       if (o.doc.status !== 'posted' || !['AP', 'EXP', 'DNR'].includes(o.doc.doc_type)) throw new LedgerError('จ่ายได้เฉพาะบิลซื้อ/ค่าใช้จ่ายที่ลงบัญชีแล้ว');
+      if (o.doc.pay_now) throw new LedgerError(`${o.doc.doc_no} จ่ายไปแล้วตอนบันทึก (จ่ายทันที) — จ่ายซ้ำไม่ได้`);
       if (o.doc.contact_id !== input.contactId) throw new LedgerError(`${o.doc.doc_no} ไม่ใช่ของผู้ขายรายนี้`);
       const settle = b.settle ? Money.of(b.settle) : o.outstanding;
       if (settle.gt(o.outstanding) || !settle.gt(Money.zero())) throw new LedgerError(`${o.doc.doc_no}: ยอดจ่ายต้องไม่เกินยอดค้าง ${o.outstanding.toString()}`);
@@ -293,7 +294,7 @@ export async function payables(db: Db, companyId: string, contactId?: string) {
   return db.withCompany(companyId, async (tx) => {
     let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
       .select(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.due_date', 'd.grand_total', 'd.vendor_ref', 'c.id as contact_id', 'c.code as contact_code', 'c.name as contact_name'])
-      .where('d.doc_type', 'in', ['AP', 'EXP', 'DNR']).where('d.status', '=', 'posted');
+      .where('d.doc_type', 'in', ['AP', 'EXP', 'DNR']).where('d.status', '=', 'posted').where('d.pay_now', '=', false); // จ่ายทันทีไม่มียอดค้าง
     if (contactId) q = q.where('d.contact_id', '=', contactId);
     const out = [];
     for (const r of await q.execute()) {

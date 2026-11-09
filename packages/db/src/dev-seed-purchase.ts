@@ -42,7 +42,8 @@ export async function seedPurchaseDocuments(db: Db, companyId: string, docs: Rec
 
   await post('PO2611-0018', await make('PO2611-0018', 'PO'));
   const exp = docs['EXP2611-0019']!;
-  await post('EXP2611-0019', await make('EXP2611-0019', 'EXP', { payNow: true, payFrom: String(exp.pay_from) }));
+  const expId = await make('EXP2611-0019', 'EXP', { payNow: true, payFrom: String(exp.pay_from) });
+  if (expId) await approvePurchase(db, companyId, { userId: null, role: 'owner' }, expId, { docNo: 'EXP2611-0019', certNos: [String(exp.wht_cert)] });
   for (const no of ['AP2611-0079', 'AP2611-0088', 'AP2611-0091', 'AP2611-0080', 'AP2611-0043']) await post(no, await make(no, 'AP'));
   const cnr = docs['CNR2611-0003']!;
   await post('CNR2611-0003', await make('CNR2611-0003', 'CNR', { refDocumentId: ids['AP2611-0079']!, vendorRef: String(cnr.vendor_cn),

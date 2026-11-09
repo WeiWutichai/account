@@ -143,3 +143,21 @@ describe('เงินสดย่อย imprest (ScreenPettyCash) — ราย
     await expect(reimbursePettyCash(db, A, mgr, { date: '2026-11-30', payFrom: '1100100' })).rejects.toThrow(/ไม่มีรายการ/u);
   });
 });
+
+describe('กันจ่ายซ้ำ / ยกเลิกการจ่าย', () => {
+  it('EXP จ่ายทันทีไม่อยู่ในบิลค้างจ่าย และสั่งจ่ายซ้ำไม่ได้ · ยกเลิก PV แล้ว 50 ทวิ ถูกยกเลิกด้วย', async () => {
+    const { voidDocument } = await import('../src/sales.ts');
+    const exp = await savePurchaseDraft(db, A, clerk, { docType: 'EXP', contactId: await contact('P0001'), issueDate: '2026-11-20', payNow: true, payFrom: '1100100',
+      lines: [{ description: 'ค่าจ้าง', qty: '1', unitPrice: '1000.00', vat: false, accountCode: '5301200', whtType: 'hire_of_work' }] });
+    await approvePurchase(db, A, mgr, exp);
+    expect((await payables(db, A)).some((p) => p.id === exp)).toBe(false);
+    await expect(createPayment(db, A, clerk, { contactId: await contact('P0001'), date: '2026-11-21', payFrom: '1100100', bills: [{ documentId: exp }] })).rejects.toThrow(/จ่ายซ้ำไม่ได้/u);
+    const b = await bill('V0330', '2000.00', '5303100', 'rent');
+    const pv = await createPayment(db, A, clerk, { contactId: await contact('V0330'), date: '2026-11-29', payFrom: '1100100', bills: [{ documentId: b }] });
+    await approvePayment(db, A, mgr, pv.id);
+    await voidDocument(db, A, mgr, pv.id, { reason: 'จ่ายผิดบัญชี', date: '2026-11-29' });
+    const certs = await whtCertificates(db, A, { from: '2026-11-29', to: '2026-11-29' });
+    expect(certs.filter((c) => c.payment_id === pv.id).every((c) => c.voided)).toBe(true);
+    expect((await payables(db, A)).some((p) => p.id === b)).toBe(true);
+  });
+});
