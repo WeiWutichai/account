@@ -19,7 +19,8 @@
     "db:down": "docker compose -f docker/compose.yaml down",
     "db:migrate": "pnpm --filter @innovera/db migrate",
     "db:migrate:down": "pnpm --filter @innovera/db migrate:down",
-    "db:seed": "pnpm --filter @innovera/db seed:dev"
+    "db:seed": "pnpm --filter @innovera/db seed:dev && pnpm --filter @innovera/id-api seed:dev",
+    "dev:session": "pnpm --filter @innovera/id-api session:dev"
   },
   "devDependencies": {
     "@innovera/config": "workspace:*",

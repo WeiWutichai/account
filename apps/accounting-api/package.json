@@ -12,25 +12,27 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@innovera/auth": "workspace:*",
+    "@innovera/contracts": "workspace:*",
+    "@innovera/db": "workspace:*",
+    "@innovera/ledger": "workspace:*",
     "@nestjs/common": "12.4.2",
     "@nestjs/core": "12.4.2",
     "@nestjs/platform-express": "12.4.2",
+    "exceljs": "4.4.0",
+    "ioredis": "6.0.0",
+    "jose": "6.2.15",
+    "pg": "8.23.1",
     "reflect-metadata": "0.2.2",
     "rxjs": "7.8.2",
-    "pg": "8.23.1",
-    "ioredis": "6.0.0",
-    "@innovera/db": "workspace:*",
-    "@innovera/ledger": "workspace:*",
-    "@innovera/contracts": "workspace:*",
-    "exceljs": "4.4.0",
     "zod": "4.6.7"
   },
   "devDependencies": {
     "@innovera/config": "workspace:*",
+    "@types/express": "5.0.6",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
     "tsx": "4.23.15",
-    "vitest": "5.1.0",
-    "@types/express": "5.0.6"
+    "vitest": "5.1.0"
   }
 }

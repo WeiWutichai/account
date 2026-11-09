@@ -5,15 +5,47 @@ type Money = ColumnType<string, string | undefined, string>;
 type Ts = ColumnType<Date, Date | string | undefined, Date | string>;
 type DateCol = ColumnType<string, string, string>; // 'YYYY-MM-DD'
 
+type Json = ColumnType<unknown, string | undefined, string>; // ส่ง JSON.stringify ตอนเขียน
+
 export interface PublicDB {
-  'public.organization': { id: Generated<string>; name: string; created_at: Ts };
-  'public.app_user': { id: Generated<string>; email: string; display_name: string; password_hash: string | null; mfa_enabled: Generated<boolean>; created_at: Ts };
+  'public.organization': { id: Generated<string>; name: string; created_at: Ts; security_policy: ColumnType<{ require_2fa: boolean; session_hours: number }, string | undefined, string> };
+  'public.app_user': {
+    id: Generated<string>; email: string; display_name: string; password_hash: string | null; mfa_enabled: Generated<boolean>; created_at: Ts;
+    email_verified_at: Ts | null; totp_secret_enc: string | null; totp_last_step: ColumnType<string | null, number | null | undefined, number | null>; phone_masked: string | null;
+    locale: Generated<'th' | 'en'>; marketing_opt_in: Generated<boolean>; terms_accepted_at: Ts | null; last_login_at: Ts | null; status: Generated<'active' | 'disabled'>;
+  };
   'public.company': {
     id: Generated<string>; org_id: string; name_th: string; name_en: string | null; tax_id: string | null; branch_code: Generated<string>;
     business_type: Generated<string>; vat_registered: Generated<boolean>; service_tax_point: Generated<'on_payment' | 'on_invoice'>;
     wht_recognition: Generated<'on_payment' | 'on_invoice'>; fiscal_year_start: Generated<string>; db_dsn: string | null;
     status: Generated<'active' | 'suspended' | 'archived'>; created_at: Ts;
+    setup_step: Generated<number>; setup_done: Generated<boolean>; chart_template: Generated<'service' | 'trading' | 'dbd' | 'import'>; modules: Json;
+    go_live_date: DateCol | null; created_by: string | null;
   };
+  'public.org_membership': { org_id: string; user_id: string; org_role: 'owner' | 'admin' | 'billing_admin' | 'member' | 'guest'; created_at: Ts; expires_at: DateCol | null };
+  'public.company_membership': {
+    company_id: string; user_id: string; company_role: string; approval_limit: Money | null; created_at: Ts;
+    permissions: ColumnType<Record<string, Record<string, boolean>> | null, string | null | undefined, string | null>; scope: Generated<string>; expires_at: DateCol | null;
+    require_2fa: Generated<boolean>; last_used_at: Ts | null;
+  };
+  'public.invite': {
+    id: Generated<string>; org_id: string; company_id: string | null; email: string; role: string; token_hash: string; expires_at: Ts; accepted_at: Ts | null; created_at: Ts;
+    kind: Generated<'member' | 'auditor'>; org_role: Generated<'admin' | 'billing_admin' | 'member' | 'guest'>; invited_by: string | null; access_until: DateCol | null;
+    revoked_at: Ts | null; declined_at: Ts | null;
+  };
+  'public.plan': { code: string; name: string; limits: Json };
+  'public.subscription': { org_id: string; plan_code: string; status: 'trialing' | 'active' | 'past_due' | 'suspended' | 'canceled'; renews_at: DateCol | null; company_limit: number | null; seat_limit: number | null; trial_ends_at: DateCol | null };
+  'public.entitlement': { org_id: string; key: string; value: Json };
+  'public.password_history': { user_id: string; password_hash: string; created_at: Ts };
+  'public.backup_code': { user_id: string; idx: number; code_hash: string | null; used_at: Ts | null };
+  'public.auth_session': {
+    id: Generated<string>; family_id: string; user_id: string; token_hash: string; amr: string[]; ip_hash: string | null; user_agent: string | null;
+    created_at: Ts; expires_at: Ts; rotated_at: Ts | null; revoked_at: Ts | null; revoke_reason: string | null;
+  };
+  'public.trusted_device': { id: Generated<string>; user_id: string; label: string | null; created_at: Ts; expires_at: Ts; revoked_at: Ts | null };
+  'public.email_token': { id: Generated<string>; user_id: string; purpose: 'verify_email' | 'reset_password'; token_hash: string; attempts: Generated<number>; created_at: Ts; expires_at: Ts; used_at: Ts | null };
+  'public.outbox_email': { id: Generated<string>; to_email: string; template: string; payload: Json; created_at: Ts; sent_at: Ts | null };
+  'public.login_event': { id: Generated<string>; at: Ts; user_id: string | null; email: string; event: string; ip_hash: string | null; user_agent: string | null };
 }
 
 export type AccountType = 'asset' | 'contra_asset' | 'liability' | 'equity' | 'revenue' | 'contra_revenue' | 'expense';

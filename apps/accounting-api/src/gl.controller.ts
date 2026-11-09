@@ -2,12 +2,12 @@
 import { Body, Controller, Get, Inject, NotFoundException, Param, Post, Put, Query, Req, Res, UnprocessableEntityException } from '@nestjs/common';
 import type { Db } from '@innovera/db';
 import { importWorkbook, saveOpeningBalance, TEMPLATE } from '@innovera/db/import';
-import { accountLedger, companyContext, getJournal, listAccounts, listContacts, listRules, listTemplates, openingBalance, saveRule, postJournalDraft, saveJournalDraft, saveTemplate, type JournalDraftInput } from '@innovera/db/queries';
+import { accountLedger, companyContext, getJournal, listAccounts, listContacts, listRules, listTemplates, openingBalance, openingYear, saveRule, postJournalDraft, saveJournalDraft, saveTemplate, type JournalDraftInput } from '@innovera/db/queries';
 import { post, toTuples, type PostingInput, type RuleDefinition } from '@innovera/ledger';
 import { ruleCheck } from './rule-check.js';
 import ExcelJS from 'exceljs';
 import type { Request, Response } from 'express';
-import { companyOf, roleOf } from './context.js';
+import { companyOf, Need, roleOf } from './context.js';
 import { DB } from './db.js';
 
 const today = (): string => process.env.APP_TODAY ?? new Date().toISOString().slice(0, 10);
@@ -21,11 +21,13 @@ export class GlController {
     return companyContext(this.db, companyOf(req), today());
   }
 
+  @Need('journal', 'read')
   @Get('accounts')
   accounts(@Req() req: Request, @Query('year') year: string, @Query('period') period: string) {
     return listAccounts(this.db, companyOf(req), { fiscalYear: Number(year), upToPeriod: Number(period) });
   }
 
+  @Need('reports', 'read')
   @Get('accounts/export')
   async exportAccounts(@Req() req: Request, @Res() res: Response, @Query('year') year: string, @Query('period') period: string) {
     const rows = await listAccounts(this.db, companyOf(req), { fiscalYear: Number(year), upToPeriod: Number(period) });
@@ -47,32 +49,48 @@ export class GlController {
     res.end(Buffer.from(await wb.xlsx.writeBuffer()));
   }
 
+  @Need('journal', 'read')
   @Get('opening')
-  opening(@Req() req: Request, @Query('year') year: string) {
-    return openingBalance(this.db, companyOf(req), Number(year));
+  async opening(@Req() req: Request, @Query('year') year?: string) {
+    const y = year ? Number(year) : await openingYear(this.db, companyOf(req));
+    if (!y) throw new UnprocessableEntityException('บริษัทนี้ยังไม่มีปีบัญชี');
+    return { year: y, ...(await openingBalance(this.db, companyOf(req), y)) };
   }
 
+  @Need('journal', 'post')
   @Post('opening')
-  saveOpening(@Req() req: Request, @Query('year') year: string, @Body() b: { rows: { account: string; debit?: string; credit?: string }[] }) {
+  async saveOpening(@Req() req: Request, @Query('year') year: string, @Body() b: { rows: { account: string; debit?: string; credit?: string }[] }) {
     const role = roleOf(req);
     if (role !== 'owner' && role !== 'accounting_manager') throw new UnprocessableEntityException('ยืนยันยอดยกมาได้เฉพาะเจ้าของ/ผู้จัดการบัญชี');
-    return saveOpeningBalance(this.db, companyOf(req), b.rows, { fiscalYear: Number(year), role });
+    const r = await saveOpeningBalance(this.db, companyOf(req), b.rows, { fiscalYear: Number(year), role });
+    if (r.ok) await this.setupDone(companyOf(req), 4);
+    return r;
   }
 
+  /** ตัวช่วยตั้งค่าบริษัท: ผ่านขั้นยอดยกมาแล้ว → ขั้น 4 (ScreenCompanyPicker "ยังตั้งค่าไม่เสร็จ (ขั้น n/5)") */
+  private setupDone(companyId: string, step: number) {
+    return this.db.withPublic((tx) => tx.updateTable('public.company').set({ setup_step: step }).where('id', '=', companyId).where('setup_step', '<', step).execute());
+  }
+
+  @Need('journal', 'post')
   @Post('import')
   async import(@Req() req: Request, @Query('year') year: string) {
     const body = req.body as Buffer;
     if (!Buffer.isBuffer(body) || body.length === 0) throw new UnprocessableEntityException('ต้องแนบไฟล์ Excel (.xlsx)');
     const role = roleOf(req);
     if (role !== 'owner' && role !== 'accounting_manager') throw new UnprocessableEntityException('นำเข้ายอดยกมาได้เฉพาะเจ้าของ/ผู้จัดการบัญชี');
-    return importWorkbook(this.db, companyOf(req), body, { fiscalYear: Number(year), role });
+    const r = await importWorkbook(this.db, companyOf(req), body, { fiscalYear: Number(year), role });
+    if (r.ok) await this.setupDone(companyOf(req), 4);
+    return r;
   }
 
+  @Need('journal', 'read')
   @Get('ledger')
   ledger(@Req() req: Request, @Query('account') account: string, @Query('from') from: string, @Query('to') to: string) {
     return accountLedger(this.db, companyOf(req), { account, from, to });
   }
 
+  @Need('reports', 'read')
   @Get('ledger/export')
   async exportLedger(@Req() req: Request, @Res() res: Response, @Query('account') account: string, @Query('from') from: string, @Query('to') to: string) {
     const l = await accountLedger(this.db, companyOf(req), { account, from, to });
@@ -87,11 +105,13 @@ export class GlController {
     res.end(Buffer.from(await wb.xlsx.writeBuffer()));
   }
 
+  @Need('journal', 'read')
   @Get('rules')
   async rules(@Req() req: Request) {
     return (await listRules(this.db, companyOf(req))).map((r) => ({ ...r, check: ruleCheck(r) }));
   }
 
+  @Need('settings', 'write')
   @Post('rules')
   saveRule(@Req() req: Request, @Body() def: RuleDefinition) {
     const check = ruleCheck(def);
@@ -100,6 +120,7 @@ export class GlController {
   }
 
   /** ทดสอบสูตรกับยอดของเอกสาร (ScreenFormula "ทดสอบสูตรกับเอกสารจริง") */
+  @Need('journal', 'read')
   @Post('rules/preview')
   async preview(@Req() req: Request, @Body() b: { code: string; input?: PostingInput; docNo?: string }) {
     const rule = (await listRules(this.db, companyOf(req))).find((r) => r.code === b.code);
@@ -109,21 +130,25 @@ export class GlController {
     throw new UnprocessableEntityException(`ยังไม่มีเอกสาร ${b.docNo ?? ''} ในระบบ — ทดสอบกับเอกสารจริงได้เมื่อเปิดใช้เอกสารขาย/ซื้อ (M4)`);
   }
 
+  @Need('journal', 'read')
   @Get('journals/templates')
   templates(@Req() req: Request) {
     return listTemplates(this.db, companyOf(req));
   }
 
+  @Need('journal', 'write')
   @Post('journals/templates')
   saveTemplate(@Req() req: Request, @Body() b: { name: string; book: string; description: string; lines: unknown }) {
     return saveTemplate(this.db, companyOf(req), b);
   }
 
+  @Need('journal', 'read')
   @Get('contacts')
   contacts(@Req() req: Request) {
     return listContacts(this.db, companyOf(req));
   }
 
+  @Need('journal', 'read')
   @Get('journals/by-no/:no')
   async journalByNo(@Req() req: Request, @Param('no') no: string) {
     const j = await getJournal(this.db, companyOf(req), { no });
@@ -131,6 +156,7 @@ export class GlController {
     return j;
   }
 
+  @Need('journal', 'read')
   @Get('journals/:id')
   async journal(@Req() req: Request, @Param('id') id: string) {
     const j = await getJournal(this.db, companyOf(req), { id });
@@ -138,16 +164,19 @@ export class GlController {
     return j;
   }
 
+  @Need('journal', 'write')
   @Post('journals')
   async createDraft(@Req() req: Request, @Body() b: JournalDraftInput) {
     return { id: await saveJournalDraft(this.db, companyOf(req), b) };
   }
 
+  @Need('journal', 'write')
   @Put('journals/:id')
   async updateDraft(@Req() req: Request, @Param('id') id: string, @Body() b: JournalDraftInput) {
     return { id: await saveJournalDraft(this.db, companyOf(req), b, id) };
   }
 
+  @Need('journal', 'post')
   @Post('journals/:id/post')
   postDraft(@Req() req: Request, @Param('id') id: string) {
     return postJournalDraft(this.db, companyOf(req), id, roleOf(req));

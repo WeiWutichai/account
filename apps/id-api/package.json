@@ -9,21 +9,29 @@
     "start": "node dist/main.js",
     "lint": "eslint src test",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "seed:dev": "tsx src/dev-seed.ts",
+    "session:dev": "tsx src/dev-session.ts"
   },
   "dependencies": {
+    "@innovera/auth": "workspace:*",
+    "@innovera/db": "workspace:*",
     "@nestjs/common": "12.4.2",
     "@nestjs/core": "12.4.2",
     "@nestjs/platform-express": "12.4.2",
-    "reflect-metadata": "0.2.2",
-    "rxjs": "7.8.2",
+    "ioredis": "6.0.0",
+    "jose": "6.2.15",
     "pg": "8.23.1",
-    "ioredis": "6.0.0"
+    "qrcode": "1.5.4",
+    "reflect-metadata": "0.2.2",
+    "rxjs": "7.8.2"
   },
   "devDependencies": {
     "@innovera/config": "workspace:*",
+    "@types/express": "5.0.6",
     "@types/node": "26.6.6",
     "@types/pg": "8.23.1",
+    "@types/qrcode": "1.5.6",
     "tsx": "4.23.15",
     "vitest": "5.1.0"
   }

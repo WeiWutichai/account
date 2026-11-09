@@ -12,10 +12,11 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@innovera/auth": "workspace:*",
+    "@innovera/ui": "workspace:*",
     "next": "16.4.5",
     "react": "19.3.1",
     "react-dom": "19.3.1",
-    "@innovera/ui": "workspace:*",
     "server-only": "0.0.1"
   },
   "devDependencies": {
