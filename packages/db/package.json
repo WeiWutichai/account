@@ -16,7 +16,8 @@
     "./purchase": "./src/purchase.ts",
     "./reports": "./src/reports.ts",
     "./close-ops": "./src/close-ops.ts",
-    "./hub": "./src/hub.ts"
+    "./hub": "./src/hub.ts",
+    "./console": "./src/console.ts"
   },
   "scripts": {
     "lint": "eslint src test",

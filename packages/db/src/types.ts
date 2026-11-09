@@ -47,6 +47,13 @@ export interface PublicDB {
   'public.outbox_email': { id: Generated<string>; to_email: string; template: string; payload: Json; created_at: Ts; sent_at: Ts | null };
   'public.doc_share': { token_hash: string; company_id: string; document_id: string; created_at: Ts; expires_at: Ts | null; revoked_at: Ts | null };
   'public.api_client': { id: Generated<string>; company_id: string; name: string; kind: 'tms' | 'mcp' | 'custom'; key_prefix: string; key_hash: string; scopes: string[]; created_by: string | null; created_at: Ts; last_used_at: Ts | null; revoked_at: Ts | null };
+  'public.innovera_staff': { user_id: string; role: 'support' | 'engineer' | 'billing' | 'ops' | 'admin'; active: Generated<boolean>; created_at: Ts };
+  'public.support_ticket': { id: Generated<string>; number: Generated<number>; org_id: string; company_id: string | null; subject: string; status: Generated<'open' | 'in_progress' | 'waiting_consent' | 'waiting_billing' | 'closed'>;
+    assignee: string | null; created_at: Ts; updated_at: Ts; closed_at: Ts | null };
+  'public.support_access': { id: Generated<string>; ticket_id: string; company_id: string; requested_by: string; reason: string; scope: string; minutes: number; write_access: Generated<boolean>;
+    status: Generated<'pending' | 'approved' | 'denied' | 'active' | 'ended' | 'cancelled'>; decided_by: string | null; decided_at: Ts | null; started_at: Ts | null; ends_at: Ts | null; created_at: Ts };
+  'public.feature_flag': { key: string; scope: 'global' | 'org' | 'company'; target_id: string | null; value: ColumnType<unknown, string, string>; updated_by: string | null; updated_at: Ts };
+  'public.audit_console': { id: Generated<string>; at: Ts; actor: string; action: string; target_company_id: string | null; reason: string; consent_ref: string | null; actor_user: string | null; access_id: string | null };
   'public.login_event': { id: Generated<string>; at: Ts; user_id: string | null; email: string; event: string; ip_hash: string | null; user_agent: string | null };
 }
 
