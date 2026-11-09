@@ -15,7 +15,7 @@
   "dependencies": {
     "@node-rs/argon2": "2.2.2",
     "@node-rs/bcrypt": "2.0.0",
-    "jose": "6.2.16"
+    "jose": "6.2.15"
   },
   "devDependencies": {
     "@innovera/config": "workspace:*",
