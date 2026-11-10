@@ -27,7 +27,7 @@ export type WhtMethod = 'flat' | 'progressive';
 export interface WhtType {
   readonly key: string;
   readonly rate: string; // "0.03"
-  readonly pnd: '3' | '53' | '3|53' | '-';
+  readonly pnd: '3' | '53' | '3|53' | '54' | '-';
   readonly method?: WhtMethod;
   /** PENDING_AUDITOR = รอผู้สอบบัญชียืนยัน (CLAUDE.md) — ใช้ค่าตั้งต้นชั่วคราว พร้อมป้าย "รอยืนยัน" */
   readonly status?: 'CONFIRMED' | 'PENDING_AUDITOR';
@@ -59,6 +59,7 @@ export function whtOnReceipt(p: { base: MoneyString; rate: string; certified: Mo
   return { amount: certified.toString(), expected: expected.toString(), diff: diff.toString(), warning };
 }
 export { bahtText, thaiNumber } from './baht.ts';
+export { isPnd54Type, PND54_INCOME_TYPES, pnd54Rate, pnd54Tax, PP36_RATE, pp36Vat, validTreatyRates, type Pnd54IncomeType, type TreatyRates } from './foreign.ts';
 export { FREELANCE_DEFAULT, pndOf, WHT_TYPES, whtTypeFor, type FreelanceWhtConfig } from './wht-types.ts';
 
 /** เลขประจำตัวผู้เสียภาษี 13 หลัก ตรวจ checksum (FR-TN-02 · ตัวเดียวกับ apps/id-api/src/org.ts validTaxId) */
