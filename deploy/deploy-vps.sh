@@ -4,6 +4,7 @@
 #   prepare  — เพิ่ม swap 4G (ถ้ายังไม่มี) · ส่งโค้ด (git HEAD) + deploy/.env ไป /srv/innovera
 #   build    — build image 5 ตัวบน VPS (นาน 20–40 นาที · log ที่ /srv/innovera/build.log)
 #   up       — migrate + เปิด container ของ Innovera (ไม่แตะ container ของ JuneFlow)
+#   owner <อีเมล> "<ชื่อ>" — สร้างผู้ใช้คนแรก (Owner · admin ของ Console) · คุณพิมพ์รหัสผ่านเอง · ใช้ได้ครั้งเดียวตอนยังไม่มีผู้ใช้
 #   proxy    — ตรวจ DNS 4 ชื่อ → สำรอง Caddyfile ของ JuneFlow → เพิ่ม import → validate → reload แบบ graceful
 #   status   — ดูสถานะ container + ทดสอบ HTTPS
 #   rollback-proxy — คืน Caddyfile ของ JuneFlow จากไฟล์สำรองล่าสุด แล้ว reload
@@ -40,6 +41,11 @@ up)
   remote "cd $DIR && docker compose -f deploy/compose.prod.yaml --env-file deploy/.env up -d && docker compose -f deploy/compose.prod.yaml --env-file deploy/.env ps --format 'table {{.Service}}\t{{.Status}}'"
   remote "docker logs innovera-migrate-1 2>&1 | tail -5"
   ;;
+owner)
+  [ -n "${2:-}" ] && [ -n "${3:-}" ] || { echo 'ใช้: bash deploy/deploy-vps.sh owner <อีเมล> "<ชื่อ>"'; exit 1; }
+  ssh -t -i "$KEY" -o IdentitiesOnly=yes -p "${VPS_PORT:-22}" "${VPS_USER}@${VPS_HOST}" \
+    "cd $DIR && docker compose -f deploy/compose.prod.yaml --env-file deploy/.env run --rm -it id-api ./node_modules/.bin/tsx src/bootstrap-owner.ts --email '$2' --name '$3' --console-admin"
+  ;;
 proxy)
   ip="$VPS_HOST"
   for h in "${HOSTS[@]}"; do
@@ -67,5 +73,5 @@ status)
   for h in "${HOSTS[@]}"; do printf '%-28s ' "https://$h.$DOMAIN"; curl -s -o /dev/null -m 15 -w '%{http_code}\n' "https://$h.$DOMAIN/" || echo "เชื่อมต่อไม่ได้"; done
   printf '%-28s ' "juneflow.app"; curl -s -o /dev/null -m 15 -w '%{http_code}\n' https://juneflow.app/ || echo "เชื่อมต่อไม่ได้"
   ;;
-*) sed -n 2,11p "$0"; exit 1 ;;
+*) sed -n 2,12p "$0"; exit 1 ;;
 esac
