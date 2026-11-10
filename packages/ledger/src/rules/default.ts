@@ -146,6 +146,46 @@ export const DEFAULT_RULES: readonly RuleDefinition[] = [
   },
 ];
 
+/**
+ * สูตรของโมดูลสินค้าคงคลัง (Phase 2A INV · เปิดต่อบริษัท) — แยกจาก DEFAULT_RULES เพื่อไม่ให้รายการสูตรของบริษัทที่ไม่เปิดโมดูลเปลี่ยน
+ * line.value = มูลค่าตามต้นทุนถัวเฉลี่ยของบรรทัด (ค่าบวก) · บัญชีจาก product = บัญชีสินค้าคงเหลือของสินค้า · จาก line = บัญชีคู่ (ต้นทุนขาย/ค่าใช้จ่าย/ผลต่าง)
+ * TODO(Wei): บัญชีและวิธีลง (perpetual/periodic) เป็นค่าตั้ง "รอผู้สอบบัญชี" — inventory.method ค่าตั้งต้นชั่วคราว periodic
+ */
+export const INVENTORY_RULES: readonly RuleDefinition[] = [
+  {
+    // ใบรับสินค้า (FR-PU-09): รับของก่อนได้บิล → สินค้ารับแล้วรอใบแจ้งหนี้ (GR/IR) · บิลซื้อที่อ้าง GR ล้าง 2130100
+    code: 'Stock[GR]', docType: 'GR', name: 'รับสินค้า (GR/IR)', book: 'GJ',
+    lines: [
+      { side: 'Dr', account: { from: ['product'], default: '1200100' }, amount: 'line.value', perLine: true },
+      { side: 'Cr', account: { default: '2130100' }, amount: 'total', memo: 'สินค้ารับแล้วรอใบแจ้งหนี้' },
+    ],
+  },
+  {
+    code: 'Stock[GI]', docType: 'GI', name: 'เบิกใช้สินค้า', book: 'GJ',
+    lines: [
+      { side: 'Dr', account: { from: ['line'], default: '5020100' }, amount: 'line.value', perLine: true },
+      { side: 'Cr', account: { from: ['product'], default: '1200100' }, amount: 'line.value', perLine: true },
+    ],
+  },
+  {
+    code: 'Stock[ADJ]', docType: 'ADJ', name: 'ปรับยอด/ตรวจนับสินค้า', book: 'GJ',
+    lines: [
+      { side: 'Dr', account: { from: ['product'], default: '1200100' }, amount: 'line.gain', perLine: true },
+      { side: 'Cr', account: { from: ['line'], default: '5020900' }, amount: 'line.gain', perLine: true },
+      { side: 'Dr', account: { from: ['line'], default: '5020900' }, amount: 'line.loss', perLine: true },
+      { side: 'Cr', account: { from: ['product'], default: '1200100' }, amount: 'line.loss', perLine: true },
+    ],
+  },
+  {
+    // perpetual: ตัดต้นทุนทุกการขาย (บรรทัดเพิ่มใน journal ของใบขาย)
+    code: 'Stock[COGS]', docType: 'COGS', name: 'ต้นทุนขาย (perpetual)', book: 'SJ',
+    lines: [
+      { side: 'Dr', account: { from: ['line'], default: '5020100' }, amount: 'line.value', perLine: true },
+      { side: 'Cr', account: { from: ['product'], default: '1200100' }, amount: 'line.value', perLine: true },
+    ],
+  },
+];
+
 export function ruleByCode(code: string): RuleDefinition {
   const r = DEFAULT_RULES.find((x) => x.code === code);
   if (!r) throw new Error(`ไม่พบสูตร ${code}`);
