@@ -13,6 +13,7 @@ import {
 } from '../src/purchase.ts';
 import { getDocument, type Actor } from '../src/sales.ts';
 import { seedCompany } from '../src/seed.ts';
+import { reconChecks, vatReports } from '../src/reports.ts';
 import { appDb, freshSchema } from './helpers.ts';
 
 type FxLine = { desc: string; account: string; amount: string; vat: boolean };
@@ -313,5 +314,13 @@ describe('เงินสดย่อยหลายกอง + ตรวจน�
     expect([r.total, r.items]).toEqual(['500.00', 1]);
     expect((await pettyCashSummary(db, A)).spentPending).toBe('6072.00');
     expect((await pettyCashSummary(db, A, wh.id)).spentPending).toBe('0.00');
+  });
+  it('เบิกชดเชยกองตั้งต้น: ภาษีซื้อ 182.00 (PC2611-004 ใบกำกับเต็มรูป) อยู่ในรายงานภาษีซื้อเดือนที่เบิก · JV ชดเชยไม่ถูกนับเป็น JV คีย์มือ', async () => {
+    const r = await reimbursePettyCash(db, A, director, { date: '2026-11-30', payFrom: '1100100' });
+    expect(r.vat).toBe('182.00'); // fixtures petty_cash.input_vat_in_items
+    const vat = await vatReports(db, A, '2026-11');
+    expect(vat.purchases.rows.find((x) => x.docNo === 'PC2611-004')).toMatchObject({ docType: 'PC', vat: '182.00', base: '2600.00' });
+    const rc = await reconChecks(db, A, '2026-11');
+    expect(rc.checks.find((c) => c.key === 'doc_orphans')?.note ?? '').not.toContain(r.journalNo);
   });
 });

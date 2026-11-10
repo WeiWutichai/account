@@ -8,7 +8,7 @@ import type { Db } from '../src/index.ts';
 import { postJournal, trialBalance } from '../src/ledger-service.ts';
 import { approvePayment, approvePurchase, createPayment, savePurchaseDraft } from '../src/purchase.ts';
 import { aging, financialStatements, pndReport, rdPrepTxt, reconChecks, vatReports } from '../src/reports.ts';
-import { approveDocument, receivePayment, saveSalesDraft } from '../src/sales.ts';
+import { approveDocument, receivePayment, saveSalesDraft, voidDocument } from '../src/sales.ts';
 import { seedCompany } from '../src/seed.ts';
 import { appDb, freshSchema } from './helpers.ts';
 
@@ -79,6 +79,17 @@ describe('อายุหนี้ (ScreenAging)', () => {
     expect(r.gl.diff).toBe('0.00');
     const before = await aging(db, A, '2026-11-26', 'AR'); // ก่อนวันรับชำระ: ค้างเต็ม 2 ใบ · IV2610-0049 ครบกำหนด 27/11
     expect(before.totals.total).toBe('1561400.00');
+  });
+  it('ใบร่างและใบที่ยกเลิกแล้วไม่นับเป็นยอดค้าง (smoke 2569-11-10: เงื่อนไขสถานะเคยหลุดไปอยู่ในคอมเมนต์)', async () => {
+    const c = await contact('C0031');
+    await saveSalesDraft(db, A, mgr, { docType: 'IV', contactId: c, issueDate: '2026-11-20', lines: [{ description: 'ร่าง', qty: '1', unitPrice: '1000.00', vat: true }] });
+    const v = await saveSalesDraft(db, A, mgr, { docType: 'IV', contactId: c, issueDate: '2026-11-20', lines: [{ description: 'ออกผิด', qty: '1', unitPrice: '100.00', vat: true }] });
+    await approveDocument(db, A, mgr, v);
+    await voidDocument(db, A, mgr, v, { reason: 'ออกผิด', date: '2026-11-20' });
+    const r = await aging(db, A, '2026-11-30', 'AR');
+    expect(r.totals.total).toBe('1200.00');
+    expect(r.gl.diff).toBe('0.00');
+    expect((await aging(db, A, '2026-11-19', 'AR')).totals.total).toBe('1561400.00');
   });
 });
 

@@ -82,6 +82,21 @@ async function purchaseRows(tx: CompanyTx, fromYm: string, toYm: string): Promis
     if (disallowedAccounts.length && d.accounts.length && d.accounts.every((a) => disallowedAccounts.includes(a))) disallowed.push(row);
     else rows.push(row);
   }
+  // เงินสดย่อยที่มีใบกำกับเต็มรูป (vat_mode full_invoice): ภาษีซื้อลง GL 1170100 ตอนเบิกชดเชย (fixtures petty_cash.reimburse_journal)
+  // → แสดงในรายงานภาษีซื้อเดือนที่เบิกชดเชย ให้ตรงกับ GL และ ภ.พ.30
+  // TODO(Wei): เดือนที่ใช้สิทธิ์ของเงินสดย่อย = เดือนที่เบิกชดเชย (ไม่ใช่เดือนตามใบกำกับ) · ไม่มีชื่อ/เลขผู้ขายถ้าไม่ได้ระบุคู่ค้าในรายการ
+  const pcClaim = sql<string>`coalesce(d.vat_claim_month, to_char(j.journal_date, 'YYYY-MM'))`;
+  const pcs = await tx.selectFrom('acct.document as d').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'd.journal_id').onRef('j.company_id', '=', 'd.company_id'))
+    .leftJoin('acct.contact as c', (jn) => jn.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+    .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.subtotal', 'd.discount', 'd.vat', 'c.name',
+      sql<string | null>`(select l.description from acct.document_line l where l.document_id = d.id and l.company_id = d.company_id order by l.line_no limit 1)`.as('line_desc'), sql<string | null>`coalesce(d.party_tax_id, c.tax_id)`.as('tax_id'), 'c.branch_code', pcClaim.as('claim_month')])
+    .where('d.doc_type', '=', 'PC').where('d.status', '=', 'approved').where('d.vat', '>', '0').where('j.status', '=', 'posted')
+    .where(pcClaim, '>=', fromYm).where(pcClaim, '<=', toYm).orderBy('d.issue_date').orderBy('d.doc_no').execute();
+  for (const d of pcs) {
+    rows.push({ date: d.issue_date, docId: d.id, docNo: d.doc_no ?? '', docType: 'PC', partner: d.name ?? d.line_desc ?? '', taxId: d.tax_id, branch: d.branch_code, vendorRef: null,
+      base: Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString(), vat: d.vat, claimMonth: d.claim_month, priorMonth: d.issue_date.slice(0, 7) < d.claim_month });
+  }
+  rows.sort((a, b) => (a.date === b.date ? a.docNo.localeCompare(b.docNo) : a.date < b.date ? -1 : 1));
   return { rows, disallowed };
 }
 const vsum = (rows: VatRow[], k: 'base' | 'vat') => Money.sum(rows.map((r) => Money.parse(r[k]))).toString();
@@ -289,7 +304,8 @@ export async function aging(db: Db, companyId: string, asOf: string, side: 'AR' 
         // ตัดยอด/ลดหนี้ที่เกิดถึงวันที่ asOf เท่านั้น
         sql<string>`coalesce((select sum(s.applied + s.wht) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
           where s.document_id = d.id and s.company_id = d.company_id and not s.voided and p.issue_date <= ${asOf}), 0)`.as('settled')])
-      .where('d.doc_type', 'in', types).where('d.pay_now', '=', false).where('d.issue_date', '<=', asOf) // EXP จ่ายทันทีไม่มีหนี้ค้าง.where((eb) => eb.or([eb('d.status', '=', 'posted'), eb.and([eb('d.status', '=', 'voided'), eb('d.voided_at', '>', new Date(`${asOf}T23:59:59+07:00`))])]))
+      .where('d.doc_type', 'in', types).where('d.pay_now', '=', false).where('d.issue_date', '<=', asOf) /* EXP จ่ายทันทีไม่มีหนี้ค้าง */
+      .where((eb) => eb.or([eb('d.status', '=', 'posted'), eb.and([eb('d.status', '=', 'voided'), eb('d.voided_at', '>', new Date(`${asOf}T23:59:59+07:00`))])]))
       .execute();
     const buckets = ['current', 'b1_30', 'b31_60', 'b61_90', 'b91_120', 'over_120'] as const;
     type B = (typeof buckets)[number];
@@ -384,12 +400,14 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       .select(['j.id as journal_id', 'j.journal_no', 'j.source_document_id', 'd.doc_type', 'l.account_code', 'l.debit', 'l.credit']).execute();
     // JV ยื่น ภ.พ.30 ล้าง 2150100/1170100 ของเดือนก่อน — ไม่นับในยอดเคลื่อนไหวที่เทียบรายงานภาษี
     const filingIds = new Set((await tx.selectFrom('acct.tax_filing').select('journal_id').where('journal_id', 'is not', null).execute()).map((r) => r.journal_id!));
-    // JV ระบบ (ไม่ใช่คีย์มือ): ค่าเสื่อม · เช็ค · ยื่น ภ.พ.30 · ขายทรัพย์สิน
+    // JV ระบบ (ไม่ใช่คีย์มือ): ค่าเสื่อม · เช็ค · ยื่น ภ.พ.30 · ขายทรัพย์สิน · เบิกชดเชยเงินสดย่อย
     const sysIds = new Set<string>([
       ...(await tx.selectFrom('acct.depreciation_run').select('journal_id').execute()).map((r) => r.journal_id),
       ...(await tx.selectFrom('acct.cheque').select('journal_ids').execute()).flatMap((r) => r.journal_ids),
       ...filingIds,
       ...(await tx.selectFrom('acct.fixed_asset').select('disposal_journal_id').where('disposal_journal_id', 'is not', null).execute()).map((r) => r.disposal_journal_id!),
+      // เบิกชดเชยเงินสดย่อย (1 JV ต่อชุด อ้างใบ PC หลายใบ ไม่มี source_document_id)
+      ...(await tx.selectFrom('acct.document').select('journal_id').where('doc_type', '=', 'PC').where('journal_id', 'is not', null).execute()).map((r) => r.journal_id!),
     ]);
     const manual = lines.filter((l) => !l.source_document_id && !sysIds.has(l.journal_id));
     const sum = (rows: typeof lines, acct: (a: string) => boolean, side: 'Dr' | 'Cr') =>
