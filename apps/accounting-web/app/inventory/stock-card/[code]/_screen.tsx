@@ -69,7 +69,7 @@ export function StockCardScreen({ card, from, to, warehouse, warehouses, product
         </div>
         <Msg msg={err ? { kind: 'err', text: err } : null} />
         <section style={css(S.tableBox)}>
-          <table style={css(`${S.table}; min-width: 1200px`)}>
+          <table style={css(`${S.table}; min-width: 1080px`)}>
             <thead><tr style={css(S.theadRow)}>
               <th style={css(S.thFirst)}>วันที่</th><th style={css(S.th)}>เลขที่</th><th style={css(S.th)}>รายการ</th><th style={css(S.th)}>คลัง</th>
               <th style={css(`${S.th}; text-align: right`)}>รับ</th><th style={css(`${S.th}; text-align: right`)}>จ่าย</th><th style={css(`${S.th}; text-align: right`)}>ต้นทุนต่อหน่วย</th><th style={css(`${S.th}; text-align: right`)}>มูลค่า</th>
