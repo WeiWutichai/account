@@ -524,7 +524,10 @@ export async function convertDocument(db: Db, companyId: string, actor: Actor, i
     docType: to, contactId: src.doc.contact_id!, issueDate: p.issueDate ?? today(), priceInclVat: src.doc.price_incl_vat, billDiscount: src.doc.bill_discount,
     address: src.doc.address, notes: src.doc.notes, reference: src.doc.doc_no, refDocumentId: id, creditDays: src.doc.credit_days,
     salesperson: src.doc.salesperson, projectCode: src.doc.project_code, paymentTerms: src.doc.payment_terms, priceLevel: src.doc.price_level,
-    lines: src.lines.map((l) => ({ lineType: l.line_type, productCode: l.product_code, description: l.description, qty: l.qty ?? undefined, unitPrice: l.unit_price ?? undefined, discount: l.discount, vat: l.vat_rate !== null, accountCode: l.account_code, estCost: l.est_cost })),
+    // P2A FXB: สกุล/อัตรา/สาขาตามเอกสารต้นทาง (เอกสารบาทสาขาใหญ่ = ค่าเดิม)
+    ...(src.doc.currency !== BASE_CURRENCY ? { currency: src.doc.currency, fxRate: src.doc.fx_rate } : {}), ...(src.doc.branch_code !== '00000' ? { branchCode: src.doc.branch_code } : {}),
+    lines: src.lines.map((l) => ({ lineType: l.line_type, productCode: l.product_code, description: l.description, qty: l.qty ?? undefined, unitPrice: l.unit_price ?? undefined, discount: l.discount, vat: l.vat_rate !== null, accountCode: l.account_code, estCost: l.est_cost,
+      ...(l.vat_rate !== null && /^0(\.0+)?$/u.test(l.vat_rate) ? { vatCode: 'zero' as const } : {}) })),
   } as SalesDraftInput);
   await db.withCompany(companyId, (tx) => event(tx, companyId, id, actor.userId, 'converted', { to, id: newId }));
   return newId;

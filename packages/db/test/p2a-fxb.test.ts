@@ -12,7 +12,7 @@ import {
 import type { Db } from '../src/index.ts';
 import { approvePayment, approvePurchase, createPayment, savePurchaseDraft } from '../src/purchase.ts';
 import { aging, reconChecks, vatReports } from '../src/reports.ts';
-import { approveDocument, receivePayment, saveSalesDraft, voidDocument, type Actor } from '../src/sales.ts';
+import { approveDocument, convertDocument, receivePayment, saveSalesDraft, voidDocument, type Actor } from '../src/sales.ts';
 import { seedCompany } from '../src/seed.ts';
 import { admin, appDb, freshSchema } from './helpers.ts';
 
@@ -159,6 +159,17 @@ describe('เอกสารสกุลต่างประเทศ → journ
     expect((await doc(A, ids['IV-EXPORT']!)).grand_total_thb).toBe(d.totals_thb!.grand_total);
     await expect(saveSalesDraft(db, A, clerk, { docType: 'IV', contactId: contactIds.FXC02!, issueDate: '2026-11-12', lines: [
       { description: 'a', qty: '1', unitPrice: '1.00', vatCode: 'zero' }, { description: 'b', qty: '1', unitPrice: '1.00', vatCode: 'vat7' }] })).rejects.toThrow('ทั้ง VAT 7% และ 0%');
+  });
+  it('แปลง QO สกุลต่างประเทศ → IV: สกุล อัตรา และบรรทัด 0% ตามต้นทาง (ร่าง ไม่ลงบัญชี)', async () => {
+    const qo = await saveSalesDraft(db, A, clerk, { docType: 'QO', contactId: contactIds.FXC02!, issueDate: '2026-11-12', currency: 'USD',
+      lines: [{ description: 'บริการส่งออก', qty: '2', unitPrice: '100.00', vatCode: 'zero' }] });
+    expect((await doc(A, qo)).fx_rate).toBe('33.400000'); // อัตราล่าสุดไม่เกินวันที่เอกสาร (10/11)
+    await approveDocument(db, A, clerk, qo);
+    const iv = await convertDocument(db, A, clerk, qo, 'IV', { issueDate: '2026-11-12' });
+    const row = await doc(A, iv);
+    expect([row.status, row.currency, row.fx_rate, row.vat, row.grand_total]).toEqual(['draft', 'USD', '33.400000', '0.00', '200.00']);
+    const l = await db.withCompany(A, (tx) => tx.selectFrom('acct.document_line').select('vat_rate').where('document_id', '=', iv).executeTakeFirstOrThrow());
+    expect(l.vat_rate).toBe('0.0000');
   });
   it('AP-USD: 2,000.00 USD @ 33.40 → เจ้าหนี้ 66,800.00', async () => {
     const d = D('AP-USD');
