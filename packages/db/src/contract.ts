@@ -203,7 +203,11 @@ export async function completeMilestone(db: Db, companyId: string, actor: Actor,
 
 export async function listContracts(db: Db, companyId: string) {
   return db.withCompany(companyId, (tx) => tx.selectFrom('acct.contract as k').innerJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'k.contact_id').onRef('c.company_id', '=', 'k.company_id'))
-    .select(['k.id', 'k.code', 'k.start_date', 'k.end_date', 'k.billing_cycle', 'k.auto_renew', 'k.status', 'k.cancelled_on', 'c.code as contact_code', 'c.name as contact_name'])
+    .select(['k.id', 'k.code', 'k.start_date', 'k.end_date', 'k.billing_cycle', 'k.auto_renew', 'k.status', 'k.cancelled_on', 'c.code as contact_code', 'c.name as contact_name',
+      // หน้าจอชั่วคราว P2A: ยอดต่อรอบบิล (subscription/support) · ยอดครั้งเดียว (license/implementation) · ยอดใบแจ้งหนี้ที่ออกแล้ว (ไม่นับที่ยกเลิก)
+      sql<string>`coalesce((select sum(l.amount) from acct.contract_line l where l.contract_id = k.id and l.company_id = k.company_id and l.kind in ('subscription', 'support')), 0)`.as('recurring_amount'),
+      sql<string>`coalesce((select sum(l.amount) from acct.contract_line l where l.contract_id = k.id and l.company_id = k.company_id and l.kind in ('license', 'implementation')), 0)`.as('one_time_amount'),
+      sql<string>`coalesce((select sum(d.grand_total) from acct.document d where d.contract_id = k.id and d.company_id = k.company_id and d.status <> 'voided'), 0)`.as('billed_total')])
     .orderBy('k.code').execute());
 }
 
@@ -217,9 +221,13 @@ export async function getContract(db: Db, companyId: string, id: string) {
     const schedule = await tx.selectFrom('acct.revenue_schedule as s').innerJoin('acct.contract_line as l', (j) => j.onRef('l.id', '=', 's.contract_line_id').onRef('l.company_id', '=', 's.company_id'))
       .select(['s.period', sql<string>`sum(s.amount)`.as('amount'), sql<string>`sum(case when s.journal_id is null then 0 else s.amount end)`.as('recognized')])
       .where('l.contract_id', '=', id).where('s.voided', '=', false).groupBy('s.period').orderBy('s.period').execute();
+    // ตารางรับรู้แยกรายการในสัญญา (หน้าจอชั่วคราว P2A)
+    const scheduleLines = await tx.selectFrom('acct.revenue_schedule as s').innerJoin('acct.contract_line as l', (j) => j.onRef('l.id', '=', 's.contract_line_id').onRef('l.company_id', '=', 's.company_id'))
+      .select(['s.contract_line_id', 's.period', sql<string>`sum(s.amount)`.as('amount'), sql<string>`sum(case when s.journal_id is null then 0 else s.amount end)`.as('recognized')])
+      .where('l.contract_id', '=', id).where('s.voided', '=', false).groupBy(['s.contract_line_id', 's.period']).orderBy('s.contract_line_id').orderBy('s.period').execute();
     const usage = await tx.selectFrom('acct.usage_record as u').innerJoin('acct.contract_line as l', (j) => j.onRef('l.id', '=', 'u.contract_line_id').onRef('l.company_id', '=', 'u.company_id'))
       .select(['u.id', 'u.contract_line_id', 'u.usage_date', 'u.qty', 'u.external_source', 'u.external_ref', 'u.document_id']).where('l.contract_id', '=', id).orderBy('u.usage_date').execute();
-    return { contract, lines, invoices, schedule, usage };
+    return { contract, lines, invoices, schedule, scheduleLines, usage };
   });
 }
 
