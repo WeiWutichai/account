@@ -199,3 +199,8 @@ export async function setContactCountry(db: Db, companyId: string, actorId: stri
       before: JSON.stringify({ country: c.country }), after: JSON.stringify({ country }), prev_hash: null, hash: null }).execute();
   });
 }
+
+/** ผู้ติดต่อประเภทต่างประเทศ + ประเทศ (หน้าจอชั่วคราว P2A /tax/foreign) */
+export async function foreignContacts(db: Db, companyId: string) {
+  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.contact').select(['id', 'code', 'name', 'kind', 'tax_id', 'country']).where('entity_type', '=', 'foreign').orderBy('code').execute());
+}

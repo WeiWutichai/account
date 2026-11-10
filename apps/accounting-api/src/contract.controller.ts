@@ -4,7 +4,7 @@ import { Body, Controller, Get, Inject, NotFoundException, Param, Post, Put, Que
 import type { Db } from '@innovera/db';
 import { cancelContract, completeMilestone, contractMetrics, getContract, listContracts, recognitionRuns, recordUsage, runBilling, runRevenueRecognition, saveContract, saveIntangibleAsset,
   setSoftwareModule, swtSettings, SWT_SETTINGS, voidRevenueRecognition, type ContractInput, type IntangibleInput, type UsageInput } from '@innovera/db/contract';
-import { filePp36, pp36Report, setContactCountry, SWT_TAX_KEYS } from '@innovera/db/foreign-tax';
+import { filePp36, foreignContacts, pp36Report, setContactCountry, SWT_TAX_KEYS } from '@innovera/db/foreign-tax';
 import { setCompanySetting } from '@innovera/db/purchase';
 import { fileTax, pndReport } from '@innovera/db/reports';
 import { PND54_INCOME_TYPES, validTreatyRates } from '@innovera/tax-th';
@@ -98,6 +98,9 @@ export class ContractController {
   // ---------- ภ.พ.36 / ภ.ง.ด.54 ----------
   @Need('purchase', 'read') @Get('pnd54-types')
   pnd54Types() { return PND54_INCOME_TYPES; }
+  /** ผู้ติดต่อต่างประเทศ + ประเทศ (หน้าจอชั่วคราว /tax/foreign) */
+  @Need('purchase', 'read') @Get('foreign-contacts')
+  foreign(@Req() req: Request) { return foreignContacts(this.db, companyOf(req)); }
   @Need('purchase', 'write') @Put('contacts/:id/country')
   async country(@Req() req: Request, @Param('id') id: string, @Body() b: { country: string | null }) {
     await setContactCountry(this.db, companyOf(req), actorIdOf(req), id, b.country ?? null);

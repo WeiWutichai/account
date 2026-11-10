@@ -7,10 +7,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { depreciationFor, runDepreciation } from '../src/close-ops.ts';
 import { createCompany, createOrganization } from '../src/company.ts';
 import {
-  cancelContract, completeMilestone, contractMetrics, getContract, recordUsage, runBilling, runRevenueRecognition, saveContract, saveIntangibleAsset, setSoftwareModule, SWT_ACCOUNTS, voidRevenueRecognition,
+  cancelContract, completeMilestone, contractMetrics, getContract, listContracts, recordUsage, runBilling, runRevenueRecognition, saveContract, saveIntangibleAsset, setSoftwareModule, SWT_ACCOUNTS, voidRevenueRecognition,
   type ContractLineInput,
 } from '../src/contract.ts';
-import { filePp36, pp36Report } from '../src/foreign-tax.ts';
+import { filePp36, foreignContacts, pp36Report } from '../src/foreign-tax.ts';
 import type { Db } from '../src/index.ts';
 import { approvePayment, approvePurchase, createPayment, savePurchaseDraft, setCompanySetting } from '../src/purchase.ts';
 import { pndReport, reconChecks, vatReports } from '../src/reports.ts';
@@ -152,6 +152,17 @@ describe('สัญญา + รอบบิล (IV ร่าง) + รายไ�
     for (const [p, a] of Object.entries(C('CT-002').schedule_first!)) expect(ct2[p]).toBe(a);
   });
 
+  it('หน้าจอชั่วคราว: ตารางรับรู้แยกรายการรวม = รายงวด · รายการสัญญามียอดต่อรอบ/ครั้งเดียว/ออกบิลแล้ว', async () => {
+    const ct1 = (await getContract(db, A, ids['CT-001']!))!;
+    const byPeriod = new Map<string, number>();
+    for (const r of ct1.scheduleLines) byPeriod.set(r.period, (byPeriod.get(r.period) ?? 0) + Math.round(Number(r.amount) * 100));
+    expect(Object.fromEntries(ct1.schedule.map((s) => [s.period, Math.round(Number(s.amount) * 100)]))).toEqual(Object.fromEntries(byPeriod));
+    const row = (await listContracts(db, A)).find((c) => c.code === 'CT-001')!;
+    const recurring = C('CT-001').lines.filter((l) => l.kind === 'subscription' || l.kind === 'support').reduce((a, l) => a + Math.round(Number(l.amount) * 100), 0);
+    expect(Math.round(Number(row.recurring_amount) * 100)).toBe(recurring);
+    expect(Number(row.billed_total)).toBeGreaterThan(0);
+  });
+
   it('รับชำระ: โอน 2150400 → 2150100 เหมือนบริการเดิม (รายได้รับล่วงหน้าไม่เปลี่ยน)', async () => {
     const c = C('CT-001');
     const iv = (await ivsOf('CT-001'))[0]!;
@@ -270,6 +281,10 @@ describe('ภาษีจ่ายต่างประเทศ (ภ.พ.36 · 
   it('ภ.ง.ด.54 ผู้จ่ายออกแทน (gross-up): ผู้ขายได้เต็ม · Dr บัญชีที่ตั้งไว้ / Cr 2150600 · เงินได้ = ฐาน ÷ (1 − อัตรา)', async () => {
     expect(set(await docJournal(ids.pvAds!))).toEqual(set(F('AP-ADS').payment!.journal));
     expect(pnd54Tax('8500.00', '0.15', true)).toEqual({ base: F('AP-ADS').pnd54!.base, tax: F('AP-ADS').pnd54!.tax });
+  });
+  it('ผู้ติดต่อต่างประเทศ + ประเทศ (หน้าจอชั่วคราว /tax/foreign)', async () => {
+    const rows = await foreignContacts(db, A);
+    expect(rows.map((r) => [r.code, r.country]).sort()).toEqual(fx.contacts.filter((c) => c.entity_type === 'foreign').map((c) => [c.code, c.country ?? null]).sort());
   });
   it('รายงาน ภ.ง.ด.54 ก.พ. 2569: แถวตาม 50 ทวิ (ประเทศ · อนุสัญญา · ออกแทน) · รอยืนยัน', async () => {
     const r = await pndReport(db, A, '2026-02', '54');
