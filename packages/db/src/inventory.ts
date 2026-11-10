@@ -7,7 +7,7 @@ import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import {
-  applyMovesTx, assertAvco, assertCanPostOn, baseQtyTx, cogsAccountOf, defaultWarehouseTx, INV_ACCOUNTS, INVENTORY_ACCOUNT_LIST, INVENTORY_DEFAULTS, INVENTORY_SETTING_KEYS,
+  applyMovesTx, assertAvco, assertCanPostOn, baseQtyTx, cogsAccountOf, defaultWarehouseTx, INV_ACCOUNTS, INVENTORY_ACCOUNT_LIST, INVENTORY_SETTING_KEYS,
   inventoryOnTx, inventoryRuleTx, inventorySettingsTx, invAccountOf, linkMovesTx, money, productsTx, type InventorySettings, type NewMove,
 } from './inventory-core.ts';
 import { categoryOf } from './seed.ts';
