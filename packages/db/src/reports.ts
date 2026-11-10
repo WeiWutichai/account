@@ -5,6 +5,8 @@ import { Money, type CompanyRole, type JournalLine, type MoneyString } from '@in
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
+import { foreignTaxTotals, PND54_PAYABLE, PP36_INPUT, PP36_PAYABLE, pp36ClaimRows } from './foreign-tax.ts';
+import { DEFERRED_REVENUE, moduleOnTx } from './swt-hooks.ts';
 
 const monthRange = (ym: string) => {
   const [y, m] = ym.split('-').map(Number) as [number, number];
@@ -96,6 +98,11 @@ async function purchaseRows(tx: CompanyTx, fromYm: string, toYm: string): Promis
     rows.push({ date: d.issue_date, docId: d.id, docNo: d.doc_no ?? '', docType: 'PC', partner: d.name ?? d.line_desc ?? '', taxId: d.tax_id, branch: d.branch_code, vendorRef: null,
       base: Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString(), vat: d.vat, claimMonth: d.claim_month, priorMonth: d.issue_date.slice(0, 7) < d.claim_month });
   }
+  // Phase 2A SWT: ภาษีที่ชำระตาม ภ.พ.36 ใช้เป็นภาษีซื้อเดือนที่ยื่น/ชำระ (JV ยื่น ภ.พ.36: Dr 1170100 / Cr 1170200) — ไม่มีการยื่น ภ.พ.36 = ไม่มีแถว
+  for (const f of await pp36ClaimRows(tx, fromYm, toYm)) {
+    rows.push({ date: f.filed_at!, docId: f.id, docNo: f.reference_no ?? `ภ.พ.36 ${f.month}${f.seq ? ` (${f.seq})` : ''}`, docType: 'PP36', partner: `ภ.พ.36 เดือน ${f.month}`, taxId: null, branch: null, vendorRef: f.reference_no,
+      base: Money.parse(f.base).toString(), vat: Money.parse(f.amount).toString(), claimMonth: f.claim_month, priorMonth: false });
+  }
   rows.sort((a, b) => (a.date === b.date ? a.docNo.localeCompare(b.docNo) : a.date < b.date ? -1 : 1));
   return { rows, disallowed };
 }
@@ -146,7 +153,7 @@ async function vatCore(tx: CompanyTx, fromYm: string, toYm: string) {
 }
 
 /** การยื่นแบบล่าสุดของเดือน (ยื่นปกติ + ยื่นเพิ่มเติม) */
-async function filingsOf(tx: CompanyTx, form: 'pp30' | 'pnd3' | 'pnd53', month: string) {
+async function filingsOf(tx: CompanyTx, form: 'pp30' | 'pnd3' | 'pnd53' | 'pnd54', month: string) {
   return tx.selectFrom('acct.tax_filing as f').leftJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'f.journal_id').onRef('j.company_id', '=', 'f.company_id'))
     .select(['f.id', 'f.form', 'f.month', 'f.seq', 'f.status', 'f.filed_at', 'f.filed_by', 'f.reference_no', 'f.amount', 'f.output_vat', 'f.input_vat', 'f.carried_in', 'f.carry_forward', 'j.journal_no'])
     .where('f.form', '=', form).where('f.month', '=', month).where('f.status', '=', 'filed').orderBy('f.seq').execute();
@@ -190,19 +197,19 @@ export async function vatReports(db: Db, companyId: string, ym: string) {
   return db.withCompany(companyId, (tx) => vatMonth(tx, ym));
 }
 
-async function pndRows(tx: CompanyTx, from: string, to: string, pnd: '3' | '53') {
+async function pndRows(tx: CompanyTx, from: string, to: string, pnd: '3' | '53' | '54') {
   return tx.selectFrom('acct.wht_certificate as w').innerJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'w.contact_id').onRef('c.company_id', '=', 'w.company_id'))
     .innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 'w.payment_id').onRef('p.company_id', '=', 'w.company_id'))
-    .select(['w.cert_no', 'w.pay_date', 'w.income_type', 'w.income_section', 'w.base', 'w.rate', 'w.amount', 'w.pending_auditor', 'c.name', 'c.tax_id', 'c.branch_code', 'c.address', 'p.doc_no'])
+    .select(['w.cert_no', 'w.pay_date', 'w.income_type', 'w.income_section', 'w.base', 'w.rate', 'w.amount', 'w.pending_auditor', 'c.name', 'c.tax_id', 'c.branch_code', 'c.address', 'p.doc_no', 'w.country', 'w.treaty', 'w.gross_up'])
     .where('w.pnd', '=', pnd).where('w.voided', '=', false).where('w.pay_date', '>=', from).where('w.pay_date', '<=', to).orderBy('w.pay_date').orderBy('w.cert_no').execute();
 }
 
-/** ภ.ง.ด.3 / ภ.ง.ด.53 ของเดือนที่จ่าย (จาก 50 ทวิ ที่ออก) */
-export async function pndReport(db: Db, companyId: string, ym: string, pnd: '3' | '53') {
+/** ภ.ง.ด.3 / ภ.ง.ด.53 / ภ.ง.ด.54 (จ่ายต่างประเทศ · Phase 2A SWT) ของเดือนที่จ่าย (จาก 50 ทวิ ที่ออก) */
+export async function pndReport(db: Db, companyId: string, ym: string, pnd: '3' | '53' | '54') {
   const { from, to } = monthRange(ym);
   return db.withCompany(companyId, async (tx) => {
     const rows = await pndRows(tx, from, to, pnd);
-    const filings = await filingsOf(tx, pnd === '3' ? 'pnd3' : 'pnd53', ym);
+    const filings = await filingsOf(tx, pnd === '3' ? 'pnd3' : pnd === '54' ? 'pnd54' : 'pnd53', ym);
     return { month: ym, pnd, rows, certs: rows.length, base: Money.sum(rows.map((r) => Money.parse(r.base))).toString(), tax: Money.sum(rows.map((r) => Money.parse(r.amount))).toString(),
       pendingAuditor: rows.some((r) => r.pending_auditor), status: filings.length ? 'filed' as const : 'draft' as const, filings };
   });
@@ -210,7 +217,7 @@ export async function pndReport(db: Db, companyId: string, ym: string, pnd: '3' 
 
 // ---------- บันทึกว่ายื่นแล้ว (ScreenTax "บันทึกว่ายื่นแล้ว + ลงบัญชีนำส่ง" · "ยื่นเพิ่มเติม") ----------
 
-export interface FileTaxInput { form: 'pp30' | 'pnd3' | 'pnd53'; month: string; filedAt: string; referenceNo?: string | null; additional?: boolean }
+export interface FileTaxInput { form: 'pp30' | 'pnd3' | 'pnd53' | 'pnd54'; month: string; filedAt: string; referenceNo?: string | null; additional?: boolean }
 /**
  * ภ.พ.30: ลงบัญชีตาม postOnFiled (ยื่นเพิ่มเติม = ส่วนต่างจากที่ยื่นไปแล้ว) · ภ.ง.ด.3/53: บันทึกการยื่นอย่างเดียว ไม่มี JV (2150300 ล้างตอนจ่ายนำส่ง)
  * TODO(Wei): ยื่นเพิ่มเติม — เบี้ยปรับ/เงินเพิ่ม (ม.89/1) ยังไม่คำนวณ/ลงบัญชี · "ตั้งงานจ่ายในคิว" ยังไม่มีระบบคิวงานจ่ายภาษี
@@ -248,7 +255,7 @@ export async function fileTax(db: Db, companyId: string, actor: { userId: string
       extra = { output_vat: output.toString(), input_vat: input.toString(), carried_in: carriedIn.toString(), carry_forward: net.isNegative() ? net.neg().toString() : '0.00' };
     } else {
       const { from, to } = monthRange(p.month);
-      const rows = await pndRows(tx, from, to, p.form === 'pnd3' ? '3' : '53');
+      const rows = await pndRows(tx, from, to, p.form === 'pnd3' ? '3' : p.form === 'pnd54' ? '54' : '53');
       amount = Money.sum(rows.map((r) => Money.parse(r.amount))).minus(sumPrev('amount'));
     }
     const row = await tx.insertInto('acct.tax_filing').values({ company_id: companyId, form: p.form, month: p.month, seq, status: 'filed', filed_at: p.filedAt, filed_by: actor.userId,
@@ -277,7 +284,7 @@ export async function filingStatus(tx: CompanyTx, months: string[], vatRegistere
     .where('pay_date', '>=', `${[...months].sort()[0]}-01`).where('pay_date', '<=', monthRange([...months].sort().at(-1)!).to).groupBy([sql`to_char(pay_date, 'YYYY-MM')`, 'pnd']).execute();
   const has = (form: string, m: string) => filed.some((f) => f.form === form && f.month === m);
   for (const m of months) {
-    const need = certs.filter((c) => c.m === m).map((c) => (c.pnd === '3' ? 'pnd3' : 'pnd53'));
+    const need = certs.filter((c) => c.m === m).map((c) => (c.pnd === '3' ? 'pnd3' : c.pnd === '54' ? 'pnd54' : 'pnd53'));
     out.set(m, { pp30: vatRegistered ? (has('pp30', m) ? 'filed' : 'draft') : null, pnd: need.length ? (need.every((f) => has(f, m)) ? 'filed' : 'draft') : null });
   }
   return out;
@@ -399,7 +406,11 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     const lines = await live().where('j.journal_date', '>=', from).where('j.journal_date', '<=', to)
       .select(['j.id as journal_id', 'j.journal_no', 'j.source_document_id', 'd.doc_type', 'l.account_code', 'l.debit', 'l.credit']).execute();
     // JV ยื่น ภ.พ.30 ล้าง 2150100/1170100 ของเดือนก่อน — ไม่นับในยอดเคลื่อนไหวที่เทียบรายงานภาษี
-    const filingIds = new Set((await tx.selectFrom('acct.tax_filing').select('journal_id').where('journal_id', 'is not', null).execute()).map((r) => r.journal_id!));
+    const filings = await tx.selectFrom('acct.tax_filing').select(['journal_id', 'form']).where('journal_id', 'is not', null).execute();
+    const filingIds = new Set(filings.map((r) => r.journal_id!));
+    // Phase 2A SWT: JV ยื่น ภ.พ.36 (Dr 1170100 / Cr 1170200) = ภาษีซื้อในรายงานเดือนที่ยื่น → นับในยอดเคลื่อนไหว 1170100
+    const vatFilingIds = new Set(filings.filter((r) => r.form !== 'pp36').map((r) => r.journal_id!));
+    const swtOn = await moduleOnTx(tx);
     // JV ระบบ (ไม่ใช่คีย์มือ): ค่าเสื่อม · เช็ค · ยื่น ภ.พ.30 · ขายทรัพย์สิน · เบิกชดเชยเงินสดย่อย
     const sysIds = new Set<string>([
       ...(await tx.selectFrom('acct.depreciation_run').select('journal_id').execute()).map((r) => r.journal_id),
@@ -408,6 +419,8 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       ...(await tx.selectFrom('acct.fixed_asset').select('disposal_journal_id').where('disposal_journal_id', 'is not', null).execute()).map((r) => r.disposal_journal_id!),
       // เบิกชดเชยเงินสดย่อย (1 JV ต่อชุด อ้างใบ PC หลายใบ ไม่มี source_document_id)
       ...(await tx.selectFrom('acct.document').select('journal_id').where('doc_type', '=', 'PC').where('journal_id', 'is not', null).execute()).map((r) => r.journal_id!),
+      // Phase 2A SWT: รับรู้รายได้รับล่วงหน้ารายงวด
+      ...(await tx.selectFrom('acct.revenue_recognition_run').select('journal_id').execute()).map((r) => r.journal_id),
     ]);
     const manual = lines.filter((l) => !l.source_document_id && !sysIds.has(l.journal_id));
     const sum = (rows: typeof lines, acct: (a: string) => boolean, side: 'Dr' | 'Cr') =>
@@ -418,7 +431,8 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     const dsum = (types: string[], f: (d: (typeof docs)[number]) => Money) => Money.sum(docs.filter((d) => types.includes(d.doc_type)).map(f));
     const n = (types: string[]) => String(docs.filter((d) => types.includes(d.doc_type)).length);
     const rev = (a: string) => a.startsWith('41');
-    const cost = (a: string) => a.startsWith('5') || /^15[1-4]/u.test(a);
+    // 16xxxxx = สินทรัพย์ไม่มีตัวตน (Phase 2A SWT · ซื้อซอฟต์แวร์ลงสินทรัพย์ในบิลซื้อ)
+    const cost = (a: string) => a.startsWith('5') || /^15[1-4]/u.test(a) || a.startsWith('16');
     const cash = (a: string) => a.startsWith('1100') || a.startsWith('1150');
     const manualNos = (acct: (a: string) => boolean) => [...new Set(manual.filter((l) => acct(l.account_code)).map((l) => l.journal_no))];
     const noteOf = (nos: string[], ok: boolean) => (ok || !nos.length ? {} : { note: `${nos.join(', ')} คีย์มือ ไม่มีเอกสารอ้างอิง` });
@@ -426,7 +440,8 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     const sec1: ReconCheckRow[] = [];
     {
       const d = dsum(['IV'], (x) => P(x.subtotal));
-      const g = sum(ofTypes(['IV']), rev, 'Cr').plus(sum(manual, rev, 'Cr'));
+      // บรรทัดสัญญาที่รับรู้ตามช่วงเวลาลง 2170100 แทนรายได้ (Phase 2A SWT · โมดูลปิด = ไม่มีบรรทัดนี้)
+      const g = sum(ofTypes(['IV']), (a) => rev(a) || a === DEFERRED_REVENUE, 'Cr').plus(sum(manual, rev, 'Cr'));
       const c = check(1, 'doc_iv', 'ใบกำกับภาษี IV (ขาย)', d, g, { count: n(['IV']) });
       sec1.push({ ...c, ...noteOf(manualNos(rev), c.ok) });
     }
@@ -448,7 +463,7 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     }
 
     // ---------- 2 รายงานภาษี ↔ GL ----------
-    const taxLines = lines.filter((l) => !filingIds.has(l.journal_id));
+    const taxLines = lines.filter((l) => !vatFilingIds.has(l.journal_id));
     const move = (a: string, side: 'Dr' | 'Cr') => sum(taxLines, (x) => x === a, side);
     const balance = async (accounts: string[]) => {
       const r = await live().where('j.journal_date', '<=', to).where('l.account_code', 'in', accounts).select(sql<string>`coalesce(sum(l.debit - l.credit), 0)`.as('b')).executeTakeFirstOrThrow();
@@ -497,7 +512,24 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       check(3, 'cheques', 'ทะเบียนเช็ครับในมือ + นำฝาก ↔ GL 1150100 + 1150200', Money.sum(cheques.map((c) => P(c.amount))), await balance(['1150100', '1150200']),
         { count: `${cheques.length} ฉบับ` }),
     ];
-    const checks = [...sec1, ...sec2, ...sec3];
+    // Phase 2A SWT (เปิดโมดูลเท่านั้น · ต่อท้าย ไม่เปลี่ยนจุดตรวจเดิม): รายได้รับล่วงหน้า ↔ GL · ภ.พ.36 ↔ GL · ภ.ง.ด.54 ↔ GL
+    const swt: ReconCheckRow[] = [];
+    if (swtOn) {
+      const sched = await tx.selectFrom('acct.revenue_schedule as s').innerJoin('acct.document as d', (jn) => jn.onRef('d.id', '=', 's.document_id').onRef('d.company_id', '=', 's.company_id'))
+        .leftJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 's.journal_id').onRef('j.company_id', '=', 's.company_id'))
+        .select([sql<string>`coalesce(sum(s.amount), 0)`.as('a'), sql<string>`count(distinct s.document_id)`.as('n')]).where('s.voided', '=', false).where('d.status', '=', 'posted').where('d.issue_date', '<=', to)
+        .where((eb) => eb.or([eb('s.journal_id', 'is', null), eb('j.journal_date', '>', to)])).executeTakeFirstOrThrow();
+      swt.push(check(3, 'deferred_revenue', 'รายได้รับล่วงหน้า: ตารางรับรู้ที่ยังไม่รับรู้ ↔ GL 2170100 (ยอดคงเหลือ)', P(sched.a), (await balance([DEFERRED_REVENUE])).neg(), { count: `${sched.n} ใบ` }));
+      const ft = await foreignTaxTotals(tx, from, to);
+      swt.push(check(2, 'pp36_payable', 'ภ.พ.36: รายงาน ภ.พ.36 ↔ GL 2150500 (เครดิตในเดือน)', ft.pp36, Money.sum(lines.filter((x) => x.account_code === PP36_PAYABLE).map((x) => P(x.credit)))));
+      swt.push(check(2, 'pp36_input', 'ภาษีซื้อรอใช้สิทธิ ภ.พ.36: ยังไม่ยื่น ↔ GL 1170200 (ยอดคงเหลือ)',
+        Money.sum((await tx.selectFrom('acct.pp36_entry as e').innerJoin('acct.document as p', (jn) => jn.onRef('p.id', '=', 'e.payment_id').onRef('p.company_id', '=', 'e.company_id'))
+          .leftJoin('acct.tax_filing as f', (jn) => jn.onRef('f.id', '=', 'e.filing_id').onRef('f.company_id', '=', 'e.company_id'))
+          .select('e.vat').where('p.status', '=', 'posted').where('e.pay_date', '<=', to).where((eb) => eb.or([eb('e.filing_id', 'is', null), eb('f.filed_at', '>', to)])).execute()).map((r) => P(r.vat))),
+        await balance([PP36_INPUT])));
+      swt.push(check(2, 'pnd54_payable', 'ภ.ง.ด.54 ↔ GL 2150600 (เครดิตในเดือน)', ft.pnd54, Money.sum(lines.filter((x) => x.account_code === PND54_PAYABLE).map((x) => P(x.credit)))));
+    }
+    const checks = [...sec1, ...sec2, ...sec3, ...swt];
     return { month: period, from, to, checks, passed: checks.filter((c) => c.ok).length, toReview: checks.filter((c) => !c.ok).length };
   });
 }
