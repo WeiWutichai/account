@@ -1,12 +1,13 @@
 // M5 ซื้อ + จ่ายเงิน (docs/technical-plan-M5.md) — PR/PO/AP/CNR/DNR/EXP · PV (สายอนุมัติ + 50 ทวิ) · รอบจ่าย · เงินสดย่อย
 // กติกา (CLAUDE.md): หัก ณ ที่จ่ายรับรู้ตอนจ่ายเงินจริง · ออก 50 ทวิ และเข้า ภ.ง.ด.3/53 เดือนที่จ่าย · ฟรีแลนซ์ = ค่าตั้งของบริษัท "รอยืนยัน"
-import { Money, post, type MoneyString } from '@innovera/ledger';
+import { BASE_CURRENCY, carryingCleared, isRate, Money, post, settleAtOriginalRate, toBase, type JournalLine, type MoneyString } from '@innovera/ledger';
 import { bahtText, FREELANCE_DEFAULT, pndOf, whtOnPayment, whtTypeFor, type FreelanceWhtConfig } from '@innovera/tax-th';
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Actor } from './sales.ts';
 import { emitTx } from './hub.ts';
+import { convertDocumentJournal, docNumberTx, documentFx, FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, rateOnTx, settledBaseTx, type DocFxInput } from './fx.ts';
 
 export const PURCHASE_TYPES = ['PR', 'PO', 'AP', 'CNR', 'DNR', 'EXP'] as const;
 export type PurchaseType = (typeof PURCHASE_TYPES)[number];
@@ -72,6 +73,10 @@ export interface PurchaseDraftInput {
   /** ม.82/3 เดือนที่ใช้ภาษีซื้อ YYYY-MM (เดือนตามบิล ถึง +6 เดือน) · ว่าง = เดือนตามบิล */
   vatClaimMonth?: string | null;
   lines: PurchaseLineInput[];
+  /** P2A FXB (ต้องเปิดโมดูล): สกุลเอกสาร · อัตรา (ว่าง = อัตรา ณ วันที่เอกสาร) · สาขา (ว่าง = 00000) */
+  currency?: DocFxInput['currency'];
+  fxRate?: DocFxInput['fxRate'];
+  branchCode?: DocFxInput['branchCode'];
 }
 
 async function freelanceConfig(tx: CompanyTx): Promise<FreelanceWhtConfig> {
@@ -94,13 +99,19 @@ export async function savePurchaseDraft(db: Db, companyId: string, actor: Actor,
     const max = `${Math.floor((y * 12 + m + 5) / 12)}-${String(((m + 5) % 12) + 1).padStart(2, '0')}`;
     if (claim < input.issueDate.slice(0, 7) || claim > max) throw new LedgerError('เดือนที่ใช้ภาษีซื้อเลื่อนได้ไม่เกิน 6 เดือนนับจากเดือนตามบิล (ม.82/3)');
   }
+  const fxv = await documentFx(db, companyId, input.issueDate, { currency: input.currency ?? null, fxRate: input.fxRate ?? null, branchCode: input.branchCode ?? null });
+  if (fxv.currency && fxv.currency !== BASE_CURRENCY) {
+    // TODO(Wei): หัก ณ ที่จ่ายจ่ายต่างประเทศ = ภ.ง.ด.54 (กลุ่ม SWT) · ใบลดหนี้/เพิ่มหนี้ซื้อสกุลต่างประเทศ — ยังไม่รองรับในกลุ่ม FXB
+    if (items.some((l) => l.whtType)) throw new LedgerError('ภาษีหัก ณ ที่จ่ายของเอกสารสกุลต่างประเทศยังไม่รองรับ (ภ.ง.ด.54)');
+    if (input.docType === 'CNR' || input.docType === 'DNR') throw new LedgerError('ใบลดหนี้/เพิ่มหนี้ซื้อสกุลต่างประเทศยังไม่รองรับ');
+  }
   const t = totalsOf({ lines: input.lines.map((l) => ({ ...l, vat: l.vat ?? true })), priceInclVat: input.priceInclVat ?? false, billDiscount: input.billDiscount ?? '0.00' });
   return db.withCompany(companyId, async (tx) => {
     const values = {
       doc_type: input.docType, issue_date: input.issueDate, due_date: input.dueDate ?? null, contact_id: input.contactId, price_incl_vat: input.priceInclVat ?? false,
       subtotal: t.subtotal, discount: t.discount, vat: t.vat, wht: '0.00', grand_total: t.grandTotal, bill_discount: input.billDiscount ?? '0.00', vendor_ref: input.vendorRef ?? null,
       ref_document_id: input.refDocumentId ?? null, pay_now: input.payNow ?? false, receive_account: input.payFrom ?? null, notes: input.notes ?? null, reference: input.reference ?? null,
-      vat_claim_month: claim,
+      vat_claim_month: claim, ...fxv,
       rule_code: input.docType === 'AP' ? 'Credit[AP]' : input.docType === 'EXP' ? (input.payNow ? 'Cash[EXP]' : 'Credit[EXP]') : input.docType === 'CNR' ? 'CNR' : input.docType === 'DNR' ? 'DNR' : null,
       updated_at: new Date(),
     };
@@ -112,7 +123,7 @@ export async function savePurchaseDraft(db: Db, companyId: string, actor: Actor,
       await tx.deleteFrom('acct.document_line').where('document_id', '=', docId).execute();
       await event(tx, companyId, docId, actor.userId, 'edited');
     } else {
-      const r = await tx.insertInto('acct.document').values({ company_id: companyId, ...values, created_by: actor.userId, external_source: null, external_ref: null, doc_no: null, branch_code: '00000', fee: '0.00' } as never)
+      const r = await tx.insertInto('acct.document').values({ company_id: companyId, ...values, created_by: actor.userId, external_source: null, external_ref: null, doc_no: null, branch_code: '00000', fee: '0.00', ...fxv } as never)
         .returning('id').executeTakeFirstOrThrow();
       docId = r.id;
       await event(tx, companyId, docId, actor.userId, 'created', input.refDocumentId ? { from: input.refDocumentId } : {});
@@ -184,7 +195,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
         if (actor.role !== 'owner' && (!actor.userId || actor.userId !== po.approved_by)) throw new LedgerError(`ยืนยันยอดเกิน PO ได้เฉพาะผู้อนุมัติ ${po.doc_no ?? 'PO'} หรือกรรมการ`);
       }
     }
-    const docNo = opts.docNo ?? d.doc_no ?? (await nextNumber(tx, companyId, await prefixOf(tx, d.doc_type), d.issue_date));
+    const docNo = opts.docNo ?? d.doc_no ?? (await docNumberTx(tx, companyId, await prefixOf(tx, d.doc_type), d.issue_date, d.branch_code));
     if (opts.docNo) await reserveNumber(tx, companyId, opts.docNo);
     if (NON_POSTING.includes(d.doc_type)) {
       await tx.updateTable('acct.document').set({ status: 'approved', doc_no: docNo, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
@@ -221,13 +232,16 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     }
     const { def, versionId } = await ruleFor(tx, ruleCode);
     const paid = Money.parse(d.grand_total).minus(wht);
-    const jl = post(def, {
+    const fxl = post(def, {
       docType: d.doc_type, amounts: { grand_total: d.grand_total, vat: d.vat, wht: wht.toString(), paid: paid.toString() },
       lines: lines.map((l) => ({ amounts: { amount: l.amount }, ...(l.account_code ? { account: l.account_code } : {}) })),
       contact: { apAccount: '2110100', ...(d.contact_id ? { id: d.contact_id } : {}) }, accounts: { ...(d.receive_account ? { cash: d.receive_account } : {}) },
     }).map((l) => (l.account === '2110100' && d.contact_id ? { ...l, contactId: d.contact_id } : l));
-    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: def.book, prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
-    await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, wht: wht.toString(), rule_code: ruleCode, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
+    // P2A FXB: เอกสารสกุลต่างประเทศ → journal บาท (เอกสารบาทไม่เปลี่ยน)
+    const { lines: jl, thb } = await convertDocumentJournal(tx, d, fxl);
+    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: def.book, prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}),
+      ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
+    await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, wht: wht.toString(), rule_code: ruleCode, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date(), ...(thb ?? {}) }).where('id', '=', id).execute();
     if (cnrApplied && !cnrApplied.isZero()) await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: cnrApplied.toString(), wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
     // PO ปิดอัตโนมัติเมื่อรับบิลครบ
     if (po && !po.closed_at && !poBilled.lt(Money.parse(po.grand_total))) {
@@ -271,6 +285,10 @@ export interface PaymentInput {
   batchRef?: string | null;
   notes?: string | null;
   docNo?: string;
+  /** P2A FXB: อัตรา ณ วันจ่าย (บิลสกุลต่างประเทศ · ว่าง = อัตรา ณ วันที่จ่าย) — ยอด settle เป็นสกุลของบิล */
+  fxRate?: string | null;
+  /** สาขาที่จ่าย (ว่าง = สาขาของบิลใบแรก) */
+  branchCode?: string | null;
 }
 
 export const PAYMENT_METHODS: readonly NonNullable<PaymentInput['method']>[] = ['transfer', 'bulk_transfer', 'cheque', 'cash', 'promptpay'];
@@ -335,10 +353,22 @@ export async function createPayment(db: Db, companyId: string, actor: Actor, inp
     }
     const credit = Money.sum(credits.map((c) => c.amount));
     const paid = settled.minus(wht).minus(credit);
+    // P2A FXB: บิลสกุลต่างประเทศ (ทุกใบสกุลเดียวกัน) — อัตราวันจ่ายเก็บที่ใบสำคัญจ่าย · ล้างเจ้าหนี้ตามอัตราเดิมตอนอนุมัติ
+    const firstBill = await docOrThrow(tx, input.bills[0]!.documentId);
+    const currency = firstBill.currency;
+    let fxv = {};
+    if (currency !== BASE_CURRENCY || input.fxRate) {
+      for (const r of rows) if ((await docOrThrow(tx, r.b.documentId)).currency !== currency) throw new LedgerError('จ่ายบิลต่างสกุลเงินในใบเดียวกันไม่ได้');
+      if (currency === BASE_CURRENCY) throw new LedgerError('บิลเป็นเงินบาท — ไม่ต้องระบุอัตราแลกเปลี่ยน');
+      if (credits.length) throw new LedgerError('ใช้เครดิตผู้ขายกับบิลสกุลต่างประเทศยังไม่รองรับ');
+      if (input.fxRate && !isRate(input.fxRate)) throw new LedgerError('อัตราแลกเปลี่ยนต้องเป็นตัวเลขมากกว่า 0 ทศนิยมไม่เกิน 6 ตำแหน่ง');
+      fxv = { currency, fx_rate: input.fxRate ?? (await rateOnTx(tx, currency, input.date)) };
+    }
     const pv = await tx.insertInto('acct.document').values({
       company_id: companyId, doc_type: 'PV', doc_no: input.docNo ?? null, status: 'pending_approval', issue_date: input.date, due_date: null, contact_id: input.contactId, price_incl_vat: false,
       subtotal: settled.toString(), discount: '0.00', vat: '0.00', wht: wht.toString(), grand_total: paid.toString(), receive_account: input.payFrom, rule_code: 'Pay[PV]',
-      batch_ref: input.batchRef ?? null, notes: input.notes ?? null, reference: input.method ?? 'transfer', created_by: actor.userId, external_source: null, external_ref: null, branch_code: '00000', fee: '0.00', bill_discount: '0.00',
+      batch_ref: input.batchRef ?? null, notes: input.notes ?? null, reference: input.method ?? 'transfer', created_by: actor.userId, external_source: null, external_ref: null,
+      branch_code: input.branchCode ?? firstBill.branch_code, fee: '0.00', bill_discount: '0.00', ...fxv,
     } as never).returning('id').executeTakeFirstOrThrow();
     for (const r of rows) {
       // voided = true จนกว่าจะอนุมัติ (ยังไม่ตัดเจ้าหนี้)
@@ -394,7 +424,7 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
     }
     if (overLimit(amount)) throw new LedgerError(`ยอดจ่ายเกินวงเงินอนุมัติของคุณ (${actor.approvalLimit})`);
     const level = needsDirector ? 3 : 2;
-    const docNo = opts.docNo ?? d.doc_no ?? (await nextNumber(tx, companyId, await prefixOf(tx, 'PV'), d.issue_date));
+    const docNo = opts.docNo ?? d.doc_no ?? (await docNumberTx(tx, companyId, await prefixOf(tx, 'PV'), d.issue_date, d.branch_code));
     if (opts.docNo) await reserveNumber(tx, companyId, opts.docNo);
     const all = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as b', (j) => j.onRef('b.id', '=', 's.document_id').onRef('b.company_id', '=', 's.company_id'))
       .selectAll('s').select('b.doc_type').where('s.payment_id', '=', id).execute();
@@ -403,9 +433,20 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
     // เครดิตผู้ขายหักกันในบัญชีเจ้าหนี้เอง → Dr เจ้าหนี้ = ยอดตัดบิล − เครดิตที่ใช้
     const settled = Money.sum(settlements.map((s) => Money.parse(s.applied).plus(Money.parse(s.wht)))).minus(credit);
     const { def, versionId } = await ruleFor(tx, 'Pay[PV]');
-    const jl = post(def, { docType: 'PV', amounts: { settled: settled.toString(), paid: d.grand_total, wht: d.wht }, contact: { apAccount: '2110100', id: d.contact_id! }, accounts: { cash: d.receive_account! } })
+    // P2A FXB: จ่ายบิลสกุลต่างประเทศ — เงินจ่าย × อัตราวันจ่าย · เจ้าหนี้ที่ล้าง = อัตราเดิมของแต่ละบิล · ผลต่าง → 4910100 / 5920100
+    const fx = d.currency !== BASE_CURRENCY ? await paymentFxTx(tx, d, settlements) : null;
+    let jl: JournalLine[] = post(def, { docType: 'PV', amounts: fx ? { settled: fx.paid.toString(), paid: fx.paid.toString(), wht: '0.00' } : { settled: settled.toString(), paid: d.grand_total, wht: d.wht },
+      contact: { apAccount: '2110100', id: d.contact_id! }, accounts: { cash: d.receive_account! } })
       .map((l) => (l.account === '2110100' ? { ...l, contactId: d.contact_id! } : l));
-    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: 'PV', prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
+    if (fx) {
+      const idx = jl.findIndex((l) => l.account === '2110100' && l.side === 'Dr');
+      jl = settleAtOriginalRate(jl, idx, fx.settled, { gain: FX_GAIN_ACCOUNT, loss: FX_LOSS_ACCOUNT }).lines
+        .map((l) => (l.account === '2110100' ? { ...l, fx: { currency: d.currency, amount: settled } } : l.account === d.receive_account && l.side === 'Cr' ? { ...l, fx: { currency: d.currency, amount: Money.parse(d.grand_total) } } : l));
+      for (const s of fx.perBill) await tx.updateTable('acct.settlement').set({ settled_thb: s.settled.toString() }).where('id', '=', s.id).execute();
+      await tx.updateTable('acct.document').set({ grand_total_thb: fx.paid.toString(), vat_thb: '0.00', base_thb: fx.paid.toString() }).where('id', '=', id).execute();
+    }
+    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: 'PV', prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}),
+      ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
     // คำนวณ 50 ทวิ ก่อนตัดเจ้าหนี้ (ยอดค้างยังเป็นยอดก่อนจ่าย)
     // 50 ทวิ ต่อประเภทเงินได้ (รวมทุกบิลในใบสำคัญจ่ายนี้)
     const certs = new Map<string, Awaited<ReturnType<typeof whtForBill>>[number]>();
@@ -423,6 +464,19 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
       bills: settlements.map((x) => ({ document_id: x.document_id, applied: x.applied, wht: x.wht })), ...(credit.isZero() ? {} : { vendor_credit: credit.toString() }) });
     return { level, posted: true, needsDirector, docNo, journalNo: j.journalNo, certificates: issued };
   });
+}
+
+/** P2A FXB ยอดบาทของใบสำคัญจ่ายสกุลต่างประเทศ: เงินจ่าย × อัตราวันจ่าย · เจ้าหนี้ที่ล้างต่อบิล = อัตราเดิม (จ่ายครบ = ยอดบาทคงเหลือ) — เรียกก่อนปลด voided ของ settlement */
+async function paymentFxTx(tx: CompanyTx, pv: { fx_rate: string | null; grand_total: string }, settlements: { id: string; document_id: string; applied: string; wht: string }[]) {
+  if (!pv.fx_rate) throw new LedgerError('ใบสำคัญจ่ายสกุลต่างประเทศไม่มีอัตราแลกเปลี่ยน');
+  const perBill = [];
+  for (const s of settlements) {
+    const o = await outstandingTx(tx, s.document_id);
+    if (!o.doc.fx_rate || !o.doc.grand_total_thb) throw new LedgerError(`${o.doc.doc_no ?? 'บิล'} ไม่มีอัตราแลกเปลี่ยน`);
+    const before = await settledBaseTx(tx, s.document_id);
+    perBill.push({ id: s.id, settled: carryingCleared({ settleFx: Money.parse(s.applied).plus(Money.parse(s.wht)), openFxBefore: o.outstanding, openBaseBefore: Money.parse(o.doc.grand_total_thb).minus(before.settledThb), rate: o.doc.fx_rate }) });
+  }
+  return { perBill, settled: Money.sum(perBill.map((b) => b.settled)), paid: toBase(pv.grand_total, pv.fx_rate) };
 }
 
 /**

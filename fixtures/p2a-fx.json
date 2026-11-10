@@ -1,0 +1,117 @@
+{
+  "_meta": {
+    "status": "ร่าง รอ Wei ยืนยัน",
+    "group": "P2A FXB — หลายสกุลเงิน + สาขา",
+    "note": "ตัวเลขชุดทดสอบของ packages/db/test/p2a-fxb.test.ts · คำนวณจากสูตรใน formula ของแต่ละรายการ (ยอด × อัตรา ปัด 2 ตำแหน่งครึ่งขึ้น) · ไม่ใช่ข้อมูลใน sample-company.json · วันที่ ค.ศ.",
+    "pending_auditor": [
+      "fx.rate_source = bot_mid (ทางเลือก bot_buy / bot_sell)",
+      "fx.revalue_period_end — ชุดนี้ตั้งเป็น true เพื่อทดสอบ (ค่าตั้งต้นของระบบ false)",
+      "branch.numbering — ชุดนี้ตั้ง per_branch ตอนออกเอกสารสาขา (ค่าตั้งต้น shared) · รูปแบบเลขที่แยกสาขาเป็นค่าชั่วคราว",
+      "branch.vat_filing = separate (ทางเลือก combined)",
+      "ภาษีขายของบริการ (ม.78/1) ที่รับเงินเป็นสกุลต่างประเทศ: ใช้ VAT บาทตามอัตราวันออกใบแจ้งหนี้ตามสัดส่วนที่รับ",
+      "กำไร/ขาดทุนที่ยังไม่เกิดขึ้นจริงใช้บัญชี 4910100/5920100 เดียวกับที่เกิดขึ้นจริง",
+      "ขายส่งออกอัตรา 0% แสดงในรายงานภาษีขาย ณ วันที่ออกใบ"
+    ]
+  },
+  "company": { "name": "บริษัท ทดสอบสกุลเงิน จำกัด", "modules": { "multi_currency": true, "branches": true } },
+  "module_accounts": [
+    { "code": "4910100", "name": "กำไรจากอัตราแลกเปลี่ยน", "type": "revenue" },
+    { "code": "5920100", "name": "ขาดทุนจากอัตราแลกเปลี่ยน", "type": "expense" }
+  ],
+  "branches": [
+    { "code": "00000", "name": "สำนักงานใหญ่" },
+    { "code": "00001", "name": "สาขา 1" }
+  ],
+  "currencies": [{ "code": "USD", "name": "ดอลลาร์สหรัฐ", "decimals": 2 }],
+  "rates": [
+    { "currency": "USD", "date": "2026-11-05", "source": "bot_mid", "rate": "33.250000" },
+    { "currency": "USD", "date": "2026-11-10", "source": "bot_mid", "rate": "33.400000" },
+    { "currency": "USD", "date": "2026-11-20", "source": "bot_mid", "rate": "33.800000" },
+    { "currency": "USD", "date": "2026-11-25", "source": "bot_mid", "rate": "33.600000" },
+    { "currency": "USD", "date": "2026-11-30", "source": "bot_mid", "rate": "33.500000" }
+  ],
+  "contacts": [
+    { "code": "FXC01", "name": "[ลูกค้า USD] จำกัด", "kind": "customer" },
+    { "code": "FXC02", "name": "[ลูกค้าต่างประเทศ] Inc.", "kind": "customer" },
+    { "code": "FXV01", "name": "[ผู้ขายต่างประเทศ] LLC", "kind": "vendor" },
+    { "code": "FXC03", "name": "[ลูกค้าในประเทศ] จำกัด", "kind": "customer" },
+    { "code": "FXV02", "name": "[ผู้ขายในประเทศ] จำกัด", "kind": "vendor" }
+  ],
+  "documents": {
+    "IV-USD": {
+      "doc_no": "IV2611-0001", "date": "2026-11-05", "contact": "FXC01", "currency": "USD", "rate": "33.250000", "rule": "Service[IV]", "tax_mode": "on_payment", "branch": "00000",
+      "lines": [{ "desc": "บริการพัฒนาระบบ", "qty": "1", "unit_price": "10000.00", "vat": "vat7" }],
+      "totals_fx": { "net": "10000.00", "vat": "700.00", "grand_total": "10700.00" },
+      "formula": "grand_total_thb = 10,700.00 × 33.25 · vat_thb = 700.00 × 33.25 · base_thb = grand_total_thb − vat_thb",
+      "totals_thb": { "grand_total": "355775.00", "vat": "23275.00", "base": "332500.00" },
+      "expected_journal": [["Dr", "1130100", "355775.00"], ["Cr", "4100200", "332500.00"], ["Cr", "2150400", "23275.00"]],
+      "expected_fx": [["1130100", "10700.00"], ["4100200", "10000.00"], ["2150400", "700.00"]]
+    },
+    "RV-USD-partial": {
+      "doc_no": "RV2611-0001", "date": "2026-11-20", "contact": "FXC01", "rate": "33.800000", "receive_account": "1100100", "applies": [{ "doc": "IV-USD", "applied_fx": "5350.00" }],
+      "formula": "cash = 5,350.00 × 33.80 · ลูกหนี้ที่ล้าง = 5,350.00 × 33.25 (อัตราเดิม) · VAT ถึงกำหนด = 23,275.00 × 5,350 ÷ 10,700 · กำไร = เงินรับ − ลูกหนี้ที่ล้าง",
+      "cash_thb": "180830.00", "ar_cleared_thb": "177887.50", "vat_due_fx": "350.00", "vat_due_thb": "11637.50", "realized_gain": "2942.50",
+      "expected_journal": [["Dr", "1100100", "180830.00"], ["Dr", "2150400", "11637.50"], ["Cr", "1130100", "177887.50"], ["Cr", "2150100", "11637.50"], ["Cr", "4910100", "2942.50"]],
+      "vat_report_row": { "base": "166250.00", "vat": "11637.50", "formula": "ฐาน = ลูกหนี้ที่ล้าง − VAT ถึงกำหนด" }
+    },
+    "IV-EXPORT": {
+      "doc_no": "IV2611-0002", "date": "2026-11-12", "contact": "FXC02", "currency": "USD", "rate": "33.300000", "rate_note": "อัตราที่ระบุบนเอกสารเอง (ไม่มีอัตรา 12/11 ในตาราง)", "rule": "Credit[IV]", "tax_mode": "immediate", "branch": "00000",
+      "lines": [{ "desc": "บริการส่งออก (ม.80/1)", "qty": "1", "unit_price": "3000.00", "vat": "zero" }],
+      "totals_fx": { "net": "3000.00", "vat": "0.00", "grand_total": "3000.00" },
+      "formula": "grand_total_thb = 3,000.00 × 33.30",
+      "totals_thb": { "grand_total": "99900.00", "vat": "0.00", "base": "99900.00" },
+      "expected_journal": [["Dr", "1130100", "99900.00"], ["Cr", "4100100", "99900.00"]],
+      "vat_report_row": { "base": "99900.00", "vat": "0.00", "rate": "0" }
+    },
+    "AP-USD": {
+      "doc_no": "AP2611-0001", "date": "2026-11-10", "contact": "FXV01", "currency": "USD", "rate": "33.400000", "branch": "00000",
+      "lines": [{ "desc": "ค่าบริการคลาวด์", "qty": "1", "unit_price": "2000.00", "vat": false, "account": "5306100" }],
+      "formula": "grand_total_thb = 2,000.00 × 33.40",
+      "totals_thb": { "grand_total": "66800.00", "vat": "0.00", "base": "66800.00" },
+      "expected_journal": [["Dr", "5306100", "66800.00"], ["Cr", "2110100", "66800.00"]]
+    },
+    "PV-USD": {
+      "doc_no": "PV2611-0001", "date": "2026-11-25", "contact": "FXV01", "rate": "33.600000", "pay_from": "1100100", "bills": [{ "doc": "AP-USD", "settle_fx": "2000.00" }],
+      "formula": "เงินจ่าย = 2,000.00 × 33.60 · เจ้าหนี้ที่ล้าง = 66,800.00 (อัตราเดิม) · ขาดทุน = เงินจ่าย − เจ้าหนี้ที่ล้าง",
+      "paid_thb": "67200.00", "ap_cleared_thb": "66800.00", "realized_loss": "400.00",
+      "expected_journal": [["Dr", "2110100", "66800.00"], ["Cr", "1100100", "67200.00"], ["Dr", "5920100", "400.00"]]
+    },
+    "IV-HQ": {
+      "doc_no": "IV2611-0003", "date": "2026-11-15", "contact": "FXC03", "currency": "THB", "rule": "Credit[IV]", "tax_mode": "immediate", "branch": "00000",
+      "lines": [{ "desc": "บริการ", "qty": "1", "unit_price": "10000.00", "vat": "vat7", "account": "4100100" }],
+      "expected_journal": [["Dr", "1130100", "10700.00"], ["Cr", "4100100", "10000.00"], ["Cr", "2150100", "700.00"]]
+    },
+    "IV-B1": {
+      "doc_no": "IV2611-00001-0001", "numbering": "per_branch", "date": "2026-11-16", "contact": "FXC03", "currency": "THB", "rule": "Credit[IV]", "tax_mode": "immediate", "branch": "00001",
+      "lines": [{ "desc": "บริการสาขา 1", "qty": "1", "unit_price": "20000.00", "vat": "vat7", "account": "4100100" }],
+      "expected_journal": [["Dr", "1130100", "21400.00"], ["Cr", "4100100", "20000.00"], ["Cr", "2150100", "1400.00"]]
+    },
+    "AP-B1": {
+      "doc_no": "AP2611-00001-0001", "numbering": "per_branch", "date": "2026-11-17", "contact": "FXV02", "currency": "THB", "branch": "00001",
+      "lines": [{ "desc": "ของใช้สาขา 1", "qty": "1", "unit_price": "5000.00", "vat": true, "account": "5304100" }],
+      "expected_journal": [["Dr", "5304100", "5000.00"], ["Dr", "1170100", "350.00"], ["Cr", "2110100", "5350.00"]]
+    }
+  },
+  "revaluation_2569_11": {
+    "config": { "fx.revalue_period_end": true },
+    "as_of": "2026-11-30", "closing_rate": { "USD": "33.500000" },
+    "lines": [
+      { "doc": "IV-USD", "open_fx": "5350.00", "carrying": "177887.50", "formula": "5,350.00 × 33.50 − (355,775.00 − 177,887.50)", "revalued": "179225.00", "adjustment": "1337.50" },
+      { "doc": "IV-EXPORT", "open_fx": "3000.00", "carrying": "99900.00", "formula": "3,000.00 × 33.50 − 99,900.00", "revalued": "100500.00", "adjustment": "600.00" }
+    ],
+    "total": "1937.50",
+    "expected_journal": [["Dr", "1130100", "1337.50"], ["Cr", "4910100", "1937.50"], ["Dr", "1130100", "600.00"]],
+    "reversal": { "date": "2026-12-01", "expected_journal": [["Cr", "1130100", "1337.50"], ["Dr", "4910100", "1937.50"], ["Cr", "1130100", "600.00"]] }
+  },
+  "vat_2569_11": {
+    "all": { "output_vat": "13737.50", "sales_base": "296150.00", "zero_rated_sales": "99900.00", "taxable_sales": "196250.00", "input_vat": "350.00", "net_payable": "13387.50",
+      "formula": "ภาษีขาย = 11,637.50 + 700.00 + 1,400.00 · ยอดขาย = 166,250.00 + 99,900.00 + 10,000.00 + 20,000.00" },
+    "branch_00000": { "output_vat": "12337.50", "zero_rated_sales": "99900.00", "taxable_sales": "176250.00", "input_vat": "0.00", "net_payable": "12337.50" },
+    "branch_00001": { "output_vat": "1400.00", "zero_rated_sales": "0.00", "taxable_sales": "20000.00", "input_vat": "350.00", "net_payable": "1050.00" },
+    "deferred_vat_2150400": "11637.50"
+  },
+  "aging_ar": {
+    "2026-11-30": { "total": "311825.00", "formula": "(355,775.00 − 177,887.50 + 1,337.50) + (99,900.00 + 600.00) + 10,700.00 + 21,400.00 = GL 1130100" },
+    "2026-12-01": { "total": "309887.50", "formula": "หลังกลับรายการปรับมูลค่า" }
+  }
+}

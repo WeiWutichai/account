@@ -175,7 +175,7 @@ describe('journal: Dr=Cr · ผ่านรายการแล้วแก้�
 
 describe('type ใน src/types.ts ตรงกับ DB', () => {
   it.each([
-    ['journal_line', ['company_id', 'id', 'journal_id', 'line_no', 'account_code', 'contact_id', 'debit', 'credit', 'branch_code', 'project_code', 'memo']],
+    ['journal_line', ['company_id', 'id', 'journal_id', 'line_no', 'account_code', 'contact_id', 'debit', 'credit', 'branch_code', 'project_code', 'memo', 'currency', 'amount_fx']],
     ['journal', ['company_id', 'id', 'journal_no', 'journal_date', 'fiscal_year', 'period_no', 'book', 'description', 'source_document_id', 'status', 'reversal_of', 'rule_version_id', 'posted_at', 'created_at', 'auto_reverse', 'recurring', 'created_by']],
     ['account', ['company_id', 'code', 'name', 'type', 'parent_code', 'is_control', 'control_kind', 'requires_contact', 'active', 'created_at', 'category', 'binding']],
   ])('acct.%s', async (t, cols) => {

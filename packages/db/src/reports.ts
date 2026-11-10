@@ -5,6 +5,7 @@ import { Money, type CompanyRole, type JournalLine, type MoneyString } from '@in
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
+import { fxbSettingsTx, revaluationInEffectTx } from './fx.ts';
 
 const monthRange = (ym: string) => {
   const [y, m] = ym.split('-').map(Number) as [number, number];
@@ -30,32 +31,45 @@ async function setting<T>(tx: CompanyTx, key: string, fallback: T): Promise<T> {
   return r ? (r.value as T) : fallback;
 }
 
-export interface VatRow { date: string; docId: string; docNo: string; docType: string; partner: string; taxId: string | null; branch: string | null; base: string; vat: string; vendorRef?: string | null; claimMonth?: string; priorMonth?: boolean }
+/**
+ * branch = สาขาของคู่ค้า (ตามแบบรายงาน) · docBranch = สาขาของบริษัทที่ออกเอกสาร (P2A FXB · ตัวกรองสาขา) · rate '0' = อัตรา 0% (ส่งออก ม.80/1)
+ * ยอดเป็นบาทเสมอ: เอกสารสกุลต่างประเทศใช้ base_thb / vat_thb ที่ลงบัญชี
+ */
+export interface VatRow { date: string; docId: string; docNo: string; docType: string; partner: string; taxId: string | null; branch: string | null; base: string; vat: string; vendorRef?: string | null; claimMonth?: string; priorMonth?: boolean;
+  docBranch?: string; rate?: string }
 
-async function salesRows(tx: CompanyTx, from: string, to: string): Promise<VatRow[]> {
-  const docs = await tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
-    .select(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.subtotal', 'd.discount', 'd.vat', 'd.tax_mode', 'c.name', 'c.tax_id', 'c.branch_code'])
+/** เอกสารที่มีบรรทัดอัตรา 0% (vat_rate = 0 · ส่งออก) */
+const ZERO_RATED = sql<boolean>`exists (select 1 from acct.document_line zl where zl.document_id = d.id and zl.company_id = d.company_id and zl.line_type = 'item' and zl.vat_rate = 0)`;
+
+async function salesRows(tx: CompanyTx, from: string, to: string, branch?: string): Promise<VatRow[]> {
+  let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+    .select(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.subtotal', 'd.discount', 'd.vat', 'd.tax_mode', 'c.name', 'c.tax_id', 'c.branch_code', 'd.base_thb', 'd.vat_thb', 'd.branch_code as doc_branch', ZERO_RATED.as('zero')])
     .where('d.status', '=', 'posted').where('d.issue_date', '>=', from).where('d.issue_date', '<=', to)
     .where((eb) => eb.or([
       eb.and([eb('d.doc_type', '=', 'RV'), eb('d.vat', '>', '0')]),
       eb.and([eb('d.doc_type', '=', 'IV'), eb('d.tax_mode', '=', 'immediate')]),
       eb('d.doc_type', 'in', ['CN', 'DN', 'DP']),
-    ])).orderBy('d.issue_date').orderBy('d.doc_no').execute();
+      // P2A FXB: ขายอัตรา 0% (ส่งออก) แสดงในรายงานภาษีขาย ณ วันที่ออกใบ · TODO(Wei): จุดภาษีของบริการส่งออก (วันออกใบ หรือวันรับเงิน) รอผู้สอบบัญชี
+      eb.and([eb('d.doc_type', '=', 'IV'), eb('d.vat', '=', '0'), ZERO_RATED]),
+    ]));
+  if (branch) q = q.where('d.branch_code', '=', branch);
+  const docs = await q.orderBy('d.issue_date').orderBy('d.doc_no').execute();
   const rows: VatRow[] = docs.map((d) => {
     // RV: subtotal = ยอดที่รับ (รวมภาษีถูกหัก) · ฐาน = รับ − ภาษีขายที่โอน (fixtures RV2611-0021 = 1,458,130.84)
-    const base = d.doc_type === 'RV' ? Money.parse(d.subtotal).minus(Money.parse(d.vat)).toString() : Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString();
+    const base = d.base_thb ?? (d.doc_type === 'RV' ? Money.parse(d.subtotal).minus(Money.parse(d.vat)).toString() : Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString());
+    const vat = d.vat_thb ?? d.vat;
     const sign = d.doc_type === 'CN' ? -1 : 1;
     return { date: d.issue_date, docId: d.id, docNo: d.doc_no ?? '', docType: d.doc_type, partner: d.name ?? '', taxId: d.tax_id, branch: d.branch_code,
-      base: sign < 0 ? neg(base) : base, vat: sign < 0 ? neg(d.vat) : d.vat };
+      base: sign < 0 ? neg(base) : base, vat: sign < 0 ? neg(vat) : vat, docBranch: d.doc_branch, ...(d.zero && Money.parse(vat).isZero() ? { rate: '0' } : {}) };
   });
   // ขายทรัพย์สินที่มีภาษีขาย (disposeAsset · close-ops.ts) — จุดภาษี = วันที่ขาย
   const sold = await tx.selectFrom('acct.fixed_asset as a').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'a.disposal_contact_id').onRef('c.company_id', '=', 'a.company_id'))
     .leftJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'a.disposal_journal_id').onRef('j.company_id', '=', 'a.company_id'))
     .select(['a.id', 'a.code', 'a.disposed_on', 'a.sale_amount', 'a.sale_vat', 'a.disposal_ref', 'j.journal_no', 'c.name', 'c.tax_id', 'c.branch_code'])
     .where('a.status', '=', 'disposed').where('a.disposed_on', '>=', from).where('a.disposed_on', '<=', to).where('a.sale_vat', '>', '0').execute();
-  for (const a of sold) {
+  for (const a of branch && branch !== '00000' ? [] : sold) {
     rows.push({ date: a.disposed_on!, docId: a.id, docNo: a.disposal_ref ?? a.journal_no ?? a.code, docType: 'FA', partner: a.name ?? '', taxId: a.tax_id, branch: a.branch_code,
-      base: Money.parse(a.sale_amount ?? '0').toString(), vat: Money.parse(a.sale_vat ?? '0').toString() });
+      base: Money.parse(a.sale_amount ?? '0').toString(), vat: Money.parse(a.sale_vat ?? '0').toString(), docBranch: '00000' });
   }
   return rows.sort((a, b) => (a.date === b.date ? a.docNo.localeCompare(b.docNo) : a.date < b.date ? -1 : 1));
 }
@@ -63,21 +77,23 @@ async function salesRows(tx: CompanyTx, from: string, to: string): Promise<VatRo
 const CLAIM = sql<string>`coalesce(d.vat_claim_month, to_char(d.issue_date, 'YYYY-MM'))`;
 
 /** ภาษีซื้อที่ใช้สิทธิ์ในเดือน fromYm..toYm · แยกภาษีซื้อต้องห้าม (ทุกบรรทัดลงบัญชีที่ตั้งไว้ใน tax.vat.disallowed_input_accounts) */
-async function purchaseRows(tx: CompanyTx, fromYm: string, toYm: string): Promise<{ rows: VatRow[]; disallowed: VatRow[] }> {
+async function purchaseRows(tx: CompanyTx, fromYm: string, toYm: string, branch?: string): Promise<{ rows: VatRow[]; disallowed: VatRow[] }> {
   const disallowedAccounts = await setting<string[]>(tx, DISALLOWED_INPUT_VAT_KEY, []);
-  const docs = await tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+  let q = tx.selectFrom('acct.document as d').leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
     .select(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.subtotal', 'd.discount', 'd.vat', 'd.vendor_ref', 'c.name', sql<string | null>`coalesce(d.party_tax_id, c.tax_id)`.as('tax_id'), 'c.branch_code',
-      CLAIM.as('claim_month'),
+      CLAIM.as('claim_month'), 'd.base_thb', 'd.vat_thb', 'd.branch_code as doc_branch',
       sql<string[]>`array(select l.account_code from acct.document_line l where l.document_id = d.id and l.company_id = d.company_id and l.line_type = 'item' and l.account_code is not null)`.as('accounts')])
-    .where('d.status', '=', 'posted').where(CLAIM, '>=', fromYm).where(CLAIM, '<=', toYm).where('d.doc_type', 'in', ['AP', 'EXP', 'DNR', 'CNR']).where('d.vat', '>', '0')
-    .orderBy('d.issue_date').orderBy('d.doc_no').execute();
+    .where('d.status', '=', 'posted').where(CLAIM, '>=', fromYm).where(CLAIM, '<=', toYm).where('d.doc_type', 'in', ['AP', 'EXP', 'DNR', 'CNR']).where('d.vat', '>', '0');
+  if (branch) q = q.where('d.branch_code', '=', branch);
+  const docs = await q.orderBy('d.issue_date').orderBy('d.doc_no').execute();
   const rows: VatRow[] = [];
   const disallowed: VatRow[] = [];
   for (const d of docs) {
-    const base = Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString();
+    const base = d.base_thb ?? Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString();
+    const vat = d.vat_thb ?? d.vat;
     const cn = d.doc_type === 'CNR';
     const row: VatRow = { date: d.issue_date, docId: d.id, docNo: d.doc_no ?? '', docType: d.doc_type, partner: d.name ?? '', taxId: d.tax_id, branch: d.branch_code, vendorRef: d.vendor_ref,
-      base: cn ? neg(base) : base, vat: cn ? neg(d.vat) : d.vat, claimMonth: d.claim_month, priorMonth: d.issue_date.slice(0, 7) < d.claim_month };
+      base: cn ? neg(base) : base, vat: cn ? neg(vat) : vat, claimMonth: d.claim_month, priorMonth: d.issue_date.slice(0, 7) < d.claim_month, docBranch: d.doc_branch };
     // TODO(Wei): บิลที่มีทั้งบรรทัดต้องห้ามและบรรทัดปกติ — ยังไม่แยกภาษีซื้อรายบรรทัด (นับเป็นภาษีซื้อปกติ)
     if (disallowedAccounts.length && d.accounts.length && d.accounts.every((a) => disallowedAccounts.includes(a))) disallowed.push(row);
     else rows.push(row);
@@ -86,15 +102,17 @@ async function purchaseRows(tx: CompanyTx, fromYm: string, toYm: string): Promis
   // → แสดงในรายงานภาษีซื้อเดือนที่เบิกชดเชย ให้ตรงกับ GL และ ภ.พ.30
   // TODO(Wei): เดือนที่ใช้สิทธิ์ของเงินสดย่อย = เดือนที่เบิกชดเชย (ไม่ใช่เดือนตามใบกำกับ) · ไม่มีชื่อ/เลขผู้ขายถ้าไม่ได้ระบุคู่ค้าในรายการ
   const pcClaim = sql<string>`coalesce(d.vat_claim_month, to_char(j.journal_date, 'YYYY-MM'))`;
-  const pcs = await tx.selectFrom('acct.document as d').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'd.journal_id').onRef('j.company_id', '=', 'd.company_id'))
+  let pq = tx.selectFrom('acct.document as d').innerJoin('acct.journal as j', (jn) => jn.onRef('j.id', '=', 'd.journal_id').onRef('j.company_id', '=', 'd.company_id'))
     .leftJoin('acct.contact as c', (jn) => jn.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
-    .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.subtotal', 'd.discount', 'd.vat', 'c.name',
+    .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.subtotal', 'd.discount', 'd.vat', 'c.name', 'd.branch_code as doc_branch',
       sql<string | null>`(select l.description from acct.document_line l where l.document_id = d.id and l.company_id = d.company_id order by l.line_no limit 1)`.as('line_desc'), sql<string | null>`coalesce(d.party_tax_id, c.tax_id)`.as('tax_id'), 'c.branch_code', pcClaim.as('claim_month')])
     .where('d.doc_type', '=', 'PC').where('d.status', '=', 'approved').where('d.vat', '>', '0').where('j.status', '=', 'posted')
-    .where(pcClaim, '>=', fromYm).where(pcClaim, '<=', toYm).orderBy('d.issue_date').orderBy('d.doc_no').execute();
+    .where(pcClaim, '>=', fromYm).where(pcClaim, '<=', toYm);
+  if (branch) pq = pq.where('d.branch_code', '=', branch);
+  const pcs = await pq.orderBy('d.issue_date').orderBy('d.doc_no').execute();
   for (const d of pcs) {
     rows.push({ date: d.issue_date, docId: d.id, docNo: d.doc_no ?? '', docType: 'PC', partner: d.name ?? d.line_desc ?? '', taxId: d.tax_id, branch: d.branch_code, vendorRef: null,
-      base: Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString(), vat: d.vat, claimMonth: d.claim_month, priorMonth: d.issue_date.slice(0, 7) < d.claim_month });
+      base: Money.parse(d.subtotal).minus(Money.parse(d.discount)).toString(), vat: d.vat, claimMonth: d.claim_month, priorMonth: d.issue_date.slice(0, 7) < d.claim_month, docBranch: d.doc_branch });
   }
   rows.sort((a, b) => (a.date === b.date ? a.docNo.localeCompare(b.docNo) : a.date < b.date ? -1 : 1));
   return { rows, disallowed };
@@ -102,14 +120,15 @@ async function purchaseRows(tx: CompanyTx, fromYm: string, toYm: string): Promis
 const vsum = (rows: VatRow[], k: 'base' | 'vat') => Money.sum(rows.map((r) => Money.parse(r[k]))).toString();
 
 /** ใบแจ้งหนี้บริการที่ภาษีขายยังไม่ถึงกำหนด (2150400) ณ วันที่ to · issuedFrom = เฉพาะที่ออกตั้งแต่วันนั้น */
-async function deferredVatDocs(tx: CompanyTx, to: string, issuedFrom?: string) {
+async function deferredVatDocs(tx: CompanyTx, to: string, issuedFrom?: string, branch?: string) {
   let q = tx.selectFrom('acct.document as d').innerJoin('acct.journal_line as l', (jn) => jn.onRef('l.journal_id', '=', 'd.journal_id').onRef('l.company_id', '=', 'd.company_id'))
     .leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
     .select(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.grand_total', 'c.name', sql<string>`sum(l.credit - l.debit)`.as('vat'),
-      sql<string>`coalesce((select sum(s.vat_due) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
+      sql<string>`coalesce((select sum(coalesce(s.vat_due_thb, s.vat_due)) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
         where s.document_id = d.id and s.company_id = d.company_id and not s.voided and p.issue_date <= ${to}), 0)`.as('due')])
     .where('d.doc_type', 'in', ['IV', 'DN', 'CN']).where('d.status', '=', 'posted').where('d.issue_date', '<=', to).where('l.account_code', '=', '2150400');
   if (issuedFrom) q = q.where('d.issue_date', '>=', issuedFrom);
+  if (branch) q = q.where('d.branch_code', '=', branch);
   const rows = await q.groupBy(['d.id', 'd.doc_no', 'd.doc_type', 'd.issue_date', 'd.grand_total', 'c.name']).orderBy('d.issue_date').orderBy('d.doc_no').execute();
   return rows.map((r) => ({ docId: r.id, docNo: r.doc_no ?? '', docType: r.doc_type, date: r.issue_date, partner: r.name ?? '', vatPending: Money.parse(r.vat).minus(Money.parse(r.due)).toString() }));
 }
@@ -132,16 +151,19 @@ export function pp30Journal(output: Money, input: Money, carriedIn: Money, exces
   return { lines, net };
 }
 
-async function vatCore(tx: CompanyTx, fromYm: string, toYm: string) {
+/** branch = กรองตามสาขาของบริษัทที่ออกเอกสาร (P2A FXB) · ว่าง = ทุกสาขา (เดิม) */
+async function vatCore(tx: CompanyTx, fromYm: string, toYm: string, branch?: string) {
   const from = monthRange(fromYm).from;
   const to = monthRange(toYm).to;
-  const sales = await salesRows(tx, from, to);
-  const { rows: purchases, disallowed } = await purchaseRows(tx, fromYm, toYm);
-  // ยอดขายที่ได้รับยกเว้น: รับชำระใบที่ไม่มี VAT (เช่น ค่าเช่า ม.81(1)(ฑ)) ในเดือน
-  const exempt = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
-    .innerJoin('acct.document as i', (j) => j.onRef('i.id', '=', 's.document_id').onRef('i.company_id', '=', 's.company_id'))
-    .select(sql<string>`coalesce(sum(s.applied + s.wht), 0)`.as('v')).where('p.doc_type', '=', 'RV').where('p.status', '=', 'posted').where('s.voided', '=', false)
-    .where('i.vat', '=', '0').where('p.issue_date', '>=', from).where('p.issue_date', '<=', to).executeTakeFirstOrThrow();
+  const sales = await salesRows(tx, from, to, branch);
+  const { rows: purchases, disallowed } = await purchaseRows(tx, fromYm, toYm, branch);
+  // ยอดขายที่ได้รับยกเว้น: รับชำระใบที่ไม่มี VAT (เช่น ค่าเช่า ม.81(1)(ฑ)) ในเดือน · ไม่นับใบอัตรา 0% (อยู่ในรายงานภาษีขายแล้ว)
+  let eq = tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
+    .innerJoin('acct.document as d', (j) => j.onRef('d.id', '=', 's.document_id').onRef('d.company_id', '=', 's.company_id'))
+    .select(sql<string>`coalesce(sum(coalesce(s.settled_thb, s.applied + s.wht)), 0)`.as('v')).where('p.doc_type', '=', 'RV').where('p.status', '=', 'posted').where('s.voided', '=', false)
+    .where('d.vat', '=', '0').where((eb) => eb.not(ZERO_RATED)).where('p.issue_date', '>=', from).where('p.issue_date', '<=', to);
+  if (branch) eq = eq.where('p.branch_code', '=', branch);
+  const exempt = await eq.executeTakeFirstOrThrow();
   return { from, to, sales, purchases, disallowed, exemptSales: Money.parse(exempt.v) };
 }
 
@@ -152,25 +174,29 @@ async function filingsOf(tx: CompanyTx, form: 'pp30' | 'pnd3' | 'pnd53', month: 
     .where('f.form', '=', form).where('f.month', '=', month).where('f.status', '=', 'filed').orderBy('f.seq').execute();
 }
 
-async function vatMonth(tx: CompanyTx, ym: string) {
-  const core = await vatCore(tx, ym, ym);
+async function vatMonth(tx: CompanyTx, ym: string, branch?: string) {
+  const core = await vatCore(tx, ym, ym, branch);
   const { sales, purchases, disallowed, exemptSales } = core;
   const outputVat = Money.parse(vsum(sales, 'vat'));
   const inputVat = Money.parse(vsum(purchases, 'vat'));
-  const taxable = Money.parse(vsum(sales, 'base'));
+  // P2A FXB: ยอดขายอัตรา 0% (ส่งออก) แยกจากยอดขายที่เสียภาษี 7% (ภ.พ.30 ข้อ 2) — ไม่มีใบอัตรา 0% = ตัวเลขเดิม
+  const zeroRows = sales.filter((r) => r.rate === '0');
+  const zeroRated = Money.parse(vsum(zeroRows, 'base'));
+  const taxable = Money.parse(vsum(sales, 'base')).minus(zeroRated);
   // ข้อ 10 ภาษีที่ชำระเกินยกมา = ยอดยกไปของ ภ.พ.30 เดือนก่อน (การยื่นครั้งล่าสุด)
-  const prev = (await filingsOf(tx, 'pp30', addMonths(ym, -1))).at(-1);
+  // TODO(Wei): ยื่นแยกสาขา — การยื่น/ยอดยกมาบันทึกระดับบริษัท (acct.tax_filing ยังไม่มีสาขา) · มุมมองรายสาขาไม่นับยอดยกมา
+  const prev = branch ? undefined : (await filingsOf(tx, 'pp30', addMonths(ym, -1))).at(-1);
   const carried = Money.parse(prev?.carry_forward ?? '0');
   const excessAccount = await setting<string | null>(tx, VAT_EXCESS_ACCOUNT_KEY, null);
   // รอผู้สอบบัญชี (CLAUDE.md): ขยายกำหนดยื่นออนไลน์ — ค่าตั้งต้นชั่วคราว true
   const onlineExtension = (await setting<unknown>(tx, 'tax.filing.online_extension', true)) !== false;
-  const filed = await filingsOf(tx, 'pp30', ym);
+  const filed = branch ? [] : await filingsOf(tx, 'pp30', ym);
   const prior = purchases.filter((r) => r.priorMonth);
   const { lines } = pp30Journal(outputVat, inputVat, carried, excessAccount);
   const net = outputVat.minus(inputVat);
   return {
-    month: ym, onlineExtension, sales: { rows: sales, base: taxable.toString(), vat: outputVat.toString() }, purchases: { rows: purchases, base: vsum(purchases, 'base'), vat: inputVat.toString() },
-    pp30: { salesTotal: taxable.plus(exemptSales).toString(), exemptSales: exemptSales.toString(), taxableSales: taxable.toString(), outputVat: outputVat.toString(),
+    month: ym, onlineExtension, sales: { rows: sales, base: vsum(sales, 'base'), vat: outputVat.toString() }, purchases: { rows: purchases, base: vsum(purchases, 'base'), vat: inputVat.toString() },
+    pp30: { salesTotal: taxable.plus(zeroRated).plus(exemptSales).toString(), zeroRatedSales: zeroRated.toString(), exemptSales: exemptSales.toString(), taxableSales: taxable.toString(), outputVat: outputVat.toString(),
       purchasesCreditable: vsum(purchases, 'base'), inputVat: inputVat.toString(), netPayable: net.toString(),
       /** ข้อ 10 */ carriedForward: carried.toString(),
       /** ข้อ 11 (ติดลบ = ชำระเกิน) */ netAfterCarry: net.minus(carried).toString(),
@@ -182,12 +208,30 @@ async function vatMonth(tx: CompanyTx, ym: string) {
     /** ภาษีซื้อต้องห้าม (ไม่อยู่ในรายงานภาษีซื้อ) */
     disallowed: { items: disallowed.length, amount: vsum(disallowed, 'vat'), rows: disallowed },
     /** ใบแจ้งหนี้บริการที่ออกในเดือนแต่ยังไม่รับเงิน — จุดภาษียังไม่เกิด (ม.78/1) */
-    deferredService: (await deferredVatDocs(tx, core.to, core.from)).filter((d) => Money.parse(d.vatPending).gt(Money.zero())),
+    deferredService: (await deferredVatDocs(tx, core.to, core.from, branch)).filter((d) => Money.parse(d.vatPending).gt(Money.zero())),
   };
 }
 
-export async function vatReports(db: Db, companyId: string, ym: string) {
-  return db.withCompany(companyId, (tx) => vatMonth(tx, ym));
+/**
+ * รายงานภาษีขาย/ซื้อ + ภ.พ.30 ของเดือน · opts.branch = เฉพาะสาขา (รหัส 5 หลัก · P2A FXB)
+ * ผลลัพธ์มี branch (สาขาที่กรอง) · vatFiling (branch.vat_filing: separate/combined — รอผู้สอบบัญชี) · byBranch (ภาษีขาย/ซื้อแยกสาขา)
+ * ไม่ระบุสาขา = ตัวเลขเดิมทุกตัว (บริษัทสาขาเดียว)
+ */
+export async function vatReports(db: Db, companyId: string, ym: string, opts: { branch?: string | null } = {}) {
+  if (opts.branch && !/^\d{5}$/u.test(opts.branch)) throw new LedgerError('รหัสสาขาต้องเป็นตัวเลข 5 หลัก');
+  return db.withCompany(companyId, async (tx) => {
+    const m = await vatMonth(tx, ym, opts.branch ?? undefined);
+    const all = opts.branch ? await vatCore(tx, ym, ym) : null;
+    const sales = all?.sales ?? m.sales.rows;
+    const purchases = all?.purchases ?? m.purchases.rows;
+    const codes = [...new Set([...sales, ...purchases].map((r) => r.docBranch ?? '00000'))].sort();
+    const byBranch = codes.map((b) => {
+      const out = Money.parse(vsum(sales.filter((r) => (r.docBranch ?? '00000') === b), 'vat'));
+      const inp = Money.parse(vsum(purchases.filter((r) => (r.docBranch ?? '00000') === b), 'vat'));
+      return { branch: b, outputVat: out.toString(), inputVat: inp.toString(), netPayable: out.minus(inp).toString() };
+    });
+    return { ...m, branch: opts.branch ?? null, vatFiling: (await fxbSettingsTx(tx)).vatFiling, byBranch };
+  });
 }
 
 async function pndRows(tx: CompanyTx, from: string, to: string, pnd: '3' | '53') {
@@ -300,18 +344,20 @@ export async function aging(db: Db, companyId: string, asOf: string, side: 'AR' 
   const types = side === 'AR' ? ['IV', 'DN'] : ['AP', 'EXP', 'DNR'];
   return db.withCompany(companyId, async (tx) => {
     const docs = await tx.selectFrom('acct.document as d').innerJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
-      .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.due_date', 'd.grand_total', 'c.id as contact_id', 'c.code', 'c.name',
-        // ตัดยอด/ลดหนี้ที่เกิดถึงวันที่ asOf เท่านั้น
-        sql<string>`coalesce((select sum(s.applied + s.wht) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
+      .select(['d.id', 'd.doc_no', 'd.issue_date', 'd.due_date', sql<string>`coalesce(d.grand_total_thb, d.grand_total)`.as('grand_total'), 'c.id as contact_id', 'c.code', 'c.name',
+        // ตัดยอด/ลดหนี้ที่เกิดถึงวันที่ asOf เท่านั้น · เอกสารสกุลต่างประเทศ = ยอดบาทตามอัตราเดิม (P2A FXB)
+        sql<string>`coalesce((select sum(coalesce(s.settled_thb, s.applied + s.wht)) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
           where s.document_id = d.id and s.company_id = d.company_id and not s.voided and p.issue_date <= ${asOf}), 0)`.as('settled')])
       .where('d.doc_type', 'in', types).where('d.pay_now', '=', false).where('d.issue_date', '<=', asOf) /* EXP จ่ายทันทีไม่มีหนี้ค้าง */
       .where((eb) => eb.or([eb('d.status', '=', 'posted'), eb.and([eb('d.status', '=', 'voided'), eb('d.voided_at', '>', new Date(`${asOf}T23:59:59+07:00`))])]))
       .execute();
+    // ปรับมูลค่าสิ้นงวดที่มีผล ณ วันที่ (ลงสิ้นงวด ยังไม่กลับรายการ) — ให้ยอดรายใบตรงกับ GL · ลูกหนี้ +ปรับ = เพิ่ม · เจ้าหนี้ +ปรับ = เพิ่ม
+    const reval = await revaluationInEffectTx(tx, asOf);
     const buckets = ['current', 'b1_30', 'b31_60', 'b61_90', 'b91_120', 'over_120'] as const;
     type B = (typeof buckets)[number];
     const byContact = new Map<string, { contactId: string; code: string; name: string; docs: { docNo: string; due: string | null; days: number; amount: string; bucket: B }[] } & Record<B | 'total', Money>>();
     for (const d of docs) {
-      const open = Money.parse(d.grand_total).minus(Money.parse(d.settled));
+      const open = Money.parse(d.grand_total).minus(Money.parse(d.settled)).plus(reval.get(d.id) ?? Money.zero());
       if (!open.gt(Money.zero())) continue;
       const due = d.due_date ?? d.issue_date;
       const days = Math.floor((Date.parse(asOf) - Date.parse(due)) / 86_400_000);
@@ -413,7 +459,8 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     const sum = (rows: typeof lines, acct: (a: string) => boolean, side: 'Dr' | 'Cr') =>
       Money.sum(rows.filter((l) => acct(l.account_code)).map((l) => (side === 'Dr' ? P(l.debit).minus(P(l.credit)) : P(l.credit).minus(P(l.debit)))));
     const ofTypes = (types: string[]) => lines.filter((l) => l.doc_type && types.includes(l.doc_type));
-    const docs = await tx.selectFrom('acct.document').select(['id', 'doc_type', 'subtotal', 'grand_total', 'vat', 'journal_id', 'issue_date', 'status'])
+    // P2A FXB: เอกสารสกุลต่างประเทศเทียบด้วยยอดบาท (base_thb / grand_total_thb) — เอกสารบาทใช้ยอดเดิม
+    const docs = await tx.selectFrom('acct.document').select(['id', 'doc_type', sql<string>`coalesce(base_thb, subtotal)`.as('subtotal'), sql<string>`coalesce(grand_total_thb, grand_total)`.as('grand_total'), 'vat', 'journal_id', 'issue_date', 'status'])
       .where('status', '=', 'posted').where('issue_date', '>=', from).where('issue_date', '<=', to).execute();
     const dsum = (types: string[], f: (d: (typeof docs)[number]) => Money) => Money.sum(docs.filter((d) => types.includes(d.doc_type)).map(f));
     const n = (types: string[]) => String(docs.filter((d) => types.includes(d.doc_type)).length);

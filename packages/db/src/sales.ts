@@ -1,5 +1,5 @@
 // M4 ขาย + รับเงิน (docs/technical-plan-M4.md) — เอกสาร QO/SO/IV/CN/DN/DP/BN/RV · ลงบัญชีผ่าน Posting Engine · ทุกอย่างใน withCompany (RLS)
-import { docTotals, Money, post, receiptTotals, type CompanyRole, type MoneyString, type RuleDefinition } from '@innovera/ledger';
+import { BASE_CURRENCY, carryingCleared, docTotals, Money, post, receiptTotals, settleAtOriginalRate, toBase, type CompanyRole, type JournalLine, type MoneyString, type RuleDefinition } from '@innovera/ledger';
 import { bahtText, validateTaxId, whtOnReceipt } from '@innovera/tax-th';
 import { createHash, randomBytes } from 'node:crypto';
 import { sql } from 'kysely';
@@ -7,6 +7,7 @@ import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
 import { emitTx, userNames } from './hub.ts';
+import { convertDocumentJournal, docNumberTx, documentFx, FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, rateOnTx, settledBaseTx, type DocFxInput } from './fx.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -26,6 +27,8 @@ export interface SalesLineInput {
   vat?: boolean;
   accountCode?: string | null;
   estCost?: MoneyString | null;    // ต้นทุนประมาณรวมของบรรทัด (ใบเสนอราคา · ScreenQuote)
+  /** P2A FXB: zero = อัตรา 0% (ส่งออก ม.80/1 · vat_rate 0) · exempt = ยกเว้น · ว่าง = ตาม vat */
+  vatCode?: 'vat7' | 'zero' | 'exempt';
 }
 export interface SalesDraftInput {
   docType: Exclude<SalesType, 'BN' | 'RV'>;
@@ -49,16 +52,25 @@ export interface SalesDraftInput {
   paymentTerms?: string | null;
   priceLevel?: number | null;
   lines: SalesLineInput[];
+  /** P2A FXB (ต้องเปิดโมดูล): สกุลเอกสาร · อัตรา (ว่าง = อัตรา ณ วันที่เอกสาร) · สาขา (ว่าง = 00000) */
+  currency?: DocFxInput['currency'];
+  fxRate?: DocFxInput['fxRate'];
+  branchCode?: DocFxInput['branchCode'];
 }
 export interface Actor { userId: string | null; role: CompanyRole }
 
 const sha = (s: string) => createHash('sha256').update(s).digest('hex');
 const today = () => new Date().toISOString().slice(0, 10);
 
+/** บรรทัดมี VAT 7% หรือไม่ (vatCode มาก่อน vat) */
+const vatOn = (l: Pick<SalesLineInput, 'vat' | 'vatCode'>) => (l.vatCode ? l.vatCode === 'vat7' : (l.vat ?? true));
+/** vat_rate ของบรรทัด: 7% = 0.0700 · 0% (ส่งออก) = 0.0000 · ยกเว้น = NULL */
+const vatRateOf = (l: Pick<SalesLineInput, 'vat' | 'vatCode'>) => (l.vatCode === 'zero' ? '0.0000' : vatOn(l) ? '0.0700' : null);
+
 export function totalsOf(input: Pick<SalesDraftInput, 'lines' | 'priceInclVat' | 'billDiscount' | 'deposits'>) {
   const items = input.lines.filter((l) => (l.lineType ?? 'item') === 'item');
   for (const l of items) if (!l.qty || !l.unitPrice) throw new LedgerError(`บรรทัด "${l.description}" ต้องมีจำนวนและราคา`);
-  const t = docTotals(items.map((l) => ({ qty: l.qty!, unitPrice: l.unitPrice!, discount: l.discount ?? '0.00', vat: l.vat ?? true })), { priceInclVat: input.priceInclVat ?? false, billDiscount: input.billDiscount ?? '0.00' });
+  const t = docTotals(items.map((l) => ({ qty: l.qty!, unitPrice: l.unitPrice!, discount: l.discount ?? '0.00', vat: vatOn(l) })), { priceInclVat: input.priceInclVat ?? false, billDiscount: input.billDiscount ?? '0.00' });
   const deposit = Money.sum((input.deposits ?? []).map((d) => Money.of(d.amount)));
   if (deposit.isZero()) return { ...t, deposit: '0.00' as MoneyString, receivable: t.grandTotal };
   if (input.priceInclVat) throw new LedgerError('หักมัดจำใช้ได้กับราคาไม่รวม VAT เท่านั้น');
@@ -113,6 +125,12 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
   if ((input.docType === 'CN' || input.docType === 'DN') && !input.refDocumentId) throw new LedgerError('ใบลดหนี้/เพิ่มหนี้ต้องอ้างใบกำกับภาษี');
   if (input.priceLevel !== undefined && input.priceLevel !== null && (!Number.isInteger(input.priceLevel) || input.priceLevel < 1 || input.priceLevel > 5)) throw new LedgerError('ระดับราคาต้องเป็น 1–5');
   for (const l of input.lines) if (l.estCost && !/^\d+(\.\d{1,2})?$/u.test(l.estCost)) throw new LedgerError(`ต้นทุนประมาณของ "${l.description}" ไม่ถูกต้อง`);
+  // TODO(Wei): ใบเดียวที่มีทั้งบรรทัด VAT 7% และ 0% (ส่งออก) — รายงานภาษีขายยังแยกอัตรารายบรรทัดไม่ได้ จึงยังไม่รองรับ
+  const items = input.lines.filter((l) => (l.lineType ?? 'item') === 'item');
+  if (items.some((l) => l.vatCode === 'zero') && items.some((l) => vatOn(l))) throw new LedgerError('ใบเดียวกันมีทั้ง VAT 7% และ 0% ยังไม่รองรับ — แยกเป็นคนละใบ');
+  const fxv = await documentFx(db, companyId, input.issueDate, { currency: input.currency ?? null, fxRate: input.fxRate ?? null, branchCode: input.branchCode ?? null });
+  // TODO(Wei): เอกสารสกุลต่างประเทศ — มัดจำ/ใบลดหนี้/เพิ่มหนี้ ยังไม่รองรับ (ต้องยืนยันอัตราที่ใช้ล้างลูกหนี้)
+  if (fxv.currency && fxv.currency !== BASE_CURRENCY && (input.deposits?.length || ['DP', 'CN', 'DN'].includes(input.docType))) throw new LedgerError('เอกสารสกุลต่างประเทศยังไม่รองรับมัดจำ/ใบลดหนี้/ใบเพิ่มหนี้');
   const t = totalsOf(input);
   return db.withCompany(companyId, async (tx) => {
     const values = {
@@ -122,6 +140,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       address: input.address ?? null, notes: input.notes ?? null, reference: input.reference ?? null, ref_document_id: input.refDocumentId ?? null,
       credit_days: input.creditDays ?? null, receive_account: input.receiveAccount ?? null, updated_at: new Date(),
       salesperson: input.salesperson?.trim() || null, project_code: input.projectCode?.trim() || null, payment_terms: input.paymentTerms?.trim() || null, price_level: input.priceLevel ?? null,
+      ...fxv,
     };
     let docId = id;
     if (docId) {
@@ -132,7 +151,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       await tx.deleteFrom('acct.settlement').where('payment_id', 'in', (input.deposits ?? []).map((x) => x.documentId).concat(['00000000-0000-0000-0000-000000000000'])).where('document_id', '=', docId).execute();
       await event(tx, companyId, docId, actor.userId, 'edited');
     } else {
-      const r = await tx.insertInto('acct.document').values({ company_id: companyId, ...values, created_by: actor.userId, external_source: null, external_ref: null, doc_no: null, branch_code: '00000', fee: '0.00' } as never)
+      const r = await tx.insertInto('acct.document').values({ company_id: companyId, ...values, created_by: actor.userId, external_source: null, external_ref: null, doc_no: null, branch_code: '00000', fee: '0.00', ...fxv } as never)
         .returning('id').executeTakeFirstOrThrow();
       docId = r.id;
       await event(tx, companyId, docId, actor.userId, 'created', input.refDocumentId ? { from: input.refDocumentId } : {});
@@ -143,7 +162,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       await tx.insertInto('acct.document_line').values({
         company_id: companyId, document_id: docId, line_no: i + 1, line_type: l.lineType ?? 'item', product_code: l.productCode ?? null, description: l.description,
         qty: item ? l.qty! : null, unit_price: item ? l.unitPrice! : null, discount: l.discount ?? '0.00', amount: item ? t.lines[k++]!.amount : '0.00',
-        vat_rate: item ? ((l.vat ?? true) ? '0.0700' : null) : null, account_code: l.accountCode ?? null, est_cost: item ? l.estCost ?? null : null,
+        vat_rate: item ? vatRateOf(l) : null, account_code: l.accountCode ?? null, est_cost: item ? l.estCost ?? null : null,
       }).execute();
     }
     // มัดจำที่หัก: settlement จาก DP → IV (ยังไม่มีผลจนกว่าจะลงบัญชี — voided = true จนอนุมัติ)
@@ -192,7 +211,7 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
   return db.withCompany(companyId, async (tx) => {
     const d = await docOrThrow(tx, id);
     if (d.status !== 'draft' && d.status !== 'pending_approval') throw new LedgerError(`เอกสารสถานะ ${d.status} อนุมัติไม่ได้`);
-    const docNo = opts.docNo ?? d.doc_no ?? (await nextNumber(tx, companyId, await prefixOf(tx, d.doc_type), d.issue_date));
+    const docNo = opts.docNo ?? d.doc_no ?? (await docNumberTx(tx, companyId, await prefixOf(tx, d.doc_type), d.issue_date, d.branch_code));
     if (opts.docNo) await reserveNumber(tx, companyId, opts.docNo);
     if (NON_POSTING.includes(d.doc_type as SalesType)) {
       await tx.updateTable('acct.document').set({ status: 'approved', doc_no: docNo, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
@@ -211,16 +230,18 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
     if (d.doc_type === 'DP' && !d.receive_account) throw new LedgerError('ต้องเลือกบัญชีที่รับเงินมัดจำเข้า');
     const { def, versionId } = await ruleFor(tx, d.rule_code ?? DEFAULT_RULE[d.doc_type as SalesType] ?? '');
     const net = Money.parse(d.subtotal).minus(Money.parse(d.discount));
-    const jl = post(def, {
+    const fxl = post(def, {
       docType: d.doc_type,
       amounts: { grand_total: d.grand_total, net: net.toString(), vat: d.vat, discount: d.discount, subtotal: d.subtotal, deposit: deposit.toString() },
       lines: lines.map((l) => ({ amounts: { amount: l.amount }, ...(l.account_code ? { account: l.account_code } : {}), ...(l.revenue_account ? { productAccount: l.revenue_account } : {}) })),
       contact: { arAccount: '1130100', ...(d.contact_id ? { id: d.contact_id } : {}) },
       accounts: { ...(d.receive_account ? { cash: d.receive_account } : {}) },
     }).map((l) => (l.account === '1130100' && d.contact_id ? { ...l, contactId: d.contact_id } : l));
+    // P2A FXB: เอกสารสกุลต่างประเทศ → journal บาท (เอกสารบาทไม่เปลี่ยน)
+    const { lines: jl, thb } = await convertDocumentJournal(tx, d, fxl);
     const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
-      sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
-    await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
+      sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}), ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
+    await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date(), ...(thb ?? {}) }).where('id', '=', id).execute();
     if (d.doc_type === 'CN') {
       await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: d.grand_total, wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
     }
@@ -245,6 +266,10 @@ export interface ReceiptInput {
   billingId?: string | null;      // อ้างอิงใบวางบิล
   cheque?: { chequeNo: string; bank: string; branch?: string; chequeDate: string } | null;
   notes?: string | null;
+  /** P2A FXB: อัตรา ณ วันรับ (ใบแจ้งหนี้สกุลต่างประเทศ · ว่าง = อัตรา ณ วันที่รับ) — ยอดใน applications/fee เป็นสกุลของใบแจ้งหนี้ */
+  fxRate?: string | null;
+  /** สาขาที่รับ (ว่าง = สาขาของใบแจ้งหนี้ใบแรก) */
+  branchCode?: string | null;
 }
 
 export async function receivePayment(db: Db, companyId: string, actor: Actor, input: ReceiptInput & { docNo?: string }) {
@@ -268,23 +293,42 @@ export async function receivePayment(db: Db, companyId: string, actor: Actor, in
       invoiceTotal: o.doc.grand_total, invoiceVat: o.doc.vat, vatOnPayment: o.doc.tax_mode === 'on_payment', settledBefore: o.settled.plus(o.credited).toString(),
       vatDueBefore: o.vatDue.toString(), applied: a.applied, wht: a.wht,
     })), input.fee ?? '0.00');
-    const docNo = input.docNo ?? (await nextNumber(tx, companyId, await prefixOf(tx, 'RV'), input.date));
+    const branch = input.branchCode ?? apps[0]!.o.doc.branch_code;
+    // P2A FXB: ใบแจ้งหนี้สกุลต่างประเทศ (ทุกใบต้องสกุลเดียวกัน) — ยอดรับเป็นสกุลนั้น · ล้างลูกหนี้ตามอัตราเดิม · ผลต่าง → 4910100 / 5920100
+    const currency = apps[0]!.o.doc.currency;
+    if (apps.some(({ o }) => o.doc.currency !== currency)) throw new LedgerError('รับชำระใบแจ้งหนี้ต่างสกุลเงินในใบเดียวกันไม่ได้');
+    const fx = currency === BASE_CURRENCY ? null : await receiptFxTx(tx, currency, input.date, input.fxRate ?? null,
+      apps.map(({ o, a }, i) => ({ doc: o.doc, settledFx: Money.of(a.applied).plus(Money.of(a.wht)), outstandingFx: o.outstanding, vatDueFx: totals.perDoc[i]!.vatDue, settledBeforeFx: o.settled.plus(o.credited) })), totals);
+    const docNo = input.docNo ?? (await docNumberTx(tx, companyId, await prefixOf(tx, 'RV'), input.date, branch));
     if (input.docNo) await reserveNumber(tx, companyId, input.docNo);
     const rv = await tx.insertInto('acct.document').values({
       company_id: companyId, doc_type: 'RV', doc_no: docNo, status: 'posted', issue_date: input.date, due_date: null, contact_id: input.contactId, price_incl_vat: false,
       subtotal: totals.settled, discount: '0.00', vat: totals.vatDue, wht: totals.wht, grand_total: totals.cashIn, fee: totals.fee, fee_account: input.feeAccount ?? '5401100',
       receive_account: input.receiveAccount, wht_cert_no: input.whtCertNo ?? null, wht_rate: input.whtRate ?? null, ref_document_id: input.billingId ?? null,
-      rule_code: 'Receive[RV]', notes: input.notes ?? null, created_by: actor.userId, approved_by: actor.userId, approved_at: new Date(), external_source: null, external_ref: null, branch_code: '00000', bill_discount: '0.00',
+      rule_code: 'Receive[RV]', notes: input.notes ?? null, created_by: actor.userId, approved_by: actor.userId, approved_at: new Date(), external_source: null, external_ref: null, branch_code: branch, bill_discount: '0.00',
+      ...(fx ? { currency, fx_rate: fx.rate, grand_total_thb: fx.cashIn.toString(), vat_thb: fx.vatDue.toString(), base_thb: fx.settled.minus(fx.vatDue).toString() } : {}),
     } as never).returning('id').executeTakeFirstOrThrow();
     for (const [i, { a }] of apps.entries()) {
-      await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: rv.id, document_id: a.documentId, applied: a.applied, wht: a.wht, wht_base: a.whtBase ?? null, vat_due: totals.perDoc[i]!.vatDue, voided: false }).execute();
+      await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: rv.id, document_id: a.documentId, applied: a.applied, wht: a.wht, wht_base: a.whtBase ?? null, vat_due: totals.perDoc[i]!.vatDue, voided: false,
+        ...(fx ? { settled_thb: fx.perDoc[i]!.settled.toString(), vat_due_thb: fx.perDoc[i]!.vatDue.toString() } : {}) }).execute();
     }
     const { def, versionId } = await ruleFor(tx, 'Receive[RV]');
-    const jl = post(def, {
-      docType: 'RV', amounts: { cash_in: totals.cashIn, wht: totals.wht, fee: totals.fee, vat_due: totals.vatDue, settled: totals.settled },
+    const amounts = fx
+      ? { cash_in: fx.cashIn.toString(), wht: fx.wht.toString(), fee: fx.fee.toString(), vat_due: fx.vatDue.toString(), settled: fx.cashIn.plus(fx.wht).plus(fx.fee).toString() }
+      : { cash_in: totals.cashIn, wht: totals.wht, fee: totals.fee, vat_due: totals.vatDue, settled: totals.settled };
+    let jl: JournalLine[] = post(def, {
+      docType: 'RV', amounts,
       contact: { arAccount: '1130100', id: input.contactId }, accounts: { cash: input.receiveAccount, ...(input.feeAccount ? { fee: input.feeAccount } : {}) },
     }).map((l) => (l.account === '1130100' ? { ...l, contactId: input.contactId } : l));
-    const j = await postJournalTx(tx, companyId, { date: input.date, lines: jl, role: actor.role, book: 'RJ', prefix: 'JV', description: docNo, sourceDocumentId: rv.id, ...(versionId ? { ruleVersionId: versionId } : {}) });
+    if (fx) {
+      // บรรทัดลูกหนี้ = ยอดบาทตามอัตราเดิม · ผลต่าง = กำไร/ขาดทุนจากอัตราแลกเปลี่ยนที่เกิดขึ้นจริง
+      const idx = jl.findIndex((l) => l.account === '1130100' && l.side === 'Cr');
+      jl = settleAtOriginalRate(jl, idx, fx.settled, { gain: FX_GAIN_ACCOUNT, loss: FX_LOSS_ACCOUNT }).lines
+        .map((l) => (l.account === '1130100' ? { ...l, fx: { currency, amount: Money.of(totals.settled) } }
+          : l.account === input.receiveAccount && l.side === 'Dr' ? { ...l, fx: { currency, amount: Money.of(totals.cashIn) } } : l));
+    }
+    const j = await postJournalTx(tx, companyId, { date: input.date, lines: jl, role: actor.role, book: 'RJ', prefix: 'JV', description: docNo, sourceDocumentId: rv.id, ...(versionId ? { ruleVersionId: versionId } : {}),
+      ...(branch !== '00000' ? { branchCode: branch } : {}) });
     await tx.updateTable('acct.document').set({ journal_id: j.id }).where('id', '=', rv.id).execute();
     if (input.cheque) {
       await tx.insertInto('acct.cheque').values({ company_id: companyId, direction: 'received', cheque_no: input.cheque.chequeNo, bank: input.cheque.bank, branch: input.cheque.branch ?? null,
@@ -295,6 +339,36 @@ export async function receivePayment(db: Db, companyId: string, actor: Actor, in
       applications: apps.map(({ o, a }) => ({ document_id: a.documentId, doc_no: o.doc.doc_no, external_ref: o.doc.external_ref, applied: a.applied, wht: a.wht })) });
     return { id: rv.id, docNo, journalNo: j.journalNo, totals, warnings, amountText: bahtText(totals.settled as MoneyString) };
   });
+}
+
+/**
+ * P2A FXB ยอดบาทของใบรับชำระสกุลต่างประเทศ: เงินรับ/ภาษีถูกหัก/ค่าธรรมเนียม = × อัตราวันรับ · ลูกหนี้ที่ล้าง = อัตราเดิมของแต่ละใบ (ตัดครบ = ยอดบาทคงเหลือ)
+ * ภาษีขายที่ถึงกำหนด (ม.78/1) = สัดส่วนของ VAT บาทตามใบแจ้งหนี้ (สะสม · รับครบ = VAT บาททั้งใบพอดี)
+ * TODO(Wei): ฐาน/ภาษีขายของบริการที่จุดภาษีเกิดเมื่อรับเงิน ใช้อัตราวันออกใบแจ้งหนี้ (ให้ 2150400 ล้างหมด) — หรือควรใช้อัตราวันรับเงิน รอผู้สอบบัญชี
+ * TODO(Wei): ภาษีถูกหัก ณ ที่จ่าย/ค่าธรรมเนียมของใบสกุลต่างประเทศคิดเป็นบาทที่อัตราวันรับ — รอผู้สอบบัญชี
+ */
+async function receiptFxTx(tx: CompanyTx, currency: string, date: string, rateIn: string | null,
+  apps: { doc: { id: string; fx_rate: string | null; grand_total: string; grand_total_thb: string | null; vat: string; vat_thb: string | null }; settledFx: Money; outstandingFx: Money; vatDueFx: MoneyString; settledBeforeFx: Money }[],
+  totals: { cashIn: MoneyString; wht: MoneyString; fee: MoneyString }) {
+  const rate = rateIn ?? (await rateOnTx(tx, currency, date));
+  const perDoc = [];
+  for (const a of apps) {
+    if (!a.doc.fx_rate || !a.doc.grand_total_thb) throw new LedgerError('ใบแจ้งหนี้สกุลต่างประเทศไม่มีอัตราแลกเปลี่ยน');
+    const before = await settledBaseTx(tx, a.doc.id);
+    const settled = carryingCleared({ settleFx: a.settledFx, openFxBefore: a.outstandingFx, openBaseBefore: Money.parse(a.doc.grand_total_thb).minus(before.settledThb), rate: a.doc.fx_rate });
+    let vatDue = Money.zero();
+    if (!Money.of(a.vatDueFx).isZero()) {
+      const cum = a.settledBeforeFx.plus(a.settledFx);
+      const vatThb = Money.parse(a.doc.vat_thb ?? a.doc.vat);
+      const target = cum.equals(Money.parse(a.doc.grand_total)) ? vatThb : vatThb.ratio(cum, Money.parse(a.doc.grand_total)).round();
+      vatDue = target.minus(before.vatDueThb);
+    }
+    perDoc.push({ settled, vatDue });
+  }
+  return {
+    rate, perDoc, settled: Money.sum(perDoc.map((p) => p.settled)), vatDue: Money.sum(perDoc.map((p) => p.vatDue)),
+    cashIn: toBase(totals.cashIn, rate), wht: toBase(totals.wht, rate), fee: toBase(totals.fee, rate),
+  };
 }
 
 // ---------- ใบวางบิล (ScreenBilling) — ไม่ลงบัญชี ----------
@@ -450,7 +524,10 @@ export async function convertDocument(db: Db, companyId: string, actor: Actor, i
     docType: to, contactId: src.doc.contact_id!, issueDate: p.issueDate ?? today(), priceInclVat: src.doc.price_incl_vat, billDiscount: src.doc.bill_discount,
     address: src.doc.address, notes: src.doc.notes, reference: src.doc.doc_no, refDocumentId: id, creditDays: src.doc.credit_days,
     salesperson: src.doc.salesperson, projectCode: src.doc.project_code, paymentTerms: src.doc.payment_terms, priceLevel: src.doc.price_level,
-    lines: src.lines.map((l) => ({ lineType: l.line_type, productCode: l.product_code, description: l.description, qty: l.qty ?? undefined, unitPrice: l.unit_price ?? undefined, discount: l.discount, vat: l.vat_rate !== null, accountCode: l.account_code, estCost: l.est_cost })),
+    // P2A FXB: สกุล/อัตรา/สาขาตามเอกสารต้นทาง (เอกสารบาทสาขาใหญ่ = ค่าเดิม)
+    ...(src.doc.currency !== BASE_CURRENCY ? { currency: src.doc.currency, fxRate: src.doc.fx_rate } : {}), ...(src.doc.branch_code !== '00000' ? { branchCode: src.doc.branch_code } : {}),
+    lines: src.lines.map((l) => ({ lineType: l.line_type, productCode: l.product_code, description: l.description, qty: l.qty ?? undefined, unitPrice: l.unit_price ?? undefined, discount: l.discount, vat: l.vat_rate !== null, accountCode: l.account_code, estCost: l.est_cost,
+      ...(l.vat_rate !== null && /^0(\.0+)?$/u.test(l.vat_rate) ? { vatCode: 'zero' as const } : {}) })),
   } as SalesDraftInput);
   await db.withCompany(companyId, (tx) => event(tx, companyId, id, actor.userId, 'converted', { to, id: newId }));
   return newId;

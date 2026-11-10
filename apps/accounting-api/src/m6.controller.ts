@@ -20,7 +20,8 @@ export class M6Controller {
 
   // ---------- ภาษี ----------
   @Need('reports', 'read') @Get('tax/vat')
-  vat(@Req() req: Request, @Query('month') m: string) { return vatReports(this.db, companyOf(req), ym(m)); }
+  /** ?branch=00001 = เฉพาะสาขา (P2A FXB · ว่าง = ทุกสาขาเหมือนเดิม) */
+  vat(@Req() req: Request, @Query('month') m: string, @Query('branch') branch?: string) { return vatReports(this.db, companyOf(req), ym(m), branch ? { branch } : {}); }
   @Need('reports', 'read') @Get('tax/pnd')
   pnd(@Req() req: Request, @Query('month') m: string, @Query('form') form: '3' | '53') { return pndReport(this.db, companyOf(req), ym(m), form === '3' ? '3' : '53'); }
   /** ไฟล์ RD Prep — TODO(Wei) T11: รูปแบบรอตรวจกับ spec จริง */
