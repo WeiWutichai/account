@@ -56,10 +56,47 @@ export function calendarPeriods(fiscalYear: number) {
 export interface SeedResult { accounts: number; periods: number; contacts: number; products: number }
 
 /** sample = true: ใส่คู่ค้า/สินค้าตัวอย่างจาก fixtures ด้วย (dev/test) · บริษัทจริงของลูกค้าใช้ false (ผังบัญชี + งวดเท่านั้น) */
-export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569, opts: { sample?: boolean } = {}): Promise<SeedResult> {
+/**
+ * ผังบัญชีแม่แบบ (ScreenCompanyCreate ขั้น 2) = ผังบริการจาก fixtures + บัญชีเพิ่มตามประเภทธุรกิจ
+ * Wei สั่งเปิดครบ 4 แบบเพื่อ demo (2026-11-10)
+ * TODO(Wei/ผู้สอบบัญชี): รายการบัญชีของแม่แบบซื้อมาขายไปและ DBD ยังไม่ได้ยืนยัน — ตอนนี้เป็นชุดตั้งต้นสำหรับนำเสนอ
+ *   · ซื้อมาขายไป: v1 ไม่มีโมดูลสต็อก (CLAUDE.md) → บัญชีสินค้า/ต้นทุนแบบบันทึกเมื่อสิ้นงวด (periodic) ใช้กับ JV/บิลซื้อได้
+ *   · นำเข้าจากระบบเดิม: เริ่มจากผังบริการ แล้วนำเข้าผังเดิมที่หน้า ผังบัญชี (นำเข้า Excel) · ตัวแปลง Express/FlowAccount/PEAK ยังไม่มี
+ */
+export type ChartTemplate = 'service' | 'trading' | 'dbd' | 'import';
+type TemplateAccount = { code: string; name: string; type: AccountType };
+export const TEMPLATE_EXTRA: Readonly<Record<ChartTemplate, readonly TemplateAccount[]>> = {
+  service: [],
+  import: [],
+  trading: [
+    { code: '1200100', name: 'สินค้าคงเหลือ', type: 'asset' },
+    { code: '4110100', name: 'รายได้จากการขายสินค้า', type: 'revenue' },
+    { code: '4150200', name: 'รับคืนสินค้าและส่วนลดจ่าย', type: 'contra_revenue' },
+    { code: '5010100', name: 'ซื้อสินค้า', type: 'expense' },
+    { code: '5010200', name: 'ค่าขนส่งเข้า', type: 'expense' },
+    { code: '5020100', name: 'ต้นทุนขาย', type: 'expense' },
+  ],
+  dbd: [
+    { code: '1180100', name: 'ค่าใช้จ่ายจ่ายล่วงหน้า', type: 'asset' },
+    { code: '1200100', name: 'สินค้าคงเหลือ', type: 'asset' },
+    { code: '2120100', name: 'ค่าใช้จ่ายค้างจ่าย', type: 'liability' },
+    { code: '2210100', name: 'เงินกู้ยืมระยะยาวจากสถาบันการเงิน', type: 'liability' },
+    { code: '2220100', name: 'เงินกู้ยืมจากกรรมการ', type: 'liability' },
+    { code: '4110100', name: 'รายได้จากการขายสินค้า', type: 'revenue' },
+    { code: '5020100', name: 'ต้นทุนขาย', type: 'expense' },
+  ],
+};
+
+export async function seedCompany(db: Db, companyId: string, fiscalYear = 2569, opts: { sample?: boolean; template?: ChartTemplate } = {}): Promise<SeedResult> {
   const sample = opts.sample ?? true;
   const fx = loadFixtures();
+  const extra = TEMPLATE_EXTRA[opts.template ?? 'service'];
   return db.withCompany(companyId, async (tx) => {
+    for (const a of extra) {
+      await tx.insertInto('acct.account').values({ company_id: companyId, code: a.code, name: a.name, type: a.type, parent_code: null,
+        is_control: false, control_kind: null, requires_contact: false, category: categoryOf(a.code, a.type), binding: null })
+        .onConflict((oc) => oc.columns(['company_id', 'code']).doNothing()).execute();
+    }
     for (const a of fx.chart_of_accounts) {
       await tx.insertInto('acct.account').values({
         company_id: companyId, code: a.code, name: a.name, type: a.type, parent_code: null,

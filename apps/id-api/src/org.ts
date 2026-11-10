@@ -49,7 +49,7 @@ export class Orgs {
     if (!input.nameTh.trim()) throw new IdError(422, 'กรุณากรอกชื่อบริษัท');
     if (input.taxId && !validTaxId(input.taxId)) throw new IdError(422, 'เลขผู้เสียภาษีไม่ถูกต้อง (ตรวจ checksum ไม่ผ่าน)');
     // TODO(Wei) T1: มีผังบัญชีจริงแค่แม่แบบ "ธุรกิจบริการ" (fixtures 53 บัญชี) · แม่แบบอื่นยังไม่มีรายการ
-    if (input.template !== 'service') throw new IdError(422, 'แม่แบบนี้ยังไม่พร้อมใช้ — เลือก "ธุรกิจบริการ / ขนส่ง"');
+    if (!['service', 'trading', 'dbd', 'import'].includes(input.template)) throw new IdError(422, 'ไม่รู้จักแม่แบบผังบัญชีนี้');
     const fiscalYear = Number(input.goLive.slice(0, 4)) + 543;
     const companyId = await this.db.withPublic(async (tx) => {
       let orgId = input.orgId;
@@ -76,7 +76,7 @@ export class Orgs {
       await tx.insertInto('public.company_membership').values({ company_id: c.id, user_id: userId, company_role: 'owner', approval_limit: null, permissions: null, expires_at: null, last_used_at: null }).execute();
       return c.id;
     });
-    await seedCompany(this.db, companyId, fiscalYear, { sample: false }); // ผังบัญชี + งวด เท่านั้น ไม่ใส่คู่ค้าตัวอย่าง
+    await seedCompany(this.db, companyId, fiscalYear, { sample: false, template: input.template }); // ผังบัญชี + งวด เท่านั้น ไม่ใส่คู่ค้าตัวอย่าง
     return { id: companyId, fiscalYear };
   }
 

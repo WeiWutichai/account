@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCompany, createOrganization } from '../src/company.ts';
 import type { Db } from '../src/index.ts';
 import { listMigrations, migrateDown, migrateUp } from '../src/migrate.ts';
-import { seedCompany } from '../src/seed.ts';
+import { seedCompany, TEMPLATE_EXTRA } from '../src/seed.ts';
 import { admin, APP_URL, appDb, CONSOLE_URL, freshSchema, MIGRATE_URL } from './helpers.ts';
 
 let db: Db;
@@ -68,6 +68,19 @@ describe('seed', () => {
     expect(again).toEqual(first);
     expect(first.periods).toBe(14);
     expect(first.accounts).toBeGreaterThanOrEqual(50);
+  });
+  it('แม่แบบผังบัญชี: ซื้อมาขายไป/DBD = ผังบริการ + บัญชีเพิ่ม · บริษัทอื่นไม่ได้บัญชีเพิ่ม', async () => {
+    const org = await createOrganization(db, 'แม่แบบ');
+    const T = await createCompany(db, { orgId: org, nameTh: 'บริษัท ค้าปลีก จำกัด' });
+    const D = await createCompany(db, { orgId: org, nameTh: 'บริษัท ดีบีดี จำกัด' });
+    const base = (await seedCompany(db, A)).accounts;
+    const t = await seedCompany(db, T, 2569, { sample: false, template: 'trading' });
+    const d = await seedCompany(db, D, 2569, { sample: false, template: 'dbd' });
+    expect(t.accounts).toBe(base + TEMPLATE_EXTRA.trading.length);
+    expect(d.accounts).toBe(base + TEMPLATE_EXTRA.dbd.length);
+    const codes = async (id: string) => (await db.withCompany(id, (tx) => tx.selectFrom('acct.account').select('code').where('code', 'in', ['1200100', '5020100']).execute())).map((r) => r.code).sort();
+    expect(await codes(T)).toEqual(['1200100', '5020100']);
+    expect(await codes(A)).toEqual([]);
   });
 });
 

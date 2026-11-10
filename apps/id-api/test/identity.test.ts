@@ -212,7 +212,8 @@ describe('บริษัท · คำเชิญ · สิทธิ์ (Screen
     expect(n.contacts).toBe(0);
     expect(n.p0?.starts_on).toBe('2026-12-31');
     await expect(orgs.createCompany(owner.userId, { nameTh: 'x', taxId: '0105536044443', goLive: '2027-01-01', template: 'service', modules: {} })).rejects.toThrow(/checksum/u);
-    await expect(orgs.createCompany(owner.userId, { nameTh: 'x', goLive: '2027-01-01', template: 'trading', modules: {} })).rejects.toThrow(/ยังไม่พร้อม/u);
+    // แม่แบบครบ 4 แบบ (Wei เปิดเพื่อ demo 2026-11-10) — แม่แบบที่ไม่รู้จักยังถูกปฏิเสธ
+    await expect(orgs.createCompany(owner.userId, { nameTh: 'x', goLive: '2027-01-01', template: 'retail-x' as never, modules: {} })).rejects.toThrow(/ไม่รู้จักแม่แบบ/u);
   });
   it('เชิญ → ผู้ไม่มีบัญชี: info บอกให้สมัคร → สมัคร → รับคำเชิญ → เห็นบริษัท · ใช้ซ้ำไม่ได้', async () => {
     const inv = await orgs.invite(owner.userId, { orgId, companyId, email: 'New.Staff@x.co', role: 'accountant' });
