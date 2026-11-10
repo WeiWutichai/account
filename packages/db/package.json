@@ -19,7 +19,8 @@
     "./hub": "./src/hub.ts",
     "./console": "./src/console.ts",
     "./master": "./src/master.ts",
-    "./master-import": "./src/master-import.ts"
+    "./master-import": "./src/master-import.ts",
+    "./inventory": "./src/inventory.ts"
   },
   "scripts": {
     "lint": "eslint src test",
