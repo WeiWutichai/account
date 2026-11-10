@@ -4,6 +4,8 @@
 import { Button, ButtonLink, css, money, parseThaiDate, thaiDate } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { P2A_OFF, type P2A } from '../../_p2a/types';
+import { DocFxFields, FxTotalRows, useDocFx } from '../../_p2a/ui';
 import { call } from './client.ts';
 import { addDays, bangkok, branchText, type Account, type Contact, docNo, type DocDetail, EVENT_TEXT, printHref, type Rule, statusTag, whenText } from './doc.ts';
 import { JournalPreview } from './JournalPreview';
@@ -14,8 +16,10 @@ import { DocHeader, F, Msg } from './ui';
 type Mode = 'IV' | 'DP';
 type Tab = 'doc' | 'acct' | 'history';
 
-export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, today, presetContact }: {
+export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, today, presetContact, p2a = P2A_OFF }: {
   mode: Mode; detail: DocDetail | null; contacts: Contact[]; accounts: Account[]; rules: Rule[]; names: Record<string, string>; today: string; presetContact?: string;
+  /** P2A: ช่องสกุลเงิน/สาขา/คลัง/VAT 0% แสดงเมื่อเปิดโมดูลเท่านั้น — TODO(Wei): ชั่วคราว รอแบบร่าง */
+  p2a?: P2A;
 }) {
   const router = useRouter();
   const d = detail?.doc ?? null;
@@ -41,6 +45,7 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
   const [savedAt, setSavedAt] = useState<string | null>(d ? bangkok(d.updated_at).time : null);
   const [dirty, setDirty] = useState(false);
   const busy = useRef(false);
+  const fx = useDocFx(p2a, d, parseThaiDate(date), editable, () => setDirty(true));
 
   const { totals, idx, err } = useTotals(rows, incl, billDisc);
   const contact = contacts.find((c) => contactText.startsWith(`${c.code} `) || contactText === c.code) ?? null;
@@ -57,6 +62,7 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
     billDiscount: billDisc ? (lineDiscount(billDisc, '1', '0') ?? '0.00') : '0.00', ...(mode === 'IV' ? { taxMode } : {}), ruleCode: rule,
     address: address || null, notes: notes || null, reference: d?.reference ?? null, refDocumentId: d?.ref_document_id ?? null, creditDays,
     receiveAccount: mode === 'DP' ? receive : (d?.receive_account ?? null), deposits, lines: rows.filter(validRow).map(linePayload),
+    ...fx.payload(mode === 'IV'),
   });
 
   const save = useCallback(async (quiet = false): Promise<string | null> => {
@@ -73,7 +79,7 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
     if (!quiet) setMsg({ kind: 'ok', text: 'บันทึกร่างแล้ว' });
     if (!id) { setId(r.data.id); router.replace(`${mode === 'DP' ? '/sales/deposits' : '/sales/invoices'}/${r.data.id}`); }
     return r.data.id;
-  }, [editable, id, contact, date, due, rows, incl, billDisc, taxMode, rule, receive, address, notes]);
+  }, [editable, id, contact, date, due, rows, incl, billDisc, taxMode, rule, receive, address, notes, fx.currency, fx.rate, fx.branch, fx.warehouse]);
 
   // บันทึกร่างอัตโนมัติ (ScreenInvoice.dc.html "บันทึกร่างอัตโนมัติ 09:41") — เฉพาะเอกสารที่บันทึกแล้ว
   useEffect(() => {
@@ -112,6 +118,10 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
   }
 
   const set = (i: number, k: keyof LineRow, v: string | boolean) => { setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r))); setDirty(true); };
+  // P2A: ภาษีบรรทัด 3 ค่า (VAT 7% · ไม่มี VAT · 0% ส่งออก) — 0% เฉพาะเมื่อเปิดโมดูลหลายสกุลเงิน
+  const zeroOk = p2a.modules.multi_currency || rows.some((r) => r.zero);
+  const setVat = (i: number, v: string) => { setRows(rows.map((r, j) => (j === i ? { ...r, vat: v === '1', zero: v === 'z' } : r))); setDirty(true); };
+  const vatLabel = (r: LineRow) => (r.zero ? 'VAT 0%' : r.vat ? 'VAT 7%' : 'ไม่มี VAT');
   const status = d ? statusTag({ ...d, outstanding: detail?.outstanding ?? null }, today) : { kind: 'info' as const, text: 'ร่าง' };
   const title = mode === 'DP' ? 'ใบแจ้งหนี้มัดจำ' : taxMode === 'immediate' ? 'ใบแจ้งหนี้/ใบกำกับภาษี' : 'ใบแจ้งหนี้';
   const no = d ? docNo(d) : 'ใหม่';
@@ -170,6 +180,8 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
               // TODO(Wei): DP ไม่มีแบบร่าง — backend ลงบัญชี DP ตอนอนุมัติเป็น "รับเงินมัดจำ" ต้องมีบัญชีที่รับเงิน แต่ ScreenDeposit.dc.html ① บอกว่าแจ้งหนี้มัดจำไม่ลงบัญชี
               : <label style={css(F.label2)}>บัญชีที่รับเงิน<select disabled={!editable} value={receive} onChange={(e) => touch(setReceive)(e.target.value)} style={IN()}>{cashAccounts.map((a) => <option key={a.code} value={a.code}>{a.code} {a.name}</option>)}</select></label>}
             <label style={css(F.label)}>สูตรลงบัญชี<select disabled={!editable} value={rule} onChange={(e) => touch(setRule)(e.target.value)} style={IN()}>{docRules.map((r) => <option key={r.code} value={r.code}>{r.code} · {r.name}</option>)}</select></label>
+            {/* TODO(Wei): ช่อง P2A (สกุลเงิน/อัตรา/สาขา/คลัง) ไม่มีใน ScreenInvoice.dc.html — แสดงเมื่อเปิดโมดูลเท่านั้น (ชั่วคราว) */}
+            <DocFxFields fx={fx} withWarehouse={mode === 'IV'} idPrefix="iv" />
           </section>
 
           <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
@@ -189,7 +201,7 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
                       <td style={css(F.num)}>{editable ? <input aria-label={`ราคา/หน่วย บรรทัด ${i + 1}`} value={r.price} onChange={(e) => set(i, 'price', e.target.value)} onBlur={() => { if (parseDec(r.price, 4) !== null && !r.price.includes('.')) set(i, 'price', `${r.price.trim()}.00`); }} style={css(`${F.cellNum}; width: 110px`)} /> : r.price}</td>
                       <td style={css(F.num)}>{editable ? <input aria-label={`ส่วนลด บรรทัด ${i + 1}`} value={r.disc} onChange={(e) => set(i, 'disc', e.target.value)} style={css(`${F.cellNum}; width: 96px`)} /> : money(r.disc, { blankZero: true })}</td>
                       {/* TODO(Wei): ภาษีบรรทัด — แบบร่างแสดงแค่ "VAT 7%" · เพิ่ม "ไม่มี VAT" สำหรับค่าขนส่ง/ค่าเช่า (ม.81) */}
-                      <td style={css(F.td)}>{editable ? <select aria-label={`ภาษี บรรทัด ${i + 1}`} value={r.vat ? '1' : '0'} onChange={(e) => set(i, 'vat', e.target.value === '1')} style={css(`${F.cell}; width: 96px`)}><option value="1">VAT 7%</option><option value="0">ไม่มี VAT</option></select> : r.vat ? 'VAT 7%' : 'ไม่มี VAT'}</td>
+                      <td style={css(F.td)}>{editable ? <select aria-label={`ภาษี บรรทัด ${i + 1}`} value={r.zero ? 'z' : r.vat ? '1' : '0'} onChange={(e) => setVat(i, e.target.value)} style={css(`${F.cell}; width: 96px`)}><option value="1">VAT 7%</option><option value="0">ไม่มี VAT</option>{zeroOk && <option value="z">VAT 0% ส่งออก (ชั่วคราว)</option>}</select> : vatLabel(r)}</td>
                       <td style={css(F.num)}>{money(amount)}</td>
                     </tr>
                   );
@@ -214,7 +226,8 @@ export function InvoiceForm({ mode, detail, contacts, accounts, rules, names, to
                 {depositTotal > 0n && <tr><td style={css('height: 32px; padding: 0 16px 0 0')}>หัก เงินมัดจำ</td><td style={css('text-align: right; font-variant-numeric: tabular-nums')}>{money(fromCents(-depositTotal), { paren: true })}</td></tr>}
                 <tr><td style={css('height: 32px; padding: 0 16px 0 0')}>ภาษีมูลค่าเพิ่ม 7%</td><td style={css('text-align: right; font-variant-numeric: tabular-nums')}>{money(shown?.vat)}</td></tr>
                 <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css('height: 40px; padding: 0 16px 0 0; font-weight: 600; font-size: 16px')}>ยอดรวมทั้งสิ้น</td><td style={css('text-align: right; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums')}>{money(shown?.grand)}</td></tr>
-                <tr><td colSpan={2} style={css('font-size: 13px; color: #525252; text-align: right')}>{shown ? `(${shown.text})` : ''}</td></tr>
+                <tr><td colSpan={2} style={css('font-size: 13px; color: #525252; text-align: right')}>{shown && fx.currency === 'THB' ? `(${shown.text})` : ''}</td></tr>
+                <FxTotalRows currency={fx.currency} rate={fx.rate || d?.fx_rate} grand={shown?.grand} grandThb={!dirty && d?.grand_total_thb ? d.grand_total_thb : null} labelStyle="height: 32px; padding: 0 16px 0 0; font-size: 13px; color: #525252" numStyle="text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums" />
               </tbody>
             </table>
           </div>

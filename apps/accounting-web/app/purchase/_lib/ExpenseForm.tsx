@@ -5,6 +5,8 @@
 import { Button, ButtonLink, css, money, parseThaiDate, thaiDate, thaiMonth } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { P2A_OFF, type P2A } from '../../_p2a/types';
+import { DocFxFields, FxTotalRows, useDocFx } from '../../_p2a/ui';
 import { call } from '../../sales/_lib/client.ts';
 import { addDays } from '../../sales/_lib/doc.ts';
 import { fromCents, toCents } from '../../sales/_lib/num.ts';
@@ -20,8 +22,10 @@ const LABEL2 = 'grid-column: span 2; display: flex; flex-direction: column; gap:
 const CELL = 'height: 32px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px; padding: 0 8px; box-sizing: border-box';
 const CHEQUE = 'cheque';
 
-export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today }: {
+export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today, p2a = P2A_OFF }: {
   detail: PDetail | null; vendors: PContact[]; accounts: Account[]; whtTypes: Record<string, WhtTypeDef>; names: Record<string, string>; today: string;
+  /** P2A: สกุลเงิน/อัตรา/สาขา แสดงเมื่อเปิดโมดูลเท่านั้น — TODO(Wei): ชั่วคราว รอแบบร่าง */
+  p2a?: P2A;
 }) {
   const router = useRouter();
   const d = detail?.doc ?? null;
@@ -45,6 +49,7 @@ export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today 
   const pInfo = payee && detail?.contact?.id === payee.id ? detail.contact : payee;
   const expense = accounts.filter((a) => a.type === 'expense' && a.active);
   const iso = parseThaiDate(date);
+  const fx = useDocFx(p2a, d, iso, editable);
   const net = netLines(rows, totals, idx);
   const posted = d?.status === 'posted';
   const certs: Cert[] = detail ? certsOf(detail) : [];
@@ -61,6 +66,7 @@ export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today 
   const payload = () => ({
     docType: 'EXP' as const, contactId: payee?.id ?? '', issueDate: iso ?? '', dueDate: d?.due_date ?? null, vendorRef: vendorRef.trim() || null, priceInclVat: false,
     payNow, payFrom: payNow ? payFrom : null, notes: d?.notes ?? null, reference: d?.reference ?? null, lines: rows.filter(validP).map(pLinePayload),
+    ...fx.payload(false),
   });
   async function save(quiet = false): Promise<string | null> {
     if (!editable) return id;
@@ -113,6 +119,8 @@ export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today 
           {/* TODO(backend): มิติโครงการ (fixtures EXP2611-0019.dimension.project = PRJ-07) ยังไม่มีทะเบียน/ฟิลด์ */}
           <label style={css(LABEL)}>โครงการ (มิติ)<select disabled={!editable} style={IN}><option>ส่วนกลาง</option></select></label>
           <label style={css(LABEL)}>สูตรลงบัญชี<select disabled={!editable} value={payNow ? 'Cash[EXP]' : 'Credit[EXP]'} onChange={(e) => setPayNow(e.target.value === 'Cash[EXP]')} style={IN}><option value="Cash[EXP]">Cash[EXP] จ่ายทันที</option><option value="Credit[EXP]">Credit[EXP] ตั้งค้างจ่าย</option></select></label>
+          {/* TODO(Wei): ช่อง P2A (สกุลเงิน/อัตรา/สาขา) ไม่มีใน ScreenExpense.dc.html — แสดงเมื่อเปิดโมดูลเท่านั้น (ชั่วคราว) */}
+          <DocFxFields fx={fx} idPrefix="exp" />
         </section>
 
         <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
@@ -165,6 +173,7 @@ export function ExpenseForm({ detail, vendors, accounts, whtTypes, names, today 
             <tr><td style={css(P.sumTd)}>รวมค่าใช้จ่าย</td><td style={css(P.sumNum)}>{money(grand)}</td></tr>
             <tr><td style={css(P.sumTd)}>หัก ณ ที่จ่าย {rateText || '—'}{payNow ? '' : ' ตอนจ่าย'}</td><td style={css(P.sumNum)}>{money(fromCents(-toCents(whtSum)), { paren: true })}</td></tr>
             <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css(P.sumTotal)}>จ่ายจริง</td><td style={css(P.sumTotalNum)}>{money(grand ? fromCents(toCents(grand) - toCents(whtSum)) : null)}</td></tr>
+            <FxTotalRows currency={fx.currency} rate={fx.rate || d?.fx_rate} grand={grand} grandThb={d?.grand_total_thb ?? null} labelStyle="height: 28px; font-size: 13px; color: #525252" numStyle="text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums" />
           </tbody></table>
         </div>
         {err && <Msg msg={{ kind: 'err', text: err }} />}

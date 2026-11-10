@@ -19,10 +19,13 @@ export interface PDoc {
   created_at: string; updated_at: string; approved_at: string | null; voided_at: string | null; void_reason: string | null;
   /** ม.82/3 เดือนที่ใช้ภาษีซื้อ YYYY-MM · null = เดือนตามบิล */
   vat_claim_month?: string | null;
+  /** P2A หลายสกุลเงิน/สาขา/สต็อก (ค่าเดิมเมื่อปิดโมดูล) */
+  currency?: string; fx_rate?: string | null; branch_code?: string; warehouse_id?: string | null; grand_total_thb?: string | null;
 }
 export interface PLine {
   id: string; line_no: number; line_type: 'item' | 'heading' | 'note'; product_code: string | null; description: string;
   qty: string | null; unit_price: string | null; discount: string; amount: string; vat_rate: string | null; account_code: string | null; wht_type: string | null;
+  unit?: string | null;
 }
 /** GET /v1/contacts (listContacts) · GET /v1/documents/:id contact */
 export interface PContact {

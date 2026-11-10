@@ -4,6 +4,8 @@
 import { Button, ButtonLink, css, money, parseThaiDate, thaiDate } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { P2A_OFF, type P2A } from '../../_p2a/types';
+import { DocFxFields, FxTotalRows, useDocFx } from '../../_p2a/ui';
 import { call } from './client.ts';
 import { addDays, type Contact, daysBetween, docNo, type DocDetail, printHref, statusTag } from './doc.ts';
 import { blankLine, linePayload, type LineRow, parseItem, rowFromLine, useTotals, validRow } from './lines.ts';
@@ -16,8 +18,10 @@ const TERMS = ['มัดจำ 30% · ส่วนที่เหลือ 30 �
 const LEVELS: [number, string][] = [[1, 'ราคา 1 (ปกติ)'], [2, 'ราคา 2 (ตัวแทน)']];
 const SEL = 'height: 40px; padding: 0 16px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 15px; color: #161616';
 
-export function QuoteForm({ detail, contacts, extras, today, docType, presetContact }: {
+export function QuoteForm({ detail, contacts, extras, today, docType, presetContact, p2a = P2A_OFF }: {
   detail: DocDetail | null; contacts: Contact[]; extras: QuoteExtras; today: string; docType: 'QO' | 'SO'; presetContact?: string;
+  /** P2A: สกุลเงิน/อัตรา/สาขา แสดงเมื่อเปิดโมดูลเท่านั้น — TODO(Wei): ชั่วคราว รอแบบร่าง */
+  p2a?: P2A;
 }) {
   const router = useRouter();
   const d = detail?.doc ?? null;
@@ -46,6 +50,7 @@ export function QuoteForm({ detail, contacts, extras, today, docType, presetCont
   const contact = contacts.find((c) => contactText.startsWith(`${c.code} `) || contactText === c.code) ?? null;
   const set = (i: number, k: keyof LineRow, v: string | boolean) => setRows(rows.map((r, j) => (j === i ? { ...r, [k]: v } : r)));
   const iso = parseThaiDate(date);
+  const fx = useDocFx(p2a, d, iso, editable);
   const validUntil = iso && /^\d+$/u.test(days.trim()) ? addDays(iso, Number(days)) : null;
   /** ต้นทุนประมาณของบรรทัด = ต้นทุนต่อหน่วยของสินค้า × จำนวน · ไม่มีรหัสสินค้า → ต้นทุนที่บันทึกไว้ในบรรทัด */
   const estOf = (r: LineRow, i: number): string | null => {
@@ -62,6 +67,7 @@ export function QuoteForm({ detail, contacts, extras, today, docType, presetCont
     address: d?.address ?? null, notes: d?.notes ?? null, reference: d?.reference ?? null, refDocumentId: d?.ref_document_id ?? null, creditDays: d?.credit_days ?? null,
     salesperson: salesperson || null, projectCode: project || null, paymentTerms: term || null, priceLevel: level,
     lines: rows.map((r, i) => ({ r, i })).filter(({ r }) => validRow(r)).map(({ r, i }) => ({ ...linePayload(r), estCost: estOf(r, i) })),
+    ...fx.payload(false),
   });
   // บันทึกล่าสุด — อนุมัติโดยไม่บันทึกซ้ำถ้าไม่มีการแก้
   const [saved, setSaved] = useState<string | null>(d ? JSON.stringify(payload()) : null);
@@ -144,6 +150,8 @@ export function QuoteForm({ detail, contacts, extras, today, docType, presetCont
           <label style={css(F.label)}>เงื่อนไขชำระ<select value={term} onChange={(e) => { if (editable) setTerm(e.target.value); }} style={css(SEL)}>{[...new Set([...TERMS, term].filter(Boolean))].map((t) => <option key={t}>{t}</option>)}</select></label>
           {/* TODO(Wei): ไม่มีตัวเลือกสินค้าในแบบร่าง (รายการพิมพ์รหัสเอง) → ระดับราคาบันทึกในเอกสาร ยังไม่เติมราคาตามระดับให้อัตโนมัติ */}
           <label style={css(F.label)}>ระดับราคา<select value={level} onChange={(e) => { if (editable) setLevel(Number(e.target.value)); }} style={css(SEL)}>{LEVELS.map(([n, t]) => <option key={n} value={n}>{t}</option>)}</select></label>
+          {/* TODO(Wei): ช่อง P2A (สกุลเงิน/อัตรา/สาขา) ไม่มีใน ScreenQuote.dc.html — แสดงเมื่อเปิดโมดูลเท่านั้น (ชั่วคราว) */}
+          <DocFxFields fx={fx} idPrefix="qo" />
         </section>
         <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
           <table style={css('width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; line-height: 20px')}>
@@ -195,6 +203,7 @@ export function QuoteForm({ detail, contacts, extras, today, docType, presetCont
             <tr><td style={css('height: 32px')}>มูลค่าก่อนภาษี</td><td style={css('text-align: right; font-variant-numeric: tabular-nums')}>{money(totals?.net)}</td></tr>
             <tr><td style={css('height: 32px')}>ภาษีมูลค่าเพิ่ม 7%</td><td style={css('text-align: right; font-variant-numeric: tabular-nums')}>{money(totals?.vat)}</td></tr>
             <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css('height: 40px; font-weight: 600; font-size: 16px')}>ยอดรวม</td><td style={css('text-align: right; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums')}>{money(totals?.grandTotal)}</td></tr>
+            <FxTotalRows currency={fx.currency} rate={fx.rate || d?.fx_rate} grand={totals?.grandTotal ?? d?.grand_total} labelStyle="height: 28px; font-size: 13px; color: #525252" numStyle="text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums" />
             {deposit && <tr><td style={css('height: 28px; font-size: 13px; color: #525252')}>มัดจำ 30% เมื่อสั่ง</td><td style={css('text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums')}>{money(deposit)}</td></tr>}
           </tbody></table>
         </div>

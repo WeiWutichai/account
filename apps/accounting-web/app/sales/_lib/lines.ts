@@ -4,7 +4,8 @@ import { call } from './client.ts';
 import type { DocLine, Totals } from './doc.ts';
 import { fromCents, lineDiscount, parseDec, qtyText } from './num.ts';
 
-export interface LineRow { item: string; account: string; qty: string; price: string; disc: string; vat: boolean }
+/** zero = VAT 0% ส่งออก (P2A · vatCode 'zero' · vat_rate 0) — มีเฉพาะเมื่อเปิดโมดูลหลายสกุลเงิน · TODO(Wei): ชั่วคราว รอแบบร่าง */
+export interface LineRow { item: string; account: string; qty: string; price: string; disc: string; vat: boolean; zero?: boolean }
 export const blankLine = (): LineRow => ({ item: '', account: '', qty: '', price: '', disc: '', vat: true });
 
 /** "S-0001 พัฒนาซอฟต์แวร์" → { productCode: 'S-0001', description: 'พัฒนาซอฟต์แวร์' } */
@@ -17,9 +18,10 @@ const plain = (v: string | null) => (v === null ? '' : qtyText(v).replace(/,/gu,
 export const priceText = (v: string | null) => { if (v === null) return ''; const [i = '0', f = ''] = v.split('.'); const t = f.replace(/0+$/u, ''); return `${i.replace(/\B(?=(\d{3})+(?!\d))/gu, ',')}.${t.padEnd(2, '0')}`; };
 
 export function rowFromLine(l: DocLine): LineRow {
+  const zero = l.vat_rate !== null && parseDec(l.vat_rate, 4) === 0n;
   return {
     item: `${l.product_code ? `${l.product_code} ` : ''}${l.description}`, account: l.account_code ?? '', qty: plain(l.qty), price: priceText(l.unit_price),
-    disc: l.discount === '0.00' ? '' : l.discount, vat: l.vat_rate !== null,
+    disc: l.discount === '0.00' ? '' : l.discount, vat: l.vat_rate !== null && !zero, ...(zero ? { zero: true } : {}),
   };
 }
 
@@ -29,7 +31,8 @@ const dec = (v: string) => v.replace(/,/gu, '').trim();
 /** payload บรรทัดสำหรับ SalesDraftInput */
 export function linePayload(r: LineRow) {
   const { productCode, description } = parseItem(r.item);
-  return { lineType: 'item' as const, productCode, description, qty: dec(r.qty), unitPrice: dec(r.price), discount: lineDiscount(r.disc, r.qty, r.price) ?? '0.00', vat: r.vat, accountCode: r.account.trim().slice(0, 7) || null };
+  return { lineType: 'item' as const, productCode, description, qty: dec(r.qty), unitPrice: dec(r.price), discount: lineDiscount(r.disc, r.qty, r.price) ?? '0.00', vat: r.vat, accountCode: r.account.trim().slice(0, 7) || null,
+    ...(r.zero ? { vat: false, vatCode: 'zero' as const } : {}) };
 }
 
 /** ยอดเอกสารระหว่างกรอก · idx[i] = ตำแหน่งของบรรทัด i ใน totals.lines (-1 = ยังไม่ครบ) */

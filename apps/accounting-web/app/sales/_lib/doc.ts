@@ -25,6 +25,8 @@ export interface Doc {
   journal_id: string | null; created_by: string | null; approved_by: string | null; approved_at: string | null; created_at: string; updated_at: string;
   voided_at: string | null; void_reason: string | null; receive_account: string | null; credit_days: number | null; sent_at: string | null;
   salesperson?: string | null; project_code?: string | null; payment_terms?: string | null; price_level?: number | null; print_count?: number;
+  /** P2A หลายสกุลเงิน/สาขา/สต็อก (NULL/ค่าเดิม เมื่อปิดโมดูล) */
+  currency?: string; fx_rate?: string | null; branch_code?: string; warehouse_id?: string | null; grand_total_thb?: string | null; vat_thb?: string | null; base_thb?: string | null;
 }
 /** actor_name = ชื่อผู้ทำจาก Innovera ID (null = ระบบ/API) */
 export interface DocEvent { at: string; actor: string | null; actor_name: string | null; event: string; detail: Record<string, unknown> }

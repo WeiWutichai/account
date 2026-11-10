@@ -3,12 +3,17 @@ import { type LineRow, priceText, useTotals, validRow as validSales } from '../.
 import { parseDec, qtyText } from '../../sales/_lib/num.ts';
 import type { PLine, Totals } from './types.ts';
 
-export interface PLineRow { item: string; account: string; qty: string; price: string; vat: boolean; wht: string }
+/** unit = หน่วยของบรรทัด (P2A สต็อก · แสดงเมื่อเปิดโมดูลเท่านั้น) */
+export interface PLineRow { item: string; account: string; qty: string; price: string; vat: boolean; wht: string; unit?: string }
 export const blankPLine = (vat = true): PLineRow => ({ item: '', account: '', qty: '1', price: '', vat, wht: '' });
 
 const plain = (v: string | null) => (v === null ? '' : qtyText(v).replace(/,/gu, ''));
-export function pRowFromLine(l: PLine): PLineRow {
-  return { item: l.description, account: l.account_code ?? '', qty: plain(l.qty), price: priceText(l.unit_price), vat: l.vat_rate !== null, wht: l.wht_type ?? '' };
+export const pRowFromLine = (l: PLine): PLineRow => pRowOf(l, false);
+/** P2A สต็อก: แสดง "รหัสสินค้า ชื่อ" ในช่องรายการ */
+export const pRowWithCode = (l: PLine): PLineRow => pRowOf(l, true);
+function pRowOf(l: PLine, withCode: boolean): PLineRow {
+  return { item: withCode && l.product_code ? `${l.product_code} ${l.description}` : l.description, account: l.account_code ?? '', qty: plain(l.qty), price: priceText(l.unit_price), vat: l.vat_rate !== null, wht: l.wht_type ?? '',
+    ...(l.unit ? { unit: l.unit } : {}) };
 }
 const toSales = (r: PLineRow): LineRow => ({ item: r.item, account: r.account, qty: r.qty, price: r.price, disc: '', vat: r.vat });
 export const validP = (r: PLineRow): boolean => validSales(toSales(r));

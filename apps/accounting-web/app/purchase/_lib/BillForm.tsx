@@ -4,11 +4,14 @@
 import { Button, ButtonLink, css, money, parseThaiDate, thaiDate, thaiMonth } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { P2A_OFF, type P2A } from '../../_p2a/types';
+import { DocFxFields, FxTotalRows, TempHint, useDocFx } from '../../_p2a/ui';
+import { parseItem } from '../../sales/_lib/lines.ts';
 import { call } from '../../sales/_lib/client.ts';
 import { addDays, bangkok } from '../../sales/_lib/doc.ts';
 import { fromCents, subMoney, toCents } from '../../sales/_lib/num.ts';
 import { F, Msg } from '../../sales/_lib/ui';
-import { accCode, blankPLine, netLines, pLinePayload, type PLineRow, pRowFromLine, usePTotals, validP } from './lines.ts';
+import { accCode, blankPLine, netLines, pLinePayload, type PLineRow, pRowFromLine, pRowWithCode, usePTotals, validP } from './lines.ts';
 import { PJournal } from './PJournal';
 import {
   type Account, defaultWhtKeys, defaultWhtText, EVENT_TEXT, monthBE, outstandingOf, type Payable, pct, pDocNo, type PContact, type PDetail, pHref, pndOf, personText, pStatusTag, type WhtTypeDef, whtOptionText,
@@ -23,9 +26,11 @@ const LABEL = 'display: flex; flex-direction: column; gap: 4px; font-size: 13px;
 const LABEL2 = 'grid-column: span 2; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: #525252';
 const CELL = `${'height: 32px; border: 0; border-bottom: 1px solid #8d8d8d; background: #f4f4f4; font-family: inherit; font-size: 14px'}; padding: 0 8px; box-sizing: border-box`;
 
-export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, names, today, payable, periods }: {
+export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, names, today, payable, periods, p2a = P2A_OFF }: {
   detail: PDetail | null; po: PDetail | null; poReceived: string[]; vendors: PContact[]; accounts: Account[]; whtTypes: Record<string, WhtTypeDef>; names: Record<string, string>;
   today: string; payable: Payable | null; periods: PeriodLite[];
+  /** P2A: สกุลเงิน/อัตรา/สาขา/คลัง/หน่วย แสดงเมื่อเปิดโมดูลเท่านั้น — TODO(Wei): ชั่วคราว รอแบบร่าง */
+  p2a?: P2A;
 }) {
   const router = useRouter();
   const d = detail?.doc ?? null;
@@ -46,7 +51,8 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   const [vendorRef, setVendorRef] = useState(d?.vendor_ref ?? '');
   // เดือนที่ใช้ภาษีซื้อ = จำนวนเดือนที่เลื่อนจากเดือนตามบิล (0–6)
   const [claimMonth, setClaimMonth] = useState(d?.vat_claim_month ? (Number(d.vat_claim_month.slice(0, 4)) * 12 + Number(d.vat_claim_month.slice(5, 7))) - (Number(d.issue_date.slice(0, 4)) * 12 + Number(d.issue_date.slice(5, 7))) : 0);
-  const [rows, setRows] = useState<PLineRow[]>(detail ? detail.lines.filter((l) => l.line_type === 'item').map(pRowFromLine) : po ? poRows() : [blankPLine()]);
+  const inv = p2a.modules.inventory;
+  const [rows, setRows] = useState<PLineRow[]>(detail ? detail.lines.filter((l) => l.line_type === 'item').map(inv ? pRowWithCode : pRowFromLine) : po ? poRows() : [blankPLine()]);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
 
   const { totals, idx, err } = usePTotals(rows, d?.price_incl_vat ?? false);
@@ -66,6 +72,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
   }
   const expense = accounts.filter((a) => a.type === 'expense' && a.active);
   const iso = parseThaiDate(date);
+  const fx = useDocFx(p2a, d, iso, editable);
   const net = netLines(rows, totals, idx);
 
   // ภาษีหัก ณ ที่จ่าย "ตอนจ่าย": ค้างจ่าย → ตาม backend (whtForBill · หักฐานใบลดหนี้แล้ว) · จ่ายแล้ว → ตามใบสำคัญจ่าย · ร่าง → คาดไว้
@@ -83,7 +90,9 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
     docType: 'AP' as const, contactId: vendor?.id ?? '', issueDate: iso ?? '', dueDate: due ? parseThaiDate(due) : null, vendorRef: vendorRef.trim() || null,
     priceInclVat: d?.price_incl_vat ?? false, refDocumentId: d?.ref_document_id ?? po?.doc.id ?? null, notes: d?.notes ?? null, reference: d?.reference ?? null,
     vatClaimMonth: iso && claimMonth > 0 ? (() => { const t = Number(iso.slice(0, 4)) * 12 + Number(iso.slice(5, 7)) - 1 + claimMonth; return `${Math.floor(t / 12)}-${String((t % 12) + 1).padStart(2, '0')}`; })() : null,
-    lines: rows.filter(validP).map(pLinePayload),
+    // P2A สต็อก: "รหัสสินค้า ชื่อ" → productCode + หน่วย (เฉพาะเมื่อเปิดโมดูล)
+    lines: rows.filter(validP).map((r) => (inv ? { ...pLinePayload(r), ...parseItem(r.item), unit: r.unit?.trim() || null } : pLinePayload(r))),
+    ...fx.payload(true),
   });
   async function save(quiet = false): Promise<string | null> {
     if (!editable) return id;
@@ -161,12 +170,14 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
             <label style={css(LABEL)}>สูตรลงบัญชี<select disabled={!editable} value="Credit[AP]" onChange={() => undefined} style={IN}><option value="Credit[AP]">Credit[AP] ซื้อเชื่อ</option><option value="Cash[AP]" disabled>Cash[AP] ซื้อสด</option></select></label>
             {/* TODO(Wei): ตัวเลือก "ตั้งหนี้" ขัดกับ CLAUDE.md (หัก ณ ที่จ่ายรับรู้ตอนจ่ายเงินจริง — ล็อกแล้ว) → ปิดไว้ */}
             <label style={css(LABEL)}>รับรู้ WHT เมื่อ<select disabled={!editable} value="pay" onChange={() => undefined} style={IN}><option value="pay">จ่ายเงิน (นโยบายบริษัท)</option><option value="bill" disabled>ตั้งหนี้</option></select></label>
+            {/* TODO(Wei): ช่อง P2A (สกุลเงิน/อัตรา/สาขา/คลัง) ไม่มีใน ScreenPurchaseBill.dc.html — แสดงเมื่อเปิดโมดูลเท่านั้น (ชั่วคราว) */}
+            <DocFxFields fx={fx} withWarehouse idPrefix="ap" />
           </section>
 
           <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
             <datalist id="ap-expense">{expense.map((a) => <option key={a.code} value={`${a.code} ${a.name}`} />)}</datalist>
             <table style={css('width: 100%; min-width: 860px; border-collapse: collapse; font-size: 14px; line-height: 20px')}>
-              <thead><tr style={css('background: #f4f4f4; color: #525252; font-size: 13px; text-align: left')}><th style={css('height: 40px; padding: 0 12px; font-weight: 400')}>รายการ</th><th style={css('padding: 0 12px; font-weight: 400')}>บัญชี</th><th style={css('padding: 0 12px; font-weight: 400')}>มิติ</th><th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>จำนวน</th><th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>ราคา</th><th style={css('padding: 0 12px; font-weight: 400')}>ภาษีซื้อ</th><th style={css('padding: 0 12px; font-weight: 400')}>WHT</th><th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>จำนวนเงิน</th></tr></thead>
+              <thead><tr style={css('background: #f4f4f4; color: #525252; font-size: 13px; text-align: left')}><th style={css('height: 40px; padding: 0 12px; font-weight: 400')}>รายการ</th><th style={css('padding: 0 12px; font-weight: 400')}>บัญชี</th><th style={css('padding: 0 12px; font-weight: 400')}>มิติ</th><th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>จำนวน</th>{inv && <th style={css('padding: 0 12px; font-weight: 400')}>หน่วย<TempHint /></th>}<th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>ราคา</th><th style={css('padding: 0 12px; font-weight: 400')}>ภาษีซื้อ</th><th style={css('padding: 0 12px; font-weight: 400')}>WHT</th><th style={css('padding: 0 12px; font-weight: 400; text-align: right')}>จำนวนเงิน</th></tr></thead>
               <tbody>
                 {rows.map((r, i) => {
                   const k = idx[i] ?? -1;
@@ -181,6 +192,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
                       {/* TODO(backend): มิติ (โครงการ) ต่อบรรทัดยังไม่มีในเอกสาร */}
                       <td style={css('padding: 0 12px; color: #525252')}>—</td>
                       <td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums')}>{editable && !tms ? <input aria-label={`จำนวน บรรทัด ${i + 1}`} value={r.qty} onChange={(e) => set(i, 'qty', e.target.value)} style={css(`${CELL}; width: 64px; text-align: right; font-variant-numeric: tabular-nums`)} /> : r.qty}</td>
+                      {inv && <td style={css('padding: 0 12px')}>{editable && !tms ? <input aria-label={`หน่วย บรรทัด ${i + 1}`} value={r.unit ?? ''} placeholder="หน่วยหลัก" onChange={(e) => set(i, 'unit', e.target.value)} style={css(`${CELL}; width: 80px`)} /> : r.unit ?? ''}</td>}
                       <td style={css('padding: 0 12px; text-align: right; font-variant-numeric: tabular-nums')}>{editable && !tms ? <input aria-label={`ราคา บรรทัด ${i + 1}`} value={r.price} onChange={(e) => set(i, 'price', e.target.value)} style={css(`${CELL}; width: 110px; text-align: right; font-variant-numeric: tabular-nums`)} /> : r.price}</td>
                       <td style={css('padding: 0 12px')}>{editable ? <select aria-label={`ภาษีซื้อ บรรทัด ${i + 1}`} value={r.vat ? '1' : '0'} onChange={(e) => set(i, 'vat', e.target.value === '1')} style={css(P.cellSel)}><option value="1">7%</option><option value="0">ยกเว้น</option></select> : r.vat ? '7%' : 'ยกเว้น'}</td>
                       <td style={css('padding: 0 12px')}>{editable
@@ -191,7 +203,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
                   );
                 })}
                 {/* TODO(Wei): แบบร่างบิลซื้อ (จาก TMS) ไม่มีปุ่มเพิ่มบรรทัด — บิลที่กรอกเองใช้ "+ เพิ่มรายการ" จาก ScreenPurchaseOrder/ScreenExpense */}
-                {editable && !tms && <tr style={css('border-top: 1px solid #e0e0e0')}><td colSpan={8} style={css('padding: 0 12px')}><Button kind="ghost" size={32} onClick={() => setRows([...rows, { ...blankPLine(), wht: defaultWhtKeys(vReg)[0] ?? '' }])}>+ เพิ่มรายการ</Button></td></tr>}
+                {editable && !tms && <tr style={css('border-top: 1px solid #e0e0e0')}><td colSpan={inv ? 9 : 8} style={css('padding: 0 12px')}><Button kind="ghost" size={32} onClick={() => setRows([...rows, { ...blankPLine(), wht: defaultWhtKeys(vReg)[0] ?? '' }])}>+ เพิ่มรายการ</Button></td></tr>}
               </tbody>
             </table>
           </section>
@@ -212,6 +224,7 @@ export function BillForm({ detail, po, poReceived, vendors, accounts, whtTypes, 
               <tr><td style={css(P.sumTd)}>มูลค่าก่อนภาษี</td><td style={css(P.sumNum)}>{money(totals?.net ?? d?.subtotal)}</td></tr>
               <tr><td style={css(P.sumTd)}>ภาษีซื้อ</td><td style={css(P.sumNum)}>{money(totals?.vat ?? d?.vat, { blankZero: true })}</td></tr>
               <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css(P.sumTotal)}>ยอดตั้งหนี้</td><td style={css(P.sumTotalNum)}>{money(grand)}</td></tr>
+              <FxTotalRows currency={fx.currency} rate={fx.rate || d?.fx_rate} grand={grand} grandThb={d?.grand_total_thb ?? null} labelStyle="height: 28px; font-size: 13px; color: #525252" numStyle="text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums" />
               {cnr.length > 0 && <tr><td style={css('height: 28px; font-size: 13px; color: #525252')}>หัก ใบลดหนี้ {cnr.map((c) => c.doc_no).join(', ')}</td><td style={css('text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums')}>{money(fromCents(-cnr.reduce((s, c) => s + toCents(c.applied), 0n)), { paren: true })}</td></tr>}
               <tr><td style={css('height: 28px; font-size: 13px; color: #525252')}>หัก ณ ที่จ่าย {rateText || '—'} ตอนจ่าย{wht.some((w) => w.pendingAuditor) && <> <Pending /></>}</td><td style={css('text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums')}>{money(fromCents(-whtAmount), { paren: true })}</td></tr>
               <tr><td style={css('height: 28px; font-size: 13px; color: #525252')}>จ่ายจริง</td><td style={css('text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums')}>{money(base ? subMoney(base, whtText) : null)}</td></tr>
