@@ -7,21 +7,21 @@
 	header Referrer-Policy strict-origin-when-cross-origin
 	header -Server
 }
-app.innoveraapcenter.com {
+app.innoveraappcenter.com {
 	import innovera_common
 	reverse_proxy innovera-app:3000
 }
-id.innoveraapcenter.com {
+id.innoveraappcenter.com {
 	import innovera_common
 	reverse_proxy innovera-id:3000
 }
-admin.innoveraapcenter.com {
+admin.innoveraappcenter.com {
 	import innovera_common
 	# TODO(Wei): จำกัด IP ของทีม Innovera / VPN ก่อนเปิด Console ให้ใช้จริง
 	reverse_proxy innovera-admin:3000
 }
 # API ภายนอก (TMS/MCP ด้วย API key) — เปิดเฉพาะ /ext/* · /v1 (session) และ /console/v1 ไม่เปิดออกนอกเครื่อง
-api.innoveraapcenter.com {
+api.innoveraappcenter.com {
 	import innovera_common
 	handle /ext/* {
 		reverse_proxy innovera-api:4000
