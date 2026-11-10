@@ -64,6 +64,9 @@
 | 2026-11-09 | ค่าเช่าอาคาร | ไม่มี VAT (ม.81(1)(ฑ)) · รอบจ่าย 28 พ.ย. = 909,100 / 13,600 / 895,500 |
 | 2026-11-09 | Tenancy / ORM | **ทาง ค: ตารางรวม + company_id + RLS · Kysely** (ADR-001 · ผล spike 79 คะแนน) |
 | 2026-11-09 | repo / build | git local ในโฟลเดอร์นี้ · Claude Code เป็นผู้ build · Node 26.13 LTS |
+| 2026-11-10 | Production | VPS 187.52.117.52 ร่วมกับ JuneFlow · ใช้ Caddy ของ JuneFlow (แบบ 1) · app/id/admin/api.innoveraappcenter.com · ผู้ใช้จริงคนแรกสร้างด้วย bootstrap-owner (แบบ ข ไม่มีข้อมูลตัวอย่าง) · อีเมล/สำรองนอกเครื่อง = phase ถัดไป |
+| 2026-11-10 | ผังบัญชีแม่แบบ | เปิดครบ 4 แบบเพื่อ demo (ซื้อมาขายไป/DBD รอผู้สอบบัญชียืนยันรายการบัญชี) |
+| 2026-11-10 | Phase 2 | ครบ 12 โมดูล รองรับทุกธุรกิจรวม software · เริ่ม 2A (PLAN.md §12) |
 
 ## 4. เรื่องเปิดอยู่
 
@@ -120,6 +123,8 @@
 - แก้แบบร่าง → เผยแพร่เวอร์ชันใหม่ → ดาวน์โหลดกลับมาเทียบ → ส่งออกทับ `design/` + อัปเดต `MANIFEST.json` + เลขเวอร์ชันใน `CLAUDE.md`, `design/README.md`, `docs/page-map.md`, ไฟล์นี้
 
 ## 7. บันทึกงาน (ใหม่อยู่บน)
+
+- **2026-11-10 กลางคืน** · Claude Code · **smoke test + deploy production + เริ่ม Phase 2A**: smoke ครบวงจร 72/72 ขั้น + เปิดทุกหน้า 95/96 · แก้บั๊ก อายุหนี้นับใบร่าง/ยกเลิก (เงื่อนไขอยู่ในคอมเมนต์) · ภาษีซื้อเงินสดย่อยไม่อยู่ในรายงานภาษีซื้อ · redirect หลัง proxy ไป localhost · console-web ไม่ถูก build · deploy ขึ้น VPS (`deploy/deploy-vps.sh`) · GitHub `WeiWutichai/account` (public — แนะนำเปลี่ยน private) · ผังแม่แบบครบ 4 แบบ · สำรวจ Phase 2 (`docs/phase2-all-business-survey.md`) · Technical Plan 2A + subagent 3 กลุ่ม (INV · FXB · SWT) ใน worktree test DB `innovera_test_w[a-c]`
 
 - **2026-11-10 ค่ำ** · Claude Code · **ทำครบทุกหน้า + ปิด TODO(backend)** (branch `feat/remaining-pages`): หน้า ScreenContacts · ScreenProducts · ScreenCheque · ScreenSettings (เดิมเป็นหน้า "ยังไม่เปิดใช้") · Sidebar ป้ายงานค้าง + ชื่อผู้ใช้จริง · รายงานตรวจความถูกต้องครบ 16 จุด · แก้บิลซื้อที่ผ่านแล้ว (JV โอนย้ายบัญชี · ปิดแข็งแก้ไม่ได้) · migration 0014–0019 · subagent 6 ตัว (2 หน้าจอ + 4 กลุ่ม backend ใน worktree แยก test DB `innovera_test_w[a-d]`) ตรวจและรวมแล้ว · สำรวจทุกหน้า: 78/78 เปิดได้ (ScreenRevoke redirect เมื่อไม่ระบุแอป) · verify --force 42/42 · db 150 test · e2e 3 ชุดผ่าน · เรื่องใหม่ที่ต้องตัดสิน T17–T23
 
