@@ -67,7 +67,7 @@ export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs
   return (
     <>
       <header style={css(S.topbar)}>
-        <span style={css(S.crumb)}>ภาษี / เดือนภาษี {monthShort(ym)}</span>
+        <span style={css(branches.length > 0 ? `${S.crumb}; flex: 1` : S.crumb)}>ภาษี / เดือนภาษี {monthShort(ym)}</span>
         <select aria-label="เดือนภาษี" value={ym} onChange={(e) => go({ month: e.target.value })} style={css('height: 32px; padding: 0 12px; border: 1px solid #8d8d8d; background: #ffffff; font-family: inherit; font-size: 13px')}>
           {months.map((m) => <option key={m} value={m}>{monthShort(m)}{filedMonths.includes(m) ? ' · ยื่นแล้ว' : ''}</option>)}
         </select>
