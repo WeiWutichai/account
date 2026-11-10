@@ -19,7 +19,9 @@
     "./hub": "./src/hub.ts",
     "./console": "./src/console.ts",
     "./master": "./src/master.ts",
-    "./master-import": "./src/master-import.ts"
+    "./master-import": "./src/master-import.ts",
+    "./contract": "./src/contract.ts",
+    "./foreign-tax": "./src/foreign-tax.ts"
   },
   "scripts": {
     "lint": "eslint src test",
