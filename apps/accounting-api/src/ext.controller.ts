@@ -7,6 +7,7 @@ import type { Db } from '@innovera/db';
 import { addWebhook, recordApiCall, syncContacts, verifyApiKey, type ApiCallInput, type ApiScope, type WebhookEventName } from '@innovera/db/hub';
 import { createDraftDocument, trialBalance } from '@innovera/db/ledger';
 import { getDocument, listDocuments } from '@innovera/db/sales';
+import { recordUsage } from '@innovera/db/contract';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Request, Response } from 'express';
@@ -65,6 +66,11 @@ export class ApiCallInterceptor implements NestInterceptor {
   }
 }
 
+const UsageBody = z.object({
+  contract_code: z.string().min(1), line_no: z.number().int().positive(), usage_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/u), qty: z.string().regex(/^\d+(\.\d{1,4})?$/u),
+  external_source: z.string().min(1), external_ref: z.string().min(1),
+});
+
 const shape = (d: NonNullable<Awaited<ReturnType<typeof getDocument>>>) => ({
   id: d.doc.id, doc_type: d.doc.doc_type, doc_no: d.doc.doc_no, status: d.doc.status, issue_date: d.doc.issue_date, due_date: d.doc.due_date,
   external_source: d.doc.external_source, external_ref: d.doc.external_ref, subtotal: d.doc.subtotal, vat: d.doc.vat, grand_total: d.doc.grand_total, outstanding: d.outstanding,
@@ -86,6 +92,23 @@ export class ExtController {
     const parsed = items.map((x, i) => { const r = DocumentDraftCreate.safeParse(x); if (!r.success) throw new BadRequestException(`เอกสารที่ ${i + 1}: ${r.error.issues.map((e) => `${e.path.join('.')} ${e.message}`).join('; ')}`); return r.data; });
     const out = [];
     for (const d of parsed) out.push(await createDraftDocument(this.db, req.api!.companyId, d as never, req.api!.id));
+    return Array.isArray(body) ? out : out[0];
+  }
+  /**
+   * ยอดใช้งานของสัญญาแบบคิดตามการใช้งาน (Phase 2A SWT) — ข้อมูลร่าง ไม่ลงบัญชี (ออกเป็นบรรทัดใน IV ร่างของรอบบิลถัดไป · ผู้ใช้อนุมัติเอง)
+   * ใช้ scope documents:draft (ไม่เพิ่ม scope ใหม่) · idempotent ด้วย external_source + external_ref
+   */
+  @Scope('documents:draft') @Post('usage')
+  async usage(@Req() req: ApiReq, @Body() body: unknown) {
+    const items = Array.isArray(body) ? body : [body];
+    if (items.length > 500) throw new BadRequestException('ส่งได้ครั้งละไม่เกิน 500 รายการ');
+    const out = [];
+    for (const [i, x] of items.entries()) {
+      const r = UsageBody.safeParse(x);
+      if (!r.success) throw new BadRequestException(`รายการที่ ${i + 1}: ${r.error.issues.map((e) => `${e.path.join('.')} ${e.message}`).join('; ')}`);
+      out.push(await recordUsage(this.db, req.api!.companyId, { contractCode: r.data.contract_code, lineNo: r.data.line_no, usageDate: r.data.usage_date, qty: r.data.qty,
+        externalSource: r.data.external_source, externalRef: r.data.external_ref }, req.api!.id));
+    }
     return Array.isArray(body) ? out : out[0];
   }
   @Scope('documents:read') @Get('documents/:id')
