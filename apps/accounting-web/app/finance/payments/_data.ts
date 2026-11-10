@@ -37,11 +37,12 @@ export function pctOf(wht: string, base: string | null): string | null {
 
 /** หมายเหตุในช่อง "บิล" ตามแบบร่าง: บิลจาก TMS → ป้าย TMS · มีใบลดหนี้ซื้อ → "หลัง CNR…" · ไม่มี VAT → "<รายการ> ยกเว้น VAT"
  * TODO(Wei) ScreenPayment.dc.html: แบบร่างแสดงหมายเหตุเฉพาะบางแถว (AP2611-0088/0091 ก็ยกเว้น VAT แต่แสดงแค่ป้าย TMS) — ใช้ลำดับ TMS → CNR → ยกเว้น VAT ตามตัวอย่าง */
-function billNote(b: DocDetail): Pick<BillRow, 'tms' | 'cnr' | 'desc' | 'exempt'> {
+function billNote(b: DocDetail): Pick<BillRow, 'tms' | 'cnr' | 'desc' | 'exempt' | 'currency'> {
   const tms = (b.doc.external_source ?? '').toLowerCase() === 'tms';
   const cnr = b.settlementsIn.filter((s) => !s.voided && s.doc_type === 'CNR').map((s) => s.doc_no).join(', ') || null;
   const exempt = !tms && !cnr && cents(b.doc.vat) === 0n;
-  return { tms, cnr, exempt, desc: exempt ? (b.lines.find((l) => l.line_type === 'item' && l.description)?.description ?? null) : null };
+  return { tms, cnr, exempt, desc: exempt ? (b.lines.find((l) => l.line_type === 'item' && l.description)?.description ?? null) : null,
+    ...(b.doc.currency && b.doc.currency !== 'THB' ? { currency: b.doc.currency } : {}) };
 }
 
 /** บิลค้างจ่ายทั้งหมด (เรียงตามครบกำหนด) → แถวของรอบจ่ายใหม่ */

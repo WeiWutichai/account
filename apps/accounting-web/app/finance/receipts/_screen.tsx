@@ -6,12 +6,16 @@
 import { Button, ButtonLink, buttonStyle, css, money, parseThaiDate, S, Tag, thaiDate, TopBar, href } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { P2A_OFF, type P2A } from '../../_p2a/types';
+import { P2A_INPUT, P2A_LABEL, rateText, TempHint, toThb } from '../../_p2a/ui';
 import { cents, fromCents, norm, pctToBp, bpToRate, rateToPct, roundDiv } from '../_shared/num';
 import { docVoidHref, PRINT, type Account, type Cheque, type DocDetail, type DocRow, type JournalRow } from '../_shared/types';
 
 export interface Row {
   id: string; docNo: string; due: string | null; outstanding: string; grandTotal: string; vat: string; taxMode: string | null;
   desc: string | null; vatDueBefore: string; checked: boolean; applied: string; wht: string; whtBase: string | null; remaining: string | null;
+  /** P2A: สกุลของใบแจ้งหนี้ (ยอดในแถวเป็นสกุลนี้) */
+  currency?: string;
 }
 export interface ReceiptView {
   doc: DocDetail['doc']; contactLabel: string; cheque: Cheque | null; journal: JournalRow[]; billingNo: string | null; voidJournalNo: string | null;
@@ -25,6 +29,8 @@ interface Props {
   view?: ReceiptView;
   initial?: { contactId: string | null; billingId: string | null; billingNo: string | null };
   warnings?: string[];
+  /** P2A: อัตรา ณ วันรับ (ใบแจ้งหนี้สกุลต่างประเทศ) + สาขา — แสดงเมื่อเปิดโมดูลเท่านั้น · TODO(Wei): ชั่วคราว รอแบบร่าง */
+  p2a?: P2A;
 }
 
 // ตัวเลือกตามแบบร่าง (ตัวอักษรตามไฟล์)
@@ -48,7 +54,7 @@ function whtOf(r: Row, bp: bigint | null): { base: bigint; wht: bigint } {
   return { base, wht: roundDiv(base * bp, 10000n) };
 }
 
-export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRows, view, initial, warnings = [] }: Props) {
+export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRows, view, initial, warnings = [], p2a = P2A_OFF }: Props) {
   const router = useRouter();
   const ro = mode === 'view';
   const d = view?.doc;
@@ -68,6 +74,23 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const bp = pctToBp(ratePct);
+  // ---------- P2A: สกุลเงิน/สาขา ----------
+  const [fxRate, setFxRate] = useState(d?.fx_rate ? rateText(d.fx_rate) : '');
+  const [fxManual, setFxManual] = useState(false);
+  const [fxNote, setFxNote] = useState<string | null>(null);
+  const [branch, setBranch] = useState('');
+  const docCur = ro ? (d?.currency ?? 'THB') : (rows.find((r) => r.checked)?.currency ?? 'THB');
+  const foreign = docCur !== 'THB';
+  const isoDate = parseThaiDate(date);
+  useEffect(() => {
+    if (ro || !foreign || fxManual || !isoDate) return;
+    const ctl = new AbortController();
+    void fetch(`/api/proxy/fx/rates/on?currency=${docCur}&date=${isoDate}`, { signal: ctl.signal }).then(async (r) => {
+      const j = (await r.json()) as { rate?: string; error?: string };
+      if (r.ok && j.rate) { setFxRate(rateText(j.rate)); setFxNote(`อัตรา ณ ${isoDate} จากทะเบียนอัตรา`); } else { setFxRate(''); setFxNote(j.error ?? 'ยังไม่มีอัตรา ณ วันที่นี้'); }
+    }).catch(() => undefined);
+    return () => ctl.abort();
+  }, [ro, foreign, docCur, isoDate, fxManual]);
 
   // ---------- โหลดเอกสารค้างของลูกค้า (รับชำระใหม่) ----------
   async function loadOpen(cid: string, preselect: string[] = []) {
@@ -83,6 +106,7 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
         desc: det.lines.find((l) => l.description)?.description ?? null,
         vatDueBefore: fromCents(det.settlementsIn.filter((s) => !s.voided).reduce((s, x) => s + cents(x.vat_due), 0n)),
         checked: preselect.includes(it.id), applied: preselect.includes(it.id) ? money(out) : '', wht: '0.00', whtBase: null, remaining: null,
+        ...(det.doc.currency && det.doc.currency !== 'THB' ? { currency: det.doc.currency } : {}),
       };
     }));
   }
@@ -166,6 +190,7 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
         contactId, date: iso, receiveAccount: account, fee: fromCents(feeC), feeAccount,
         applications: rows.map((r, i) => ({ r, c: calc[i]! })).filter(({ r }) => r.checked).map(({ r, c }) => ({ documentId: r.id, applied: fromCents(c.applied), wht: fromCents(c.wht), ...(c.wht > 0n ? { whtBase: fromCents(c.base) } : {}) })),
         whtCertNo: whtOn ? certNo.trim() || null : null, whtRate: whtOn && bp ? bpToRate(bp) : null, billingId: initial?.billingId ?? null, cheque: chq,
+        ...(foreign && fxRate.trim() ? { fxRate: fxRate.replace(/,/gu, '').trim() } : {}), ...(p2a.modules.branches && branch ? { branchCode: branch } : {}),
       }),
     });
     const r = (await res.json()) as { id?: string; docNo?: string; warnings?: string[]; error?: string | string[] };
@@ -203,6 +228,13 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
             <label style={css(`grid-column: span 2; ${LABEL}`)}>ธนาคาร / สาขา<input readOnly={ro} value={cheque.bank} onChange={(e) => setCheque({ ...cheque, bank: e.target.value })} style={css(INPUT)} /></label>
             <label style={css(LABEL)}>วันที่บนเช็ค<input readOnly={ro} value={cheque.date} placeholder={ro ? undefined : 'วว/ดด/ปปปป'} onChange={(e) => setCheque({ ...cheque, date: e.target.value })} style={css(`${INPUT}; font-variant-numeric: tabular-nums`)} /></label>
           </>)}
+          {/* TODO(Wei): ช่อง P2A (อัตรา ณ วันรับ · สาขา) ไม่มีใน ScreenReceipt.dc.html — แสดงเมื่อเปิดโมดูล/ใบสกุลต่างประเทศเท่านั้น (ชั่วคราว) */}
+          {foreign && <label style={css(P2A_LABEL)}><span>{`อัตรา ณ วันรับ (บาท/1 ${docCur})`}<TempHint /></span>
+            <input readOnly={ro} inputMode="decimal" value={fxRate} onChange={(e) => { setFxManual(true); setFxRate(e.target.value); setFxNote(null); }} style={css(`${P2A_INPUT}; text-align: right; font-variant-numeric: tabular-nums`)} />
+            {!ro && fxNote && <span style={css('font-size: 12px; color: #525252')}>{fxNote}</span>}</label>}
+          {p2a.modules.branches && !ro && <label style={css(P2A_LABEL)}><span>สาขาที่รับ<TempHint /></span>
+            <select value={branch} onChange={(e) => setBranch(e.target.value)} style={css(P2A_INPUT)}><option value="">ตามใบแจ้งหนี้</option>{p2a.branches.map((b) => <option key={b.code} value={b.code}>{b.code} {b.name}</option>)}</select></label>}
+          {ro && d?.branch_code && d.branch_code !== '00000' && <div style={css(P2A_LABEL)}><span>สาขา<TempHint /></span><span style={css('font-size: 15px; color: #161616')}>{d.branch_code}</span></div>}
         </section>
         <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
           <div style={css('padding: 8px 12px; border-bottom: 1px solid #e0e0e0; font-size: 14px; display: flex; justify-content: space-between')}><span>เอกสารค้างชำระ · ระบุยอดที่ตัด</span><span style={css('color: #525252')}>เรียงตามครบกำหนด (เก่าก่อน)</span></div>
@@ -215,7 +247,7 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
                 return (
                   <tr key={r.id} style={css(`border-top: 1px solid #e0e0e0${r.checked ? '; background: #e0e0e0' : ''}`)}>
                     <td style={css('height: 40px; padding: 0 12px')}><input type="checkbox" checked={r.checked} aria-readonly={ro || undefined} onChange={(e) => { if (!ro) toggle(i, e.target.checked); }} style={css('width: 16px; height: 16px; margin: 0')} aria-label="เลือก" /></td>
-                    <td style={css(TD)}><a href={`${href('invoice')}/${r.id}`} style={css('text-decoration: none; font-weight: 500')}>{r.docNo}</a>{r.checked && c.wht > 0n && <> <span style={css('color: #525252')}>{r.desc ? `${r.desc} · ` : ''}ฐาน {money(fromCents(c.base))} + VAT {money(r.vat)}</span></>}</td>
+                    <td style={css(TD)}><a href={`${href('invoice')}/${r.id}`} style={css('text-decoration: none; font-weight: 500')}>{r.docNo}</a>{r.currency && <span style={css('font-size: 12px; color: #525252')}> {r.currency}</span>}{r.checked && c.wht > 0n && <> <span style={css('color: #525252')}>{r.desc ? `${r.desc} · ` : ''}ฐาน {money(fromCents(c.base))} + VAT {money(r.vat)}</span></>}</td>
                     <td style={css(TD)}>{r.due ? thaiDate(r.due) : '—'}</td>
                     <td style={css(NUM)}>{money(r.outstanding)}</td>
                     {r.checked ? <td style={css(NUM)}>{money(fromCents(c.wht))}</td> : <td style={css(MUTED_NUM)}>—</td>}
@@ -250,6 +282,8 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
             <tr><td style={css('height: 32px')}>ถูกหัก ณ ที่จ่าย</td><td style={css('text-align: right; font-variant-numeric: tabular-nums')}>{money(fromCents(wht))}</td></tr>
             <tr><td style={css('height: 32px')}>ค่าธรรมเนียม</td><td style={css('text-align: right; font-variant-numeric: tabular-nums')}>{money(fromCents(-feeC), { paren: true })}</td></tr>
             <tr style={css('border-top: 1px solid #8d8d8d')}><td style={css('height: 40px; font-weight: 600; font-size: 16px')}>เงินเข้าบัญชีจริง</td><td style={css('text-align: right; font-weight: 600; font-size: 16px; font-variant-numeric: tabular-nums')}>{money(ro ? d!.grand_total : fromCents(cashIn))}</td></tr>
+            {foreign && <tr><td style={css('height: 28px; font-size: 13px; color: #525252')}>{`สกุล ${docCur} · เงินเข้าเป็นบาท${ro && d?.grand_total_thb ? '' : ' (ประมาณ)'}`}<TempHint /></td>
+              <td style={css('text-align: right; font-size: 13px; color: #525252; font-variant-numeric: tabular-nums')}>{money((ro ? d?.grand_total_thb : null) ?? toThb(ro ? d!.grand_total : fromCents(cashIn), fxRate) ?? '')}</td></tr>}
           </tbody></table>
         </div>
         <section style={css('background: #f4f4f4; border: 1px solid #e0e0e0; max-width: 560px')}>
@@ -263,6 +297,7 @@ export function ReceiptScreen({ mode, today, contacts, accounts, rows: initialRo
               </tr>
             ))}
           </tbody></table>
+          {foreign && !ro && <p style={css('margin: 0; padding: 8px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #684e00')}>{`ตัวอย่างเป็นยอดสกุล ${docCur} — ระบบลงบัญชีเป็นบาท ล้างลูกหนี้ตามอัตราเดิมของใบแจ้งหนี้ ผลต่างลงกำไร/ขาดทุนจากอัตราแลกเปลี่ยน (4910100/5920100)`} (ชั่วคราว)</p>}
           {vatShown > 0n && <p style={css('margin: 0; padding: 8px 16px; border-top: 1px solid #e0e0e0; font-size: 13px; color: #525252')}>ใบที่ตัดรอบนี้เป็นค่าบริการที่มี VAT ระบบจึงออก “ใบเสร็จรับเงิน/ใบกำกับภาษี” และโอน Dr 2150400 ภาษีขายยังไม่ถึงกำหนด → Cr 2150100 ภาษีขาย ในรายการเดียวกัน (จุดภาษีเกิดเมื่อรับชำระ ม.78/1)</p>}
         </section>
         {warnings.map((w) => <div key={w} role="status" style={css('padding: 12px 16px; border: 1px solid #e0e0e0; border-left: 3px solid #f1c21b; font-size: 14px')}>{w}</div>)}

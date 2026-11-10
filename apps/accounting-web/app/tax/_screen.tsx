@@ -6,6 +6,8 @@
 import { buttonStyle, css, money, S, Tag, thaiDate } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { Fragment, useState } from 'react';
+import type { Branch } from '../_p2a/types';
+import { TempHint } from '../_p2a/ui';
 import { call } from '../sales/_lib/client';
 import { Msg } from '../sales/_lib/ui';
 import type { VatReport, VatRow } from './_lib/data';
@@ -19,6 +21,8 @@ export interface CertRow { id: string; certNo: string; pnd: '3' | '53'; payDate:
 interface Props {
   ym: string; tab: TabId; months: string[]; filedMonths: string[]; today: string; vat: VatReport; pnd: Record<'3' | '53', PndView>; certs: CertRow[];
   review: ReviewItem[]; missingPostcode: number; due: Deadlines;
+  /** P2A สาขา: ทะเบียนสาขา (ว่าง = ปิดโมดูล → ไม่แสดงตัวกรอง) · สาขาที่กรอง */
+  branches?: Branch[]; branch?: string | null;
 }
 
 const TABS: [TabId, string][] = [['pp30', 'ภ.พ.30'], ['sales', 'รายงานภาษีขาย'], ['purchases', 'รายงานภาษีซื้อ'], ['pnd3', 'ภ.ง.ด.3'], ['pnd53', 'ภ.ง.ด.53'], ['wht', '50 ทวิ ที่ออก'], ['pnd1', 'ภ.ง.ด.1'], ['etax', 'e-Tax Invoice']];
@@ -29,7 +33,7 @@ const LINK = 'text-decoration: none';
 const DOT = (c: string) => `display: inline-block; width: 8px; height: 8px; border-radius: 999px; background: ${c}`;
 const mp = (v: string): string => money(v, { paren: true });
 
-export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs, review, missingPostcode, due }: Props) {
+export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs, review, missingPostcode, due, branches = [], branch = null }: Props) {
   const router = useRouter();
   const p = vat.pp30;
   const [busy, setBusy] = useState(false);
@@ -47,12 +51,13 @@ export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs
     setMsg({ kind: 'ok', text: `บันทึกว่ายื่นแล้ว${r.data.journalNo ? ` · ${r.data.journalNo}` : ''}` });
     router.refresh();
   }
-  const go = (q: { month?: string; tab?: TabId }) => {
-    const sp = new URLSearchParams({ month: q.month ?? ym, ...((q.tab ?? tab) === 'pp30' ? {} : { tab: q.tab ?? tab }) });
+  const go = (q: { month?: string; tab?: TabId; branch?: string | null }) => {
+    const b = q.branch === undefined ? branch : q.branch;
+    const sp = new URLSearchParams({ month: q.month ?? ym, ...((q.tab ?? tab) === 'pp30' ? {} : { tab: q.tab ?? tab }), ...(b ? { branch: b } : {}) });
     router.push(`/tax?${sp.toString()}`);
   };
   // ยอดขายที่เสียภาษีอัตราร้อยละ 0 = ยอดขาย − ยกเว้น − ที่ต้องเสียภาษี (API ยังไม่แยกบรรทัด 0% · ธุรกิจบริการ v1 ไม่มียอด 0%)
-  const zeroRated = sub(sub(p.salesTotal, p.exemptSales), p.taxableSales);
+  const zeroRated = p.zeroRatedSales ?? sub(sub(p.salesTotal, p.exemptSales), p.taxableSales);
   // ข้อ 10 ภาษีที่ชำระเกินยกมา = ยอดยกไปของ ภ.พ.30 เดือนก่อนที่บันทึกว่ายื่นแล้ว · ข้อ 11 = 8–9 − 10
   const carried = p.carriedForward;
   const net = p.netAfterCarry;
@@ -66,6 +71,11 @@ export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs
         <select aria-label="เดือนภาษี" value={ym} onChange={(e) => go({ month: e.target.value })} style={css('height: 32px; padding: 0 12px; border: 1px solid #8d8d8d; background: #ffffff; font-family: inherit; font-size: 13px')}>
           {months.map((m) => <option key={m} value={m}>{monthShort(m)}{filedMonths.includes(m) ? ' · ยื่นแล้ว' : ''}</option>)}
         </select>
+        {/* TODO(Wei): ตัวกรองสาขา ไม่มีใน ScreenTax.dc.html — แสดงเมื่อเปิดโมดูลสาขาเท่านั้น (ชั่วคราว) */}
+        {branches.length > 0 && <label style={css('display: inline-flex; gap: 8px; align-items: center; font-size: 13px; color: #525252; margin-left: 8px')}><span>สาขา<TempHint /></span>
+          <select aria-label="สาขา" value={branch ?? ''} onChange={(e) => go({ branch: e.target.value || null })} style={css('height: 32px; padding: 0 12px; border: 1px solid #8d8d8d; background: #ffffff; font-family: inherit; font-size: 13px')}>
+            <option value="">ทุกสาขา</option>{branches.map((b) => <option key={b.code} value={b.code}>{b.code} {b.name}</option>)}
+          </select></label>}
       </header>
       <div style={css(S.content)}>
         <div><h1 style={css(S.h1)}>ภาษีประจำเดือน {monthShort(ym)}</h1><span style={css(S.sub)}>ระบบรวบรวมจากเอกสารที่ลงบัญชีแล้ว · ตรวจก่อนยื่น · ส่งออกไฟล์ยื่นออนไลน์ (e-Filing) ได้ทุกแบบ</span></div>
@@ -125,6 +135,7 @@ export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs
                 </div>
               </>
             )}
+            {branches.length > 0 && tab === 'pp30' && vat.byBranch && vat.byBranch.length > 0 && <BranchSummary vat={vat} />}
             {(tab === 'sales' || tab === 'purchases') && <VatTable rows={vat[tab].rows} base={vat[tab].base} vatSum={vat[tab].vat} purchases={tab === 'purchases'} />}
             {(tab === 'pnd3' || tab === 'pnd53') && <PndTable v={pnd[tab === 'pnd3' ? '3' : '53']} />}
             {tab === 'wht' && <CertTable rows={certs} />}
@@ -178,6 +189,24 @@ export function TaxScreen({ ym, tab, months, filedMonths, today, vat, pnd, certs
   );
 }
 
+/** P2A สาขา: ภาษีขาย/ซื้อแยกสาขา (GET /v1/tax/vat byBranch) — TODO(Wei): ชั่วคราว รอแบบร่าง · ยื่นแยก/รวม = branch.vat_filing (รอยืนยัน) */
+function BranchSummary({ vat }: { vat: VatReport }) {
+  return (
+    <div style={css(S.tableBox)}>
+      <div style={css('padding: 12px 16px; border-bottom: 1px solid #e0e0e0; display: flex; justify-content: space-between; font-size: 14px')}>
+        <strong style={css('font-weight: 600')}>แยกตามสาขา<TempHint /></strong>
+        <span style={css('color: #525252')}>{`${vat.branch ? `กรองสาขา ${vat.branch} · ` : ''}ยื่น ภ.พ.30 ${vat.vatFiling === 'combined' ? 'รวมสาขา' : 'แยกสาขา'}`} <Tag kind="warning">รอยืนยัน</Tag></span>
+      </div>
+      <table style={css(S.table)}>
+        <thead><tr style={css(S.theadRow)}><th style={css(S.thFirst)}>สาขา</th><th style={css(`${S.th}; text-align: right`)}>ภาษีขาย</th><th style={css(`${S.th}; text-align: right`)}>ภาษีซื้อ</th><th style={css(`${S.th}; text-align: right`)}>สุทธิ</th></tr></thead>
+        <tbody>{(vat.byBranch ?? []).map((b) => (
+          <tr key={b.branch} style={css(S.tr)}><td style={css('height: 40px; padding: 0 12px')}>{b.branch}</td><td style={css(S.num)}>{mp(b.outputVat)}</td><td style={css(S.num)}>{mp(b.inputVat)}</td><td style={css(S.num)}>{mp(b.netPayable)}</td></tr>
+        ))}</tbody>
+      </table>
+    </div>
+  );
+}
+
 function sub(a: string, b: string): string {
   const c = (v: string): bigint => { const n = v.startsWith('-'); const [i = '0', f = ''] = (n ? v.slice(1) : v).split('.'); const x = BigInt(i || '0') * 100n + BigInt((f + '00').slice(0, 2)); return n ? -x : x; };
   const r = c(a) - c(b);
@@ -199,7 +228,7 @@ function VatTable({ rows, base, vatSum, purchases }: { rows: VatRow[]; base: str
           {rows.map((r, i) => (
             <tr key={r.docId} style={css(S.tr)}>
               <td style={css('height: 40px; padding: 0 12px; font-variant-numeric: tabular-nums')}>{i + 1}</td><td style={css(`${S.td}; font-variant-numeric: tabular-nums`)}>{thaiDate(r.date)}</td>
-              <td style={css(S.td)}>{purchases ? (r.vendorRef ?? '') : r.docNo}</td><td style={css(S.td)}>{r.partner}</td><td style={css(`${S.td}; font-variant-numeric: tabular-nums`)}>{r.taxId ?? ''}</td>
+              <td style={css(S.td)}>{purchases ? (r.vendorRef ?? '') : r.docNo}{r.rate === '0' && <span style={css('font-size: 12px; color: #525252')}> 0% ส่งออก<TempHint /></span>}</td><td style={css(S.td)}>{r.partner}</td><td style={css(`${S.td}; font-variant-numeric: tabular-nums`)}>{r.taxId ?? ''}</td>
               {purchases && <td style={css(S.td)}>{r.docNo}</td>}
               <td style={css(S.num)}>{mp(r.base)}</td><td style={css(S.num)}>{mp(r.vat)}</td>
             </tr>

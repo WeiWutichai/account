@@ -1,5 +1,7 @@
 // T1 ภาษี — design/project/ScreenTax.dc.html (ภ.พ.30 · รายงานภาษีขาย/ซื้อ · ภ.ง.ด.3/53 · 50 ทวิ · RD Prep · ปฏิทินยื่นแบบ)
 // ข้อมูล: GET /v1/tax/vat · /v1/tax/pnd (form 3/53) · /v1/wht-certificates · /v1/wht-types — ตัวเลขทุกตัวมาจาก API (ไม่ใช้เลขในแบบร่าง)
+import { companyModules } from '../_p2a/server';
+import type { Branch } from '../_p2a/types';
 import { Shell } from '../lib/shell';
 import { api } from '../lib/api';
 import { money } from '@innovera/ui';
@@ -40,8 +42,12 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
   const ym = monthParam(sp.month);
   const tab = TABS.find((t) => t === sp.tab) ?? 'pp30';
   const last = new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).getUTCDate();
+  // P2A สาขา: ?branch=00001 กรองรายงานภาษี/ภ.พ.30 (เฉพาะเมื่อเปิดโมดูลสาขา) — TODO(Wei): ชั่วคราว รอแบบร่าง
+  const modules = await companyModules();
+  const branches = modules.branches ? (await api<Branch[]>('/v1/branches')).filter((b) => b.active) : [];
+  const branch = modules.branches && typeof sp.branch === 'string' && /^\d{5}$/u.test(sp.branch) ? sp.branch : null;
   const [vat, pnd3, pnd53, types, certs] = await Promise.all([
-    vatReport(ym), pndReport(ym, '3'), pndReport(ym, '53'), whtTypes(),
+    vatReport(ym, branch), pndReport(ym, '3'), pndReport(ym, '53'), whtTypes(),
     api<WhtCert[]>(`/v1/wht-certificates?from=${ym}-01&to=${ym}-${String(last).padStart(2, '0')}`),
   ]);
   const cur = appToday().slice(0, 7);
@@ -55,7 +61,7 @@ export default async function TaxPage({ searchParams }: { searchParams: Promise<
   return (
     <Shell active="tax">
       <TaxScreen
-        ym={ym} tab={tab} months={months} filedMonths={filedMonths} vat={vat} today={appToday()}
+        ym={ym} tab={tab} months={months} filedMonths={filedMonths} vat={vat} today={appToday()} branches={branches} branch={branch}
         pnd={{ '3': { ...pnd3, rows: pnd3.rows.map(fix) }, '53': { ...pnd53, rows: pnd53.rows.map(fix) } }}
         certs={certRows} review={reviewItems(vat)}
         missingPostcode={noPostcode(pnd3.rows) + noPostcode(pnd53.rows)}

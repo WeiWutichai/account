@@ -7,13 +7,17 @@ import { YM } from './fmt';
 
 export * from './fmt';
 
-export interface VatRow { date: string; docId: string; docNo: string; docType: string; partner: string; taxId: string | null; branch: string | null; base: string; vat: string; vendorRef?: string | null; claimMonth?: string; priorMonth?: boolean }
+export interface VatRow { date: string; docId: string; docNo: string; docType: string; partner: string; taxId: string | null; branch: string | null; base: string; vat: string; vendorRef?: string | null; claimMonth?: string; priorMonth?: boolean;
+  /** P2A: '0' = ขายส่งออกอัตรา 0% · สาขาของเอกสาร */
+  rate?: string; docBranch?: string | null }
 /** การยื่นแบบ (acct.tax_filing) · seq 0 = ยื่นปกติ · 1.. = ยื่นเพิ่มเติม ครั้งที่ */
 export interface Filing { seq: number; filed_at: string | null; reference_no: string | null; amount: string; journal_no: string | null }
 export interface Pp30 {
   salesTotal: string; exemptSales: string; taxableSales: string; outputVat: string; purchasesCreditable: string; inputVat: string; netPayable: string;
   /** ข้อ 10 ภาษีที่ชำระเกินยกมา · ข้อ 11 ภาษีสุทธิ (ติดลบ = ชำระเกิน) */
   carriedForward: string; netAfterCarry: string;
+  /** P2A: ยอดขายที่เสียภาษีอัตราร้อยละ 0 (ขายส่งออก) */
+  zeroRatedSales?: string;
   priorMonthClaims: { count: number; vat: string; rows: { docId: string; docNo: string; vendorRef: string | null; issueMonth: string; vat: string }[] };
   /** [Dr/Cr, บัญชี (null = ยังไม่ได้กำหนดบัญชีภาษีชำระเกิน), ยอด] */
   postOnFiled: [string, string | null, string][]; excessAccount: string | null;
@@ -23,6 +27,8 @@ export interface VatReport {
   month: string; onlineExtension: boolean; sales: { rows: VatRow[]; base: string; vat: string }; purchases: { rows: VatRow[]; base: string; vat: string }; pp30: Pp30;
   disallowed: { items: number; amount: string; rows: VatRow[] };
   deferredService: { docId: string; docNo: string; docType: string; date: string; partner: string; vatPending: string }[];
+  /** P2A สาขา: สาขาที่กรอง (null = ทุกสาขา) · ยอดแยกสาขา · ยื่นแยก/รวม (รอยืนยัน) */
+  branch?: string | null; byBranch?: { branch: string; outputVat: string; inputVat: string; netPayable: string }[]; vatFiling?: 'separate' | 'combined';
 }
 export interface PndRow {
   cert_no: string; pay_date: string; income_type: string; income_section: string | null; base: string; rate: string; amount: string; pending_auditor: boolean;
@@ -34,7 +40,8 @@ export interface ReconReport { month: string; from: string; to: string; checks: 
 export interface FilingRow extends Filing { form: 'pp30' | 'pnd3' | 'pnd53'; month: string; status: 'draft' | 'filed'; carry_forward: string }
 export interface WhtType { key: string; label: string; section?: string; status?: string }
 
-export const vatReport = (ym: string): Promise<VatReport> => api<VatReport>(`/v1/tax/vat?month=${ym}`);
+/** branch = รหัสสาขา 5 หลัก (P2A · ว่าง = ทุกสาขาเหมือนเดิม) */
+export const vatReport = (ym: string, branch?: string | null): Promise<VatReport> => api<VatReport>(`/v1/tax/vat?month=${ym}${branch ? `&branch=${branch}` : ''}`);
 export const pndReport = (ym: string, form: '3' | '53'): Promise<PndReport> => api<PndReport>(`/v1/tax/pnd?month=${ym}&form=${form}`);
 /** period = 'YYYY-MM' หรือปีบัญชี พ.ศ. 'YYYY' ("ปีบัญชี 2569 สะสม") */
 export const reconReport = (period: string): Promise<ReconReport> => api<ReconReport>(`/v1/reports/recon?${/^\d{4}$/u.test(period) ? 'year' : 'month'}=${period}`);

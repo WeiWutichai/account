@@ -12,6 +12,8 @@ export interface Doc {
   address: string | null; notes: string | null; reference: string | null; journal_id: string | null; void_reason: string | null; void_journal_id: string | null; voided_at: string | null;
   receive_account: string | null; fee: string; fee_account: string | null; wht_cert_no: string | null; wht_rate: string | null; rule_code: string | null;
   sent_at: string | null; external_source: string | null; external_ref: string | null; approved_at: string | null; branch_code: string;
+  /** P2A หลายสกุลเงิน (THB/NULL เมื่อปิดโมดูล) */
+  currency?: string; fx_rate?: string | null; grand_total_thb?: string | null;
 }
 export interface DocLine { line_no: number; description: string | null; line_type: string }
 export interface Contact { id: string; code: string; name: string; kind: string; bank_account?: string | null }

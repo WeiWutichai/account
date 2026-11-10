@@ -10,6 +10,8 @@
 import { Button, ButtonLink, buttonStyle, css, href, money, parseThaiDate, S, Tag, thaiDate, thaiMonth, TopBar } from '@innovera/ui';
 import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
+import { P2A_OFF, type P2A } from '../../_p2a/types';
+import { P2A_INPUT, rateText, TempHint } from '../../_p2a/ui';
 import { cents, fromCents } from '../_shared/num';
 import { docVoidHref } from '../_shared/types';
 
@@ -18,6 +20,8 @@ export interface BillRow {
   outstanding: string; wht: string; pct: string | null; paid: string; pendingAuditor: boolean; whtError: string | null;
   tms: boolean; cnr: string | null; exempt: boolean; desc: string | null;
   paidOn: string | null; pvId: string | null; bank: string | null;
+  /** P2A: สกุลของบิล (ยอดในแถวเป็นสกุลนี้) */
+  currency?: string;
 }
 export interface Cert { id: string; certNo: string; pnd: string; pendingAuditor: boolean; paymentId: string }
 /** level = approval_level (0 ยังไม่อนุมัติ · 2 ผู้จัดการอนุมัติแล้ว · 3 กรรมการอนุมัติแล้ว) */
@@ -29,7 +33,11 @@ export interface PaymentView {
   /** ชื่อผู้จัดทำ/ผู้อนุมัติจาก Innovera ID (GET /v1/documents/:id events[].actor_name · approved_by_name) */
   submittedBy: string | null; l2By: string | null; approvedBy: string | null;
 }
-interface Props { mode: 'new' | 'view'; today: string; rows: BillRow[]; view?: PaymentView; accountNames: Record<string, string>; l2Limit: string }
+interface Props {
+  mode: 'new' | 'view'; today: string; rows: BillRow[]; view?: PaymentView; accountNames: Record<string, string>; l2Limit: string;
+  /** P2A: อัตรา ณ วันจ่าย (บิลสกุลต่างประเทศ) + สาขา — แสดงเมื่อเปิดโมดูลเท่านั้น · TODO(Wei): ชั่วคราว รอแบบร่าง */
+  p2a?: P2A;
+}
 
 // ตัวเลือกตามแบบร่าง (ตัวอักษรตามไฟล์)
 const PAY_FROM: [string, string][] = [['1100100', '1100100 ออมทรัพย์ [ธนาคาร A]'], ['1100200', '1100200 กระแสรายวัน [ธนาคาร B]']];
@@ -72,7 +80,7 @@ function noRange(nos: string[], sep: string): string {
 }
 const bankLabel = (name: string | undefined) => (name ?? '').replace(/^เงินฝากธนาคาร\s*(ออมทรัพย์|กระแสรายวัน|ประจำ)?\s*/u, '').replace(/[[\]]/gu, '');
 
-export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }: Props) {
+export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit, p2a = P2A_OFF }: Props) {
   const router = useRouter();
   const ro = mode === 'view';
   const [date, setDate] = useState(thaiDate(view?.date ?? today));
@@ -85,6 +93,10 @@ export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ kind: 'ok' | 'err'; text: string } | null>(null);
   const iso = parseThaiDate(date);
+  // ---------- P2A: อัตรา ณ วันจ่าย (จ่ายรายการเดียว) · สาขา ----------
+  const [fxRate, setFxRate] = useState('');
+  const [fxManual, setFxManual] = useState(false);
+  const [branch, setBranch] = useState('');
 
   // ยอดบัญชีจ่ายจาก ณ วันที่จ่าย (รอบใหม่) — จากบัญชีแยกประเภทจริง
   useEffect(() => {
@@ -96,6 +108,16 @@ export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }
   }, [ro, iso, payFrom]);
 
   const chosen = rows.filter((r) => sel.has(r.id));
+  const fxCur = chosen.find((r) => r.currency)?.currency ?? null;
+  useEffect(() => {
+    if (ro || !fxCur || fxManual || !iso) return;
+    const ctl = new AbortController();
+    void fetch(`/api/proxy/fx/rates/on?currency=${fxCur}&date=${iso}`, { signal: ctl.signal }).then(async (r) => {
+      const j = (await r.json()) as { rate?: string };
+      setFxRate(r.ok && j.rate ? rateText(j.rate) : '');
+    }).catch(() => undefined);
+    return () => ctl.abort();
+  }, [ro, fxCur, iso, fxManual]);
   const sum = (k: 'outstanding' | 'wht' | 'paid') => chosen.reduce((s, r) => s + cents(r[k]), 0n);
   const vendors = new Set(chosen.map((r) => r.contactId)).size;
   const paidTotal = sum('paid');
@@ -130,7 +152,8 @@ export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }
       const r = chosen[0]!;
       const chq = method === 'cheque' && cheque.no.trim() ? { chequeNo: cheque.no.trim(), bank: cheque.bank.trim(), chequeDate: parseThaiDate(cheque.date) ?? '' } : null;
       res = await fetch('/api/proxy/payments', { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ contactId: r.contactId, date: iso, payFrom, bills: [{ documentId: r.id }], method, cheque: chq }) });
+        body: JSON.stringify({ contactId: r.contactId, date: iso, payFrom, bills: [{ documentId: r.id }], method, cheque: chq,
+          ...(r.currency && fxRate.trim() ? { fxRate: fxRate.replace(/,/gu, '').trim() } : {}), ...(p2a.modules.branches && branch ? { branchCode: branch } : {}) }) });
     } else {
       const t = new Date();
       const batchRef = `PAYRUN-${isoParts(iso).y + 543}-${iso.slice(5, 7)}-${iso.slice(8, 10)}-${String(t.getHours()).padStart(2, '0')}${String(t.getMinutes()).padStart(2, '0')}${String(t.getSeconds()).padStart(2, '0')}`;
@@ -225,6 +248,13 @@ export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }
             <label style={css(LABEL)}>ธนาคาร<input value={cheque.bank} onChange={(e) => setCheque({ ...cheque, bank: e.target.value })} style={css(INPUT)} /></label>
             <label style={css(LABEL)}>วันที่บนเช็ค<input value={cheque.date} placeholder="วว/ดด/ปปปป" onChange={(e) => setCheque({ ...cheque, date: e.target.value })} style={css(`${INPUT}; font-variant-numeric: tabular-nums`)} /></label>
           </>)}
+          {/* TODO(Wei): ช่อง P2A (อัตรา ณ วันจ่าย · สาขา) ไม่มีใน ScreenPayment.dc.html — แสดงเมื่อเลือกบิลสกุลต่างประเทศ/เปิดโมดูลสาขาเท่านั้น (ชั่วคราว)
+              รอบจ่าย (payment-runs) ใช้อัตรา ณ วันจ่ายจากทะเบียนอัตราเสมอ · กรอกอัตราเองได้เฉพาะ "จ่ายรายการเดียว" */}
+          {!ro && fxCur && <label style={css(LABEL)}><span>{`อัตรา ณ วันจ่าย (บาท/1 ${fxCur})`}<TempHint /></span>
+            <input readOnly={!single} inputMode="decimal" value={fxRate} onChange={(e) => { setFxManual(true); setFxRate(e.target.value); }} style={css(`${P2A_INPUT}; text-align: right; font-variant-numeric: tabular-nums`)} />
+            {!single && <span style={css('font-size: 12px; color: #525252')}>รอบจ่ายใช้อัตราจากทะเบียน ณ วันจ่าย</span>}</label>}
+          {!ro && single && p2a.modules.branches && <label style={css(LABEL)}><span>สาขาที่จ่าย<TempHint /></span>
+            <select value={branch} onChange={(e) => setBranch(e.target.value)} style={css(P2A_INPUT)}><option value="">ตามบิล</option>{p2a.branches.map((b) => <option key={b.code} value={b.code}>{b.code} {b.name}</option>)}</select></label>}
         </div>
         <section style={css('border: 1px solid #e0e0e0; overflow-x: auto')}>
           <table style={css('width: 100%; min-width: 1000px; border-collapse: collapse; font-size: 14px; line-height: 20px')}>
@@ -242,7 +272,7 @@ export function PaymentScreen({ mode, today, rows, view, accountNames, l2Limit }
                   <tr key={r.id} style={css(`border-top: 1px solid #e0e0e0${on ? '' : '; color: #525252'}`)}>
                     <td style={css('height: 40px; padding: 0 12px')}><input type="checkbox" checked={on} aria-readonly={ro || undefined} disabled={!ro && Boolean(r.whtError)} onChange={(e) => toggle(r, e.target.checked)} style={css('width: 16px; height: 16px; margin: 0')} aria-label="เลือก" /></td>
                     <td style={css(TD)}>{r.contact}</td>
-                    <td style={css(TD)}><a href={`${href('purchase')}/${r.id.split(':').at(-1)}`} style={css('text-decoration: none')}>{r.docNo}</a>
+                    <td style={css(TD)}><a href={`${href('purchase')}/${r.id.split(':').at(-1)}`} style={css('text-decoration: none')}>{r.docNo}</a>{r.currency && <span style={css('font-size: 12px; color: #525252')}> {r.currency}</span>}
                       {r.tms && <> <span style={css('display: inline-block; padding: 0 6px; background: #393939; color: #ffffff; font-size: 11px; line-height: 18px; border-radius: 4px')}>TMS</span></>}
                       {r.cnr && <> <span style={css('color: #525252')}>{`หลัง ${r.cnr}`}</span></>}
                       {r.exempt && <>{r.desc ? ` ${r.desc}` : ''} <span style={css('color: #525252')}>ยกเว้น VAT</span></>}</td>
