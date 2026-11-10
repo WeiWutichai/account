@@ -6,6 +6,8 @@ type Ts = ColumnType<Date, Date | string | undefined, Date | string>;
 type DateCol = ColumnType<string, string, string>; // 'YYYY-MM-DD'
 
 type Json = ColumnType<unknown, string | undefined, string>; // ส่ง JSON.stringify ตอนเขียน
+/** คอลัมน์เพิ่มที่เป็น NULL ได้และไม่ต้องใส่ตอน insert (0021 FXB) */
+type Opt<T> = ColumnType<T | null, T | null | undefined, T | null>;
 
 export interface PublicDB {
   'public.organization': { id: Generated<string>; name: string; created_at: Ts; security_policy: ColumnType<{ require_2fa: boolean; session_hours: number }, string | undefined, string> };
@@ -88,7 +90,9 @@ export interface AcctDB {
     vat_claim_month: Generated<string | null>;
     // 0019
     petty_cash_fund_id: Generated<string | null>; closed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
-    created_by_client: Generated<string | null> };
+    created_by_client: Generated<string | null>;
+    // 0021 FXB: ยอดเอกสาร = สกุลเอกสาร · fx_rate บาทต่อหน่วย · *_thb = ยอดบาทที่ลงบัญชี (NULL = เอกสารบาท)
+    fx_rate: Opt<string>; grand_total_thb: Opt<string>; vat_thb: Opt<string>; base_thb: Opt<string> };
   'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
     pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
   'acct.bank_account': { company_id: string; id: Generated<string>; gl_account: string; bank_name: string; branch: string | null; account_no: string; account_name: string | null;
@@ -114,7 +118,8 @@ export interface AcctDB {
   'acct.webhook_delivery': { company_id: string; id: Generated<string>; endpoint_id: string; event: string; payload: ColumnType<unknown, string, string>; status: Generated<'pending' | 'sent' | 'dead'>;
     attempts: Generated<number>; next_attempt_at: Generated<Date>; last_error: string | null; created_at: Ts; sent_at: Ts | null };
   'acct.company_setting': { company_id: string; key: string; value: ColumnType<unknown, string, string>; updated_at: Ts };
-  'acct.settlement': { company_id: string; id: Generated<string>; payment_id: string; document_id: string; applied: string; wht: Money; wht_base: string | null; vat_due: Money; voided: Generated<boolean>; created_at: Ts };
+  'acct.settlement': { company_id: string; id: Generated<string>; payment_id: string; document_id: string; applied: string; wht: Money; wht_base: string | null; vat_due: Money; voided: Generated<boolean>; created_at: Ts;
+    settled_thb: Opt<string>; vat_due_thb: Opt<string> };
   'acct.billing_item': { company_id: string; billing_id: string; document_id: string; line_no: number };
   'acct.cheque': { company_id: string; id: Generated<string>; direction: 'received' | 'issued'; cheque_no: string; bank: string; branch: string | null; cheque_date: DateCol; amount: string;
     status: Generated<'on_hand' | 'deposited' | 'cleared' | 'bounced' | 'cancelled' | 'issued' | 'presented'>; document_id: string | null; contact_id: string | null; deposited_on: DateCol | null; cleared_on: DateCol | null; created_at: Ts;
@@ -130,12 +135,18 @@ export interface AcctDB {
     auto_reverse: Generated<boolean>; recurring: 'monthly_last_day' | null; created_by: string | null };
   'acct.journal_template': { company_id: string; id: Generated<string>; name: string; book: Generated<string>; description: string | null; lines: unknown; created_at: Ts };
   'acct.journal_line': { company_id: string; id: Generated<string>; journal_id: string; line_no: number; account_code: string; contact_id: string | null;
-    debit: Money; credit: Money; branch_code: Generated<string>; project_code: string | null; memo: string | null };
+    debit: Money; credit: Money; branch_code: Generated<string>; project_code: string | null; memo: string | null; currency: Opt<string>; amount_fx: Opt<string> };
   'acct.posting_rule': { company_id: string; id: Generated<string>; code: string; doc_type: string; name: string; active: Generated<boolean> };
   'acct.posting_rule_version': { company_id: string; id: Generated<string>; rule_id: string; version: number; definition: unknown; created_at: Ts };
   'acct.audit_log': { company_id: string; id: Generated<string>; at: Ts; actor_id: string | null; action: string; entity: string; entity_id: string;
     before: unknown; after: unknown; prev_hash: Buffer | null; hash: Buffer | null;
     // 0016: ค่าตั้งต้นจาก set_config('app.audit_*') ของ withCompany (AuditContext)
     channel: Generated<'web' | 'api' | 'mcp' | 'system' | null>; ip: Generated<string | null>; api_client_id: Generated<string | null> };
+  // 0021 FXB หลายสกุลเงิน + สาขา
+  'acct.currency': { company_id: string; code: string; name: string; decimals: Generated<number>; active: Generated<boolean>; created_at: Ts };
+  'acct.exchange_rate': { company_id: string; currency: string; rate_date: DateCol; source: Generated<'bot_mid' | 'bot_buy' | 'bot_sell'>; rate: string; created_at: Ts; created_by: string | null };
+  'acct.branch': { company_id: string; code: string; name: string; address: string | null; tax_id: string | null; files_separately: Generated<boolean>; active: Generated<boolean>; created_at: Ts };
+  'acct.fx_revaluation': { company_id: string; fiscal_year: number; period_no: number; rate_date: DateCol; journal_id: string | null; reversal_journal_id: string | null; total: Money;
+    detail: ColumnType<unknown, string | undefined, string>; created_at: Ts; created_by: string | null };
   'acct.api_call': { company_id: string; id: Generated<string>; client_id: string; at: Ts; kind: 'api' | 'mcp'; tool: string; status: 'ok' | 'denied' | 'error'; document_id: string | null; detail: string | null };
 }
