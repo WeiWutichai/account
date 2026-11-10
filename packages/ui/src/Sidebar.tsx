@@ -37,6 +37,8 @@ const GROUPS: Group[] = [
   { id: 'tax', title: 'ภาษีและปิดงวด', icon: ICON.tax, items: [{ id: 'tax', label: 'ภาษี ภ.พ.30 / ภ.ง.ด.' }, { id: 'recon', label: 'ตรวจความถูกต้อง' }, { id: 'close', label: 'ปิดงวด / ปิดปี' }] },
   { id: 'rep', title: 'รายงาน', icon: ICON.rep, items: [{ id: 'reports', label: 'งบการเงิน' }, { id: 'aging', label: 'อายุลูกหนี้ / เจ้าหนี้' }] },
   { id: 'master', title: 'ข้อมูลหลัก', icon: ICON.master, items: [{ id: 'contacts', label: 'ลูกค้า / ผู้ขาย' }, { id: 'products', label: 'สินค้า / บริการ' }] },
+  // Phase 2A — กลุ่มชั่วคราว (ไม่มีใน Sidebar.dc.html · Wei สั่งให้ใช้งานได้ก่อน 2026-11-10) · TODO(Wei): ย้ายตามแบบร่างเมื่อออกแบบเสร็จ
+  { id: 'p2a', title: 'โมดูลเพิ่มเติม (ชั่วคราว)', icon: ICON.master, items: [{ id: 'inventory', label: 'สินค้าคงคลัง' }, { id: 'stockdocs', label: 'รับ / เบิก / โอน / ตรวจนับ' }, { id: 'fx', label: 'สกุลเงิน และสาขา' }, { id: 'contracts', label: 'สัญญา / รายได้รับล่วงหน้า' }, { id: 'foreigntax', label: 'ภ.พ.36 / ภ.ง.ด.54' }, { id: 'modules', label: 'เปิดโมดูล และค่าตั้งที่รอยืนยัน' }] },
   { id: 'set', title: 'ตั้งค่า', icon: ICON.set, collapsed: true, items: [{ id: 'settings', label: 'ข้อมูลบริษัท' }, { id: 'docsettings', label: 'ตั้งค่าเอกสาร' }, { id: 'users', label: 'ผู้ใช้และสิทธิ์' }, { id: 'apps', label: 'แอปที่เชื่อมต่อ' }, { id: 'mcp', label: 'การเชื่อมต่อ AI (MCP)' }, { id: 'audit', label: 'ประวัติการใช้งาน' }] },
 ];
 const TONES = { act: ['#d0e2ff', '#0043ce'], warn: ['#fcf4d6', '#684e00'] } as const;

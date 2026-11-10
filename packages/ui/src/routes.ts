@@ -40,6 +40,13 @@ export const ROUTES: readonly RouteDef[] = [
   { id: 'mcp', path: '/settings/mcp', design: 'ScreenMcp', milestone: 'M7' },
   { id: 'audit', path: '/settings/audit', design: 'ScreenAudit', milestone: 'M7' },
   { id: 'opening', path: '/setup/opening-balance', design: 'ScreenOpeningBalance', milestone: 'M2' },
+  // Phase 2A — หน้าชั่วคราว ยังไม่มีแบบร่าง (Wei สั่งให้ใช้งานได้ก่อน 2026-11-10) · design = 'ชั่วคราว' จนกว่าจะมีไฟล์ .dc.html
+  { id: 'modules', path: '/settings/modules', design: 'ชั่วคราว', milestone: 'P2A' },
+  { id: 'inventory', path: '/inventory', design: 'ชั่วคราว', milestone: 'P2A' },
+  { id: 'stockdocs', path: '/inventory/documents', design: 'ชั่วคราว', milestone: 'P2A' },
+  { id: 'fx', path: '/fx', design: 'ชั่วคราว', milestone: 'P2A' },
+  { id: 'contracts', path: '/contracts', design: 'ชั่วคราว', milestone: 'P2A' },
+  { id: 'foreigntax', path: '/tax/foreign', design: 'ชั่วคราว', milestone: 'P2A' },
   { id: 'companyCreate', path: '/companies/new', design: 'ScreenCompanyCreate', milestone: 'M3' },
   { id: 'companies', path: '/companies', design: 'ScreenCompanyPicker', milestone: 'M3' },
   { id: 'userEdit', path: '/settings/users/[id]', design: 'ScreenUserEdit', milestone: 'M3' },
