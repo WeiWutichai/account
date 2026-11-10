@@ -1,5 +1,9 @@
 # production นำร่อง (M3.5) บน VPS เครื่องเดียว · docker compose -f deploy/compose.prod.yaml --env-file deploy/.env up -d
-# API ไม่เปิดพอร์ตออกนอกเครื่อง — เว็บเรียกผ่านเครือข่ายภายใน · DB/Redis ไม่เปิดพอร์ต
+# ไม่เปิดพอร์ตใดออกนอกเครื่อง — ทางเข้า HTTPS คือ reverse proxy ที่มีอยู่แล้วบนเครื่อง (EDGE_NETWORK · ดู deploy/caddy/innovera.caddy)
+#   VPS 187.52.117.52: ใช้ Caddy ของ JuneFlow (juneflow-edge-1 · network juneflow_default) — Wei เลือกแบบ 1 เมื่อ 2026-11-10
+#   เครื่องเปล่า: docker network create innovera_edge แล้วรัน --profile standalone (Caddy ของเราเองเปิด 80/443)
+# DB/Redis/API อยู่ใน network internal เท่านั้น · เว็บ 3 ตัว + API ภายนอก (/ext/*) ต่อ network edge ด้วย alias innovera-*
+name: innovera
 x-app: &app
   restart: unless-stopped
   env_file: .env
@@ -55,6 +59,9 @@ services:
     depends_on: [pgbouncer, redis, migrate]
   accounting-api:
     <<: *app
+    networks:
+      internal: {}
+      edge: { aliases: [innovera-api] }
     image: innovera/accounting-api
     environment:
       PORT: "4000"
@@ -64,6 +71,9 @@ services:
     depends_on: [pgbouncer, id-api]
   id-web:
     <<: *app
+    networks:
+      internal: {}
+      edge: { aliases: [innovera-id] }
     image: innovera/id-web
     environment:
       PORT: "3000"
@@ -73,6 +83,9 @@ services:
     depends_on: [id-api]
   accounting-web:
     <<: *app
+    networks:
+      internal: {}
+      edge: { aliases: [innovera-app] }
     image: innovera/accounting-web
     environment:
       PORT: "3000"
@@ -80,9 +93,13 @@ services:
       ID_API_URL: "http://id-api:4100"
       ID_WEB_URL: "https://id.${DOMAIN}"
       NEXT_PUBLIC_ID_WEB_URL: "https://id.${DOMAIN}"
+      PUBLIC_API_URL: "https://api.${DOMAIN}"
     depends_on: [accounting-api]
   console-web:
     <<: *app
+    networks:
+      internal: {}
+      edge: { aliases: [innovera-admin] }
     image: innovera/console-web
     environment:
       PORT: "3000"
@@ -91,13 +108,15 @@ services:
       CONSOLE_WEB_URL: "https://admin.${DOMAIN}"
     depends_on: [accounting-api]
   caddy:
+    # เฉพาะเครื่องที่ไม่มี reverse proxy อยู่แล้ว (--profile standalone)
+    profiles: [standalone]
     image: caddy:2.10.2
     restart: unless-stopped
     ports: ["80:80", "443:443"]
     env_file: .env
-    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, caddydata:/data]
+    volumes: [./Caddyfile:/etc/caddy/Caddyfile:ro, ./caddy/innovera.caddy:/etc/caddy/innovera.caddy:ro, caddydata:/data]
     depends_on: [accounting-web, id-web]
-    networks: [internal]
+    networks: [edge]
   backup:
     image: postgres:18.6
     restart: unless-stopped
@@ -107,5 +126,7 @@ services:
     depends_on: [postgres]
     networks: [internal]
 
-networks: { internal: {} }
+networks:
+  internal: {}
+  edge: { external: true, name: "${EDGE_NETWORK:?ตั้ง EDGE_NETWORK ใน deploy/.env}" }
 volumes: { pgdata: {}, redisdata: {}, caddydata: {}, backups: {} }

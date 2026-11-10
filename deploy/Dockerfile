@@ -1,4 +1,4 @@
-# image เดียวสำหรับทุกแอป (APP=accounting-api | id-api | accounting-web | id-web) · Node รุ่นเดียวกับ .nvmrc
+# image เดียวสำหรับทุกแอป (APP=accounting-api | id-api | accounting-web | id-web | console-web) · Node รุ่นเดียวกับ .nvmrc
 # build: docker build -f deploy/Dockerfile --build-arg APP=accounting-api -t innovera/accounting-api .
 FROM node:26.13.0-bookworm-slim AS deps
 ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH
@@ -9,8 +9,8 @@ RUN pnpm install --frozen-lockfile
 
 FROM deps AS build
 ARG APP
-# Next.js ต้อง build · Nest รันด้วย tsx (ESM + .ts imports ตาม M0) — TODO(M3.5): compile เป็น JS เมื่อย้ายออกจาก tsx
-RUN if [ "$APP" = "accounting-web" ] || [ "$APP" = "id-web" ]; then pnpm --filter @innovera/$APP build; fi
+# Next.js (accounting-web · id-web · console-web) ต้อง build · Nest รันด้วย tsx (ESM + .ts imports ตาม M0) — TODO(M3.5): compile เป็น JS เมื่อย้ายออกจาก tsx
+RUN if [ -f "apps/$APP/next.config.ts" ]; then pnpm --filter @innovera/$APP build; fi
 
 FROM node:26.13.0-bookworm-slim
 ARG APP

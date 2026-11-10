@@ -35,8 +35,8 @@ export default async function McpPage() {
   });
   const live = cs.filter((c) => !c.revoked_at);
   const stats = { calls: live.reduce((s, c) => s + c.calls_7d, 0), denied: live.reduce((s, c) => s + c.denied_7d, 0), drafts: activity.ok ? activity.data.drafts.length : null };
-  // TODO(Wei): แบบร่างแสดงโดเมน https://mcp.[product].innovera.co.th/<บริษัท> — ตอนนี้ใช้ origin ของ accounting-api (ตั้ง ACCOUNTING_API_URL ใน production) · คีย์ผูกบริษัทอยู่แล้วจึงไม่มี id บริษัทใน URL
-  const endpoint = `${ACCOUNTING_API}/ext/v1/mcp`;
+  // TODO(Wei): แบบร่างแสดงโดเมน https://mcp.[product].innovera.co.th/<บริษัท> — ตอนนี้ใช้ PUBLIC_API_URL (production = https://api.<DOMAIN>) · คีย์ผูกบริษัทอยู่แล้วจึงไม่มี id บริษัทใน URL
+  const endpoint = `${process.env.PUBLIC_API_URL ?? ACCOUNTING_API}/ext/v1/mcp`; // production: https://api.<DOMAIN> (Caddy เปิดเฉพาะ /ext/*)
   return (
     <Shell active="mcp">
       <header style={css('height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 32px; border-bottom: 1px solid #e0e0e0; font-size: 14px')}>

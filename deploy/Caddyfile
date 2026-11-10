@@ -1,23 +1,6 @@
-# TLS อัตโนมัติ (Let's Encrypt) · HSTS · ส่ง IP จริงไปแอป (id-api trust proxy 1 ชั้น)
+# ใช้เฉพาะ --profile standalone (เครื่องที่ไม่มี reverse proxy อยู่แล้ว) · TLS อัตโนมัติ (Let's Encrypt)
+# โดเมนแก้ใน deploy/caddy/innovera.caddy
 {
 	email {$ACME_EMAIL}
 }
-(common) {
-	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
-	header X-Content-Type-Options nosniff
-	header Referrer-Policy strict-origin-when-cross-origin
-	header -Server
-}
-app.{$DOMAIN} {
-	import common
-	reverse_proxy accounting-web:3000
-}
-id.{$DOMAIN} {
-	import common
-	reverse_proxy id-web:3000
-}
-admin.{$DOMAIN} {
-	import common
-	# TODO(Wei): จำกัด IP ของทีม Innovera / VPN ก่อนเปิด Console บน production
-	reverse_proxy console-web:3000
-}
+import /etc/caddy/innovera.caddy

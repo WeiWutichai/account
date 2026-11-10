@@ -1,0 +1,32 @@
+# Innovera (ระบบบัญชี + Innovera ID + Console + API ภายนอก) — ไฟล์นี้ import เข้า Caddyfile ของ reverse proxy บนเครื่อง
+# VPS ปัจจุบัน: คัดลอกไปที่ /etc/juneflow/caddy/innovera.caddy แล้วเพิ่ม "import /etc/caddy/innovera.caddy" ท้าย Caddyfile ของ JuneFlow
+# ชื่อปลายทาง (innovera-*) คือ alias ใน network edge (deploy/compose.prod.yaml) · {$INNOVERA_DOMAIN} ไม่ใช้ เพื่อไม่ต้องแก้ env ของ Caddy เดิม
+(innovera_common) {
+	header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+	header X-Content-Type-Options nosniff
+	header Referrer-Policy strict-origin-when-cross-origin
+	header -Server
+}
+app.innoveraapcenter.com {
+	import innovera_common
+	reverse_proxy innovera-app:3000
+}
+id.innoveraapcenter.com {
+	import innovera_common
+	reverse_proxy innovera-id:3000
+}
+admin.innoveraapcenter.com {
+	import innovera_common
+	# TODO(Wei): จำกัด IP ของทีม Innovera / VPN ก่อนเปิด Console ให้ใช้จริง
+	reverse_proxy innovera-admin:3000
+}
+# API ภายนอก (TMS/MCP ด้วย API key) — เปิดเฉพาะ /ext/* · /v1 (session) และ /console/v1 ไม่เปิดออกนอกเครื่อง
+api.innoveraapcenter.com {
+	import innovera_common
+	handle /ext/* {
+		reverse_proxy innovera-api:4000
+	}
+	handle {
+		respond "Not Found" 404
+	}
+}
