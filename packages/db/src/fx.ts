@@ -94,6 +94,27 @@ export async function enableModule(db: Db, companyId: string, m: FxbModule) {
   });
 }
 
+/** สถานะโมดูลของบริษัท (public.company.modules) — หน้า "ตั้งค่า / โมดูล" + ฟอร์มที่แสดงช่องของโมดูลเมื่อเปิดเท่านั้น */
+export interface CompanyModules { inventory: boolean; multi_currency: boolean; branches: boolean; software: boolean }
+export async function companyModules(db: Db, companyId: string): Promise<CompanyModules> {
+  const c = await db.withPublic((tx) => tx.selectFrom('public.company').select('modules').where('id', '=', companyId).executeTakeFirst());
+  const m = (c?.modules ?? {}) as Record<string, unknown>;
+  return { inventory: m.inventory === true, multi_currency: m.multi_currency === true, branches: m.branches === true, software: m.software === true };
+}
+
+/**
+ * ปิดโมดูล (ข้อมูลเดิมคงอยู่ทั้งหมด) — ปิดได้เมื่อยังไม่มีเอกสารที่ใช้โมดูลนั้น
+ * multi_currency: ไม่มีเอกสารสกุลอื่นที่ไม่ใช่บาท · branches: ไม่มีเอกสารของสาขาอื่นที่ไม่ใช่ 00000
+ * TODO(Wei): เงื่อนไขการปิดโมดูลหลังใช้งานแล้ว (เช่น ปิดสาขาที่เลิกกิจการ) ยังไม่มีในแบบร่าง/Spec — ตอนนี้ห้ามปิดเมื่อมีเอกสารแล้ว
+ */
+export async function disableModule(db: Db, companyId: string, m: FxbModule) {
+  const used = await db.withCompany(companyId, (tx) => (m === 'multi_currency'
+    ? tx.selectFrom('acct.document').select('id').where('currency', '<>', BASE_CURRENCY)
+    : tx.selectFrom('acct.document').select('id').where('branch_code', '<>', '00000')).limit(1).execute());
+  if (used.length) throw new LedgerError(m === 'multi_currency' ? 'มีเอกสารสกุลต่างประเทศแล้ว ปิดโมดูลหลายสกุลเงินไม่ได้' : 'มีเอกสารของสาขาอื่นแล้ว ปิดโมดูลสาขาไม่ได้');
+  await db.withPublic((tx) => sql`update public.company set modules = coalesce(modules, '{}'::jsonb) || jsonb_build_object(${m}::text, false) where id = ${companyId}`.execute(tx));
+}
+
 // ---------- สกุลเงิน / อัตรา ----------
 const CODE_RE = /^[A-Z]{3}$/u;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/u;

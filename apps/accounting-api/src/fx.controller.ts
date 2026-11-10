@@ -3,7 +3,7 @@
 import { Body, Controller, Delete, Get, Inject, Param, Post, Put, Query, Req, UnprocessableEntityException } from '@nestjs/common';
 import type { Db } from '@innovera/db';
 import {
-  deleteRate, enableModule, fxbSettings, listBranches, listCurrencies, listRates, rateOn, revaluationPreview, revaluationRuns, runRevaluation, saveBranch, saveCurrency, saveRate, setFxbSetting,
+  companyModules, deleteRate, disableModule, enableModule, fxbSettings, listBranches, listCurrencies, listRates, rateOn, revaluationPreview, revaluationRuns, runRevaluation, saveBranch, saveCurrency, saveRate, setFxbSetting,
   type FxbModule, type RateSource,
 } from '@innovera/db/fx';
 import type { Request } from 'express';
@@ -32,6 +32,16 @@ export class FxController {
     await enableModule(this.db, companyOf(req), m as FxbModule);
     return { ok: true };
   }
+  /** ปิดโมดูล multi_currency / branches (ได้เมื่อยังไม่มีเอกสารที่ใช้โมดูล · ข้อมูลเดิมคงอยู่) */
+  @Need('settings', 'write') @Post('modules/:module/disable')
+  async disable(@Req() req: Request, @Param('module') m: string) {
+    if (!MODULES.includes(m as FxbModule)) throw new UnprocessableEntityException(`โมดูลต้องเป็น ${MODULES.join(' / ')}`);
+    await disableModule(this.db, companyOf(req), m as FxbModule);
+    return { ok: true };
+  }
+  /** สถานะโมดูลทั้งหมดของบริษัท (inventory · multi_currency · branches · software) — ทุกบทบาทอ่านได้ (ฟอร์มแสดงช่องของโมดูลที่เปิด) */
+  @Get('modules')
+  modules(@Req() req: Request) { return companyModules(this.db, companyOf(req)); }
   /** fx.rate_source · fx.revalue_period_end · branch.numbering · branch.vat_filing (ทุกค่า "รอยืนยัน" — pendingAuditor) */
   @Need('settings', 'read') @Get('fx/settings')
   settings(@Req() req: Request) { return fxbSettings(this.db, companyOf(req)); }

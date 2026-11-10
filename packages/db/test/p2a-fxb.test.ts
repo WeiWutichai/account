@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCompany, createOrganization } from '../src/company.ts';
 import {
-  enableModule, fxbSettings, FXB_DEFAULTS, FXB_KEYS, listBranches, listCurrencies, listRates, moduleOn, rateOn, revaluationPreview, revaluationRuns, runRevaluation,
+  companyModules, disableModule, enableModule, fxbSettings, FXB_DEFAULTS, FXB_KEYS, listBranches, listCurrencies, listRates, moduleOn, rateOn, revaluationPreview, revaluationRuns, runRevaluation,
   saveBranch, saveCurrency, saveRate, setFxbSetting,
 } from '../src/fx.ts';
 import type { Db } from '../src/index.ts';
@@ -321,5 +321,24 @@ describe('RLS: ตารางใหม่ไม่รั่วข้ามบ�
     await expect(db.withCompany(B, (tx) => tx.insertInto('acct.branch').values({ company_id: A, code: '00002', name: 'แอบเขียน', address: null, tax_id: null }).execute())).rejects.toThrow();
     const n = await admin(async (c) => (await c.query<{ n: string }>("select count(*) n from pg_policies where schemaname = 'acct' and tablename in ('currency', 'exchange_rate', 'branch', 'fx_revaluation')")).rows[0]!.n);
     expect(n).toBe('4');
+  });
+});
+
+describe('สถานะโมดูล + ปิดโมดูล (หน้า ตั้งค่า / โมดูล)', () => {
+  it('companyModules: บริษัทบาทอย่างเดียว = ปิดทุกโมดูล · บริษัท A เปิดหลายสกุลเงิน + สาขา', async () => {
+    await expect(companyModules(db, B)).resolves.toEqual({ inventory: false, multi_currency: false, branches: false, software: false });
+    await expect(companyModules(db, A)).resolves.toEqual({ inventory: false, multi_currency: true, branches: true, software: false });
+  });
+  it('ปิดไม่ได้เมื่อมีเอกสารสกุลต่างประเทศ/สาขาอื่นแล้ว · ยังไม่มีเอกสาร = ปิดได้ (ข้อมูลทะเบียนคงอยู่)', async () => {
+    await expect(disableModule(db, A, 'multi_currency')).rejects.toThrow('มีเอกสารสกุลต่างประเทศแล้ว');
+    await expect(disableModule(db, A, 'branches')).rejects.toThrow('มีเอกสารของสาขาอื่นแล้ว');
+    await enableModule(db, B, 'multi_currency');
+    await enableModule(db, B, 'branches');
+    await saveCurrency(db, B, { code: 'EUR', name: 'ยูโร' });
+    await disableModule(db, B, 'multi_currency');
+    await disableModule(db, B, 'branches');
+    await expect(companyModules(db, B)).resolves.toEqual({ inventory: false, multi_currency: false, branches: false, software: false });
+    expect((await listCurrencies(db, B)).map((c) => c.code)).toEqual(['EUR']);
+    await expect(saveCurrency(db, B, { code: 'JPY', name: 'เยน' })).rejects.toThrow('ยังไม่ได้เปิดโมดูลหลายสกุลเงิน');
   });
 });
