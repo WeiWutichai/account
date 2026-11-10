@@ -396,6 +396,30 @@ export async function voidStockDocument(db: Db, companyId: string, actor: Actor,
   return voidDocument(db, companyId, actor, id, p);
 }
 
+/** รายการเอกสารสต็อก (GR/GI/TRF/ADJ) ล่าสุดก่อน · คลังต้นทาง/ปลายทาง · ผู้ขาย · เลข JV (หน้าชั่วคราว /inventory/documents) */
+export async function listStockDocuments(db: Db, companyId: string, f: { docType?: StockDocType; status?: string; limit?: number } = {}) {
+  return db.withCompany(companyId, async (tx) => {
+    let q = tx.selectFrom('acct.document as d')
+      .leftJoin('acct.warehouse as w', (j) => j.onRef('w.id', '=', 'd.warehouse_id').onRef('w.company_id', '=', 'd.company_id'))
+      .leftJoin('acct.warehouse as t', (j) => j.onRef('t.id', '=', 'd.to_warehouse_id').onRef('t.company_id', '=', 'd.company_id'))
+      .leftJoin('acct.contact as c', (j) => j.onRef('c.id', '=', 'd.contact_id').onRef('c.company_id', '=', 'd.company_id'))
+      .leftJoin('acct.journal as jn', (j) => j.onRef('jn.id', '=', 'd.journal_id').onRef('jn.company_id', '=', 'd.company_id'))
+      .select(['d.id', 'd.doc_type', 'd.doc_no', 'd.status', 'd.issue_date', 'd.grand_total', 'd.reference', 'd.created_at', 'w.code as warehouse_code', 't.code as to_warehouse_code',
+        'c.name as contact_name', 'jn.journal_no',
+        sql<string>`(select count(*) from acct.document_line l where l.document_id = d.id and l.company_id = d.company_id and l.line_type = 'item')`.as('line_count')])
+      .where('d.doc_type', 'in', f.docType ? [f.docType] : [...STOCK_TYPES])
+      .orderBy('d.issue_date', 'desc').orderBy('d.created_at', 'desc').limit(f.limit ?? 500);
+    if (f.status) q = q.where('d.status', '=', f.status as never);
+    const rows = await q.execute();
+    return rows.map((r) => ({ ...r, line_count: Number(r.line_count) }));
+  });
+}
+
+/** หน่วยนับเพิ่มเติมของสินค้า (ตัวคูณเทียบหน่วยหลัก) */
+export async function listProductUnits(db: Db, companyId: string) {
+  return db.withCompany(companyId, (tx) => tx.selectFrom('acct.product_unit').select(['product_code', 'unit', 'factor', 'barcode']).orderBy('product_code').orderBy('unit').execute());
+}
+
 export async function getStockDocument(db: Db, companyId: string, id: string) {
   return db.withCompany(companyId, async (tx) => {
     const doc = await docOrThrow(tx, id);

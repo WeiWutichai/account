@@ -3,8 +3,8 @@
 import { Body, Controller, Get, Inject, Param, Post, Put, Query, Req } from '@nestjs/common';
 import type { Db } from '@innovera/db';
 import {
-  disableInventory, enableInventory, findByBarcode, getStockDocument, inventoryStatus, listWarehouses, postStockDocument, reorderReport, runInventoryPeriodEnd, saveStockDraft, saveWarehouse,
-  section87Report, setInventorySetting, setProductStock, stockBalances, stockCard, stockValuation, voidStockDocument,
+  disableInventory, enableInventory, findByBarcode, getStockDocument, inventoryStatus, listProductUnits, listStockDocuments, listWarehouses, postStockDocument, reorderReport, runInventoryPeriodEnd, saveStockDraft, saveWarehouse,
+  section87Report, setInventorySetting, STOCK_TYPES, setProductStock, stockBalances, stockCard, stockValuation, voidStockDocument,
   type ProductStockInput, type StockDocInput, type WarehouseInput,
 } from '@innovera/db/inventory';
 import type { Request } from 'express';
@@ -39,10 +39,19 @@ export class InventoryController {
   async editWarehouse(@Req() req: Request, @Param('id') id: string, @Body() b: WarehouseInput) { return { id: await saveWarehouse(this.db, companyOf(req), b, id) }; }
   @Need('journal', 'write') @Put('products/:code')
   product(@Req() req: Request, @Param('code') code: string, @Body() b: ProductStockInput) { return setProductStock(this.db, companyOf(req), code, b); }
+  /** หน่วยนับเพิ่มเติมของทุกสินค้า (หน้าตั้งค่าสต็อกของสินค้า) */
+  @Need('purchase', 'read') @Get('product-units')
+  units(@Req() req: Request) { return listProductUnits(this.db, companyOf(req)); }
   @Need('purchase', 'read') @Get('barcode/:barcode')
   barcode(@Req() req: Request, @Param('barcode') barcode: string) { return findByBarcode(this.db, companyOf(req), barcode); }
 
   // ---------- เอกสาร GR / GI / TRF / ADJ ----------
+  /** รายการเอกสารสต็อก · ?type=GR|GI|TRF|ADJ · ?status= */
+  @Need('purchase', 'read') @Get('documents')
+  list(@Req() req: Request, @Query() q: { type?: string; status?: string }) {
+    const t = STOCK_TYPES.find((x) => x === q.type);
+    return listStockDocuments(this.db, companyOf(req), { ...(t ? { docType: t } : {}), ...(q.status ? { status: q.status } : {}) });
+  }
   @Need('purchase', 'write') @Post('documents')
   async create(@Req() req: Request, @Body() b: StockDocInput) { return { id: await saveStockDraft(this.db, companyOf(req), actor(req), b) }; }
   @Need('purchase', 'write') @Put('documents/:id')

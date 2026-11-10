@@ -7,7 +7,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { createCompany, createOrganization } from '../src/company.ts';
 import type { Db } from '../src/index.ts';
 import {
-  enableInventory, findByBarcode, inventoryStatus, postStockDocument, reorderReport, runInventoryPeriodEnd, saveStockDraft, saveWarehouse, section87Report, setInventorySetting,
+  enableInventory, findByBarcode, inventoryStatus, listProductUnits, listStockDocuments, postStockDocument, reorderReport, runInventoryPeriodEnd, saveStockDraft, saveWarehouse, section87Report, setInventorySetting,
   setProductStock, stockCard, stockValuation, voidStockDocument,
 } from '../src/inventory.ts';
 import { approvePurchase, savePurchaseDraft } from '../src/purchase.ts';
@@ -200,6 +200,20 @@ describe('golden ถัวเฉลี่ยเคลื่อนที่ (fixt
     const r = await section87Report(db, Q, '2026-11');
     expect(r.pendingOfficialFormat).toBe(true);
     expect(r.products.map((p) => [p.code, p.closingQty])).toEqual([['G-001', '241.0000'], ['G-002', '35.0000'], ['G-003', '52.0000']]);
+  });
+  it('รายการเอกสารสต็อก (หน้าชั่วคราว): เฉพาะ GR/GI/TRF/ADJ ของบริษัทนี้ · กรองประเภท · คลัง/เลข JV · หน่วยเพิ่มเติม', async () => {
+    const stockKeys = fx.documents.filter((d) => ['GR', 'GI', 'TRF', 'ADJ'].includes(d.type)).map((d) => ids[Q]![d.key]!);
+    const all = await listStockDocuments(db, Q);
+    expect(all.map((d) => d.id).sort()).toEqual([...stockKeys].sort());
+    expect(all.every((d) => d.status === 'posted' && d.doc_no && d.warehouse_code && d.line_count > 0)).toBe(true);
+    const trf = await listStockDocuments(db, Q, { docType: 'TRF' });
+    expect(trf.length).toBe(fx.documents.filter((d) => d.type === 'TRF').length);
+    expect(trf.every((d) => d.doc_type === 'TRF' && d.to_warehouse_code)).toBe(true);
+    const gr = (await listStockDocuments(db, P, { docType: 'GR' }))[0]!;
+    expect(gr.journal_no).toMatch(/^JV/u);
+    expect(await listStockDocuments(db, R)).toEqual([]);
+    const units = await listProductUnits(db, Q);
+    expect(units.map((u) => [u.product_code, u.unit, u.factor])).toEqual(fx.products.flatMap((p) => (p.units ?? []).map((u) => [p.code, u.unit, Number(u.factor).toFixed(4)])));
   });
 });
 
