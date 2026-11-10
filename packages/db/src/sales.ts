@@ -7,6 +7,7 @@ import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
 import { emitTx, userNames } from './hub.ts';
+import { reverseStockMovesTx, saleStockTx } from './inventory-core.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -26,6 +27,7 @@ export interface SalesLineInput {
   vat?: boolean;
   accountCode?: string | null;
   estCost?: MoneyString | null;    // ต้นทุนประมาณรวมของบรรทัด (ใบเสนอราคา · ScreenQuote)
+  unit?: string | null;            // P2A สต็อก: หน่วยของบรรทัด (ว่าง = หน่วยนับหลัก)
 }
 export interface SalesDraftInput {
   docType: Exclude<SalesType, 'BN' | 'RV'>;
@@ -48,6 +50,7 @@ export interface SalesDraftInput {
   projectCode?: string | null;
   paymentTerms?: string | null;
   priceLevel?: number | null;
+  warehouseId?: string | null;     // P2A สต็อก: คลังที่ตัดสินค้า (ว่าง = คลังตั้งต้น · ใช้เมื่อเปิดโมดูลสต็อก)
   lines: SalesLineInput[];
 }
 export interface Actor { userId: string | null; role: CompanyRole }
@@ -122,6 +125,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       address: input.address ?? null, notes: input.notes ?? null, reference: input.reference ?? null, ref_document_id: input.refDocumentId ?? null,
       credit_days: input.creditDays ?? null, receive_account: input.receiveAccount ?? null, updated_at: new Date(),
       salesperson: input.salesperson?.trim() || null, project_code: input.projectCode?.trim() || null, payment_terms: input.paymentTerms?.trim() || null, price_level: input.priceLevel ?? null,
+      warehouse_id: input.warehouseId ?? null,
     };
     let docId = id;
     if (docId) {
@@ -144,6 +148,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
         company_id: companyId, document_id: docId, line_no: i + 1, line_type: l.lineType ?? 'item', product_code: l.productCode ?? null, description: l.description,
         qty: item ? l.qty! : null, unit_price: item ? l.unitPrice! : null, discount: l.discount ?? '0.00', amount: item ? t.lines[k++]!.amount : '0.00',
         vat_rate: item ? ((l.vat ?? true) ? '0.0700' : null) : null, account_code: l.accountCode ?? null, est_cost: item ? l.estCost ?? null : null,
+        unit: item ? l.unit ?? null : null,
       }).execute();
     }
     // มัดจำที่หัก: settlement จาก DP → IV (ยังไม่มีผลจนกว่าจะลงบัญชี — voided = true จนอนุมัติ)
@@ -218,8 +223,11 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
       contact: { arAccount: '1130100', ...(d.contact_id ? { id: d.contact_id } : {}) },
       accounts: { ...(d.receive_account ? { cash: d.receive_account } : {}) },
     }).map((l) => (l.account === '1130100' && d.contact_id ? { ...l, contactId: d.contact_id } : l));
-    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
+    // P2A สต็อก: บรรทัดสินค้า track_stock → ตัดสต็อก (+ ต้นทุนขายเมื่อ perpetual) · โมดูลปิด = null (Phase 1 เดิม)
+    const stock = await saleStockTx(tx, companyId, actor.role, d, docNo);
+    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: stock ? [...jl, ...stock.lines] : jl, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
       sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
+    if (stock) await stock.link(j.id);
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
     if (d.doc_type === 'CN') {
       await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: d.grand_total, wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
@@ -341,6 +349,8 @@ export async function voidDocumentTx(tx: CompanyTx, companyId: string, actor: Ac
       const r = await voidJournalTx(tx, companyId, d.journal_id, { date: p.date ?? d.issue_date, role: actor.role, reason: p.reason, ...(actor.userId ? { actorId: actor.userId } : {}) });
       reversal = r.journalNo;
     }
+    // P2A สต็อก: กลับความเคลื่อนไหวสต็อกของเอกสาร (ไม่มี = ไม่ทำอะไร)
+    await reverseStockMovesTx(tx, companyId, actor.role, id, p.date ?? d.issue_date, d.doc_no ?? d.doc_type);
     await tx.updateTable('acct.settlement').set({ voided: true }).where('payment_id', '=', id).execute();
     // ยกเลิกการจ่าย = ยกเลิก 50 ทวิ ที่ออกจากการจ่ายนั้น (ไม่เข้า ภ.ง.ด.)
     await tx.updateTable('acct.wht_certificate').set({ voided: true }).where('payment_id', '=', id).execute();
