@@ -5,6 +5,7 @@ import { Money, type CompanyRole, type JournalLine, type MoneyString } from '@in
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
+import { inventoryControlTx } from './inventory.ts';
 
 const monthRange = (ym: string) => {
   const [y, m] = ym.split('-').map(Number) as [number, number];
@@ -408,6 +409,8 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       ...(await tx.selectFrom('acct.fixed_asset').select('disposal_journal_id').where('disposal_journal_id', 'is not', null).execute()).map((r) => r.disposal_journal_id!),
       // เบิกชดเชยเงินสดย่อย (1 JV ต่อชุด อ้างใบ PC หลายใบ ไม่มี source_document_id)
       ...(await tx.selectFrom('acct.document').select('journal_id').where('doc_type', '=', 'PC').where('journal_id', 'is not', null).execute()).map((r) => r.journal_id!),
+      // P2A สต็อก: JV ปรับต้นทุนย้อนหลัง / ปรับตอนยกเลิก / ปรับสินค้าปลายงวด (periodic)
+      ...(await tx.selectFrom('acct.inventory_journal').select('journal_id').execute()).map((r) => r.journal_id),
     ]);
     const manual = lines.filter((l) => !l.source_document_id && !sysIds.has(l.journal_id));
     const sum = (rows: typeof lines, acct: (a: string) => boolean, side: 'Dr' | 'Cr') =>
@@ -420,6 +423,9 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     const rev = (a: string) => a.startsWith('41');
     const cost = (a: string) => a.startsWith('5') || /^15[1-4]/u.test(a);
     const cash = (a: string) => a.startsWith('1100') || a.startsWith('1150');
+    // P2A สต็อก (เปิดโมดูลเท่านั้น): บิลซื้อสินค้าลง Dr สินค้าคงเหลือ / ล้าง GR/IR แทนค่าใช้จ่าย
+    const inv = await inventoryControlTx(tx, companyId, to);
+    const invAccts = new Set(inv ? [...inv.accounts, '2130100'] : []);
     const manualNos = (acct: (a: string) => boolean) => [...new Set(manual.filter((l) => acct(l.account_code)).map((l) => l.journal_no))];
     const noteOf = (nos: string[], ok: boolean) => (ok || !nos.length ? {} : { note: `${nos.join(', ')} คีย์มือ ไม่มีเอกสารอ้างอิง` });
 
@@ -434,13 +440,14 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       sum(ofTypes(['CN', 'DN']), (a) => rev(a) || a === '4150100', 'Cr'), { count: n(['CN', 'DN']) }));
     {
       const c = check(1, 'doc_ap_exp', 'บิลซื้อ AP + ค่าใช้จ่าย EXP', dsum(['AP', 'EXP'], (x) => P(x.subtotal)),
-        sum(ofTypes(['AP', 'EXP']), cost, 'Dr').plus(sum(manual, (a) => a.startsWith('53') || /^15[1-4]/u.test(a), 'Dr')), { count: n(['AP', 'EXP']) });
+        sum(ofTypes(['AP', 'EXP']), (a) => cost(a) || invAccts.has(a), 'Dr').plus(sum(manual, (a) => a.startsWith('53') || /^15[1-4]/u.test(a), 'Dr')), { count: n(['AP', 'EXP']) });
       sec1.push({ ...c, ...noteOf(manualNos((a) => a.startsWith('53') || /^15[1-4]/u.test(a)), c.ok) });
     }
     sec1.push(check(1, 'doc_rv', 'รับชำระ RV', dsum(['RV'], (x) => P(x.grand_total)), sum(ofTypes(['RV']), cash, 'Dr'), { count: n(['RV']) }));
     sec1.push(check(1, 'doc_pv', 'จ่ายชำระ PV', dsum(['PV'], (x) => P(x.grand_total).neg()), sum(ofTypes(['PV']), cash, 'Dr'), { count: n(['PV']) }));
     {
-      const noJv = docs.filter((d) => !d.journal_id && !['QO', 'SO', 'PR', 'PO', 'BN', 'BNR', 'PC'].includes(d.doc_type));
+      // P2A สต็อก: โอนคลัง / เบิกใช้ / ปรับยอด แบบ periodic ไม่มี JV ตามวิธีบันทึก
+      const noJv = docs.filter((d) => !d.journal_id && !['QO', 'SO', 'PR', 'PO', 'BN', 'BNR', 'PC', 'TRF', 'GI', 'ADJ'].includes(d.doc_type));
       const manualJvs = [...new Set(manual.map((l) => l.journal_no))];
       const amt = Money.sum(manual.map((l) => P(l.debit)));
       sec1.push({ key: 'doc_orphans', section: 1, label: 'เอกสารผ่านรายการแต่ไม่มี JV / JV ไม่มีเอกสาร', byDocs: '0.00', byGl: '0.00', diff: '0.00', ok: !noJv.length && !manualJvs.length,
@@ -497,6 +504,11 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       check(3, 'cheques', 'ทะเบียนเช็ครับในมือ + นำฝาก ↔ GL 1150100 + 1150200', Money.sum(cheques.map((c) => P(c.amount))), await balance(['1150100', '1150200']),
         { count: `${cheques.length} ฉบับ` }),
     ];
+    // P2A สต็อก (เปิดโมดูลเท่านั้น · ต่อท้าย ไม่เปลี่ยน 16 จุดเดิม): มูลค่าคงเหลือ ↔ GL สินค้าคงเหลือ · periodic = ข้อมูลประกอบ (GL ปรับเมื่อปิดงวด)
+    if (inv) {
+      const c = check(3, 'inventory_control', 'มูลค่าสินค้าคงเหลือ (ถัวเฉลี่ย) ↔ GL สินค้าคงเหลือ', inv.valuation, inv.gl, { count: inv.accounts.join(', ') });
+      sec3.push(inv.method === 'perpetual' ? c : { ...c, ok: true, note: `periodic: ข้อมูลประกอบ — GL ปรับเป็นมูลค่าคงเหลือเมื่อปรับสินค้าปลายงวด (ผลต่างตอนนี้ ${c.diff})` });
+    }
     const checks = [...sec1, ...sec2, ...sec3];
     return { month: period, from, to, checks, passed: checks.filter((c) => c.ok).length, toReview: checks.filter((c) => !c.ok).length };
   });
