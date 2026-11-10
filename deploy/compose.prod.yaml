@@ -79,6 +79,7 @@ services:
       PORT: "3000"
       ID_API_URL: "http://id-api:4100"
       ACCOUNTING_WEB_URL: "https://app.${DOMAIN}"
+      PUBLIC_WEB_URL: "https://id.${DOMAIN}"
       ID_REDIRECT_ORIGINS: "https://app.${DOMAIN},https://id.${DOMAIN},https://admin.${DOMAIN}"
     depends_on: [id-api]
   accounting-web:
@@ -94,6 +95,7 @@ services:
       ID_WEB_URL: "https://id.${DOMAIN}"
       NEXT_PUBLIC_ID_WEB_URL: "https://id.${DOMAIN}"
       PUBLIC_API_URL: "https://api.${DOMAIN}"
+      PUBLIC_WEB_URL: "https://app.${DOMAIN}"
     depends_on: [accounting-api]
   console-web:
     <<: *app

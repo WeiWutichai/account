@@ -9,7 +9,9 @@ export async function GET(req: Request) {
     method: 'POST', headers: { cookie: req.headers.get('cookie') ?? '', 'user-agent': req.headers.get('user-agent') ?? '', 'x-forwarded-for': req.headers.get('x-forwarded-for') ?? '127.0.0.1' },
   });
   // next อาจเป็น path ภายใน id-web (เช่น /me) → ทำเป็น URL เต็มก่อน redirect
-  const target = res.ok ? new URL(next, req.url).href : new URL(`/login?next=${encodeURIComponent(next)}`, req.url).href;
+  // production อยู่หลัง reverse proxy → req.url เป็นที่อยู่ภายใน · ใช้ PUBLIC_WEB_URL (https://id.<DOMAIN>) เป็นฐาน
+  const base = process.env.PUBLIC_WEB_URL || req.url;
+  const target = res.ok ? new URL(next, base).href : new URL(`/login?next=${encodeURIComponent(next)}`, base).href;
   const r = NextResponse.redirect(target);
   for (const c of res.headers.getSetCookie()) r.headers.append('set-cookie', c);
   return r;

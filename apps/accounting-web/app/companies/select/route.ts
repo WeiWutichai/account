@@ -2,10 +2,10 @@
 // บริษัทที่ยังตั้งค่าไม่เสร็จ → ไปขั้นที่ค้าง (ขั้น 3 = ยอดยกมา)
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { COOKIE, ID_API, loginUrl } from '../../lib/session';
+import { COOKIE, ID_API, loginUrl, publicUrl } from '../../lib/session';
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
+  const url = publicUrl(new URL(req.url).pathname + new URL(req.url).search, req.url);
   const id = url.searchParams.get('id') ?? '';
   const jar = await cookies();
   const at = jar.get(COOKIE.access)?.value;
@@ -14,9 +14,9 @@ export async function GET(req: Request) {
   if (!res.ok) return NextResponse.redirect(loginUrl(url.href));
   const list = (await res.json()) as { id: string; setup_done: boolean; setup_step: number }[];
   const c = list.find((x) => x.id === id);
-  if (!c) return NextResponse.redirect(new URL('/companies', req.url));
+  if (!c) return NextResponse.redirect(publicUrl('/companies', req.url));
   const next = !c.setup_done && c.setup_step === 3 ? '/setup/opening-balance' : (url.searchParams.get('next') ?? '/');
-  const r = NextResponse.redirect(new URL(next, req.url));
+  const r = NextResponse.redirect(publicUrl(next, req.url));
   r.cookies.set(COOKIE.company, id, { httpOnly: true, sameSite: 'lax', path: '/', secure: process.env.NODE_ENV === 'production', maxAge: 400 * 86_400 });
   return r;
 }

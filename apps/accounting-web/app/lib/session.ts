@@ -17,5 +17,8 @@ export function apiHeaders(get: (name: string) => string | undefined): Record<st
   if (co) h['x-company-id'] = co;
   return h;
 }
+/** origin สาธารณะ (production อยู่หลัง reverse proxy → req.url / nextUrl เป็นที่อยู่ภายใน เช่น localhost:3000) · ว่าง = ใช้ origin ของ request (dev) */
+export const PUBLIC_WEB_URL = process.env.PUBLIC_WEB_URL || null;
+export const publicUrl = (pathAndSearch: string, reqUrl: string): URL => new URL(pathAndSearch, PUBLIC_WEB_URL ?? reqUrl);
 export const loginUrl = (next: string): string => `${ID_WEB}/login?next=${encodeURIComponent(next)}`;
 export const refreshUrl = (next: string): string => `${ID_WEB}/refresh?next=${encodeURIComponent(next)}`;
