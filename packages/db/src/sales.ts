@@ -9,6 +9,7 @@ import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } 
 import { emitTx, userNames } from './hub.ts';
 import { convertDocumentJournal, docNumberTx, documentFx, FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, rateOnTx, settledBaseTx, type DocFxInput } from './fx.ts';
 import { assertCreditNoteAllowedTx, commitScheduleTx, deferRevenueTx, swtBeforeVoidTx } from './swt-hooks.ts';
+import { reverseStockMovesTx, saleStockTx } from './inventory-core.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -30,6 +31,7 @@ export interface SalesLineInput {
   estCost?: MoneyString | null;    // ต้นทุนประมาณรวมของบรรทัด (ใบเสนอราคา · ScreenQuote)
   /** P2A FXB: zero = อัตรา 0% (ส่งออก ม.80/1 · vat_rate 0) · exempt = ยกเว้น · ว่าง = ตาม vat */
   vatCode?: 'vat7' | 'zero' | 'exempt';
+  unit?: string | null;            // P2A สต็อก: หน่วยของบรรทัด (ว่าง = หน่วยนับหลัก)
 }
 export interface SalesDraftInput {
   docType: Exclude<SalesType, 'BN' | 'RV'>;
@@ -52,6 +54,7 @@ export interface SalesDraftInput {
   projectCode?: string | null;
   paymentTerms?: string | null;
   priceLevel?: number | null;
+  warehouseId?: string | null;     // P2A สต็อก: คลังที่ตัดสินค้า (ว่าง = คลังตั้งต้น · ใช้เมื่อเปิดโมดูลสต็อก)
   lines: SalesLineInput[];
   /** P2A FXB (ต้องเปิดโมดูล): สกุลเอกสาร · อัตรา (ว่าง = อัตรา ณ วันที่เอกสาร) · สาขา (ว่าง = 00000) */
   currency?: DocFxInput['currency'];
@@ -142,6 +145,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
       credit_days: input.creditDays ?? null, receive_account: input.receiveAccount ?? null, updated_at: new Date(),
       salesperson: input.salesperson?.trim() || null, project_code: input.projectCode?.trim() || null, payment_terms: input.paymentTerms?.trim() || null, price_level: input.priceLevel ?? null,
       ...fxv,
+      warehouse_id: input.warehouseId ?? null,
     };
     let docId = id;
     if (docId) {
@@ -166,6 +170,7 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
         company_id: companyId, document_id: docId, line_no: i + 1, line_type: l.lineType ?? 'item', product_code: l.productCode ?? null, description: l.description,
         qty: item ? l.qty! : null, unit_price: item ? l.unitPrice! : null, discount: l.discount ?? '0.00', amount: item ? t.lines[k++]!.amount : '0.00',
         vat_rate: item ? vatRateOf(l) : null, account_code: l.accountCode ?? null, est_cost: item ? l.estCost ?? null : null,
+        unit: item ? l.unit ?? null : null,
       }).execute();
     }
     // มัดจำที่หัก: settlement จาก DP → IV (ยังไม่มีผลจนกว่าจะลงบัญชี — voided = true จนอนุมัติ)
@@ -206,8 +211,12 @@ export async function outstandingTx(tx: CompanyTx, docId: string) {
   const settled = Money.sum(paid.map((x) => Money.parse(x.applied).plus(Money.parse(x.wht))));
   const credited = Money.sum(credits.map((x) => Money.parse(x.applied)));
   const vatDue = Money.sum(paid.map((x) => Money.parse(x.vat_due)));
+  // ขายสด (สูตร settlement = 'paid' เช่น Cash[IV]) รับเงินแล้วในตัว ไม่มีลูกหนี้ค้าง — เคยถูกนับเป็นยอดค้าง (พบตอนทำ P2A INV)
+  if (d.rule_code && PAID_RULE_CODES.has(d.rule_code) && d.status === 'posted') return { doc: d, settled: Money.parse(d.grand_total), credited, vatDue, outstanding: Money.zero() };
   return { doc: d, settled, credited, vatDue, outstanding: Money.parse(d.grand_total).minus(settled).minus(credited) };
 }
+/** สูตรที่รับ/จ่ายเงินในตัวเอกสาร (ไม่ตั้งลูกหนี้/เจ้าหนี้) */
+export const PAID_RULE_CODES: ReadonlySet<string> = new Set(DEFAULT_RULES.filter((r) => r.settlement === 'paid').map((r) => r.code));
 
 /** opts.docNo: ระบุเลขที่เอง (นำเข้าเอกสารจากระบบเดิม / dev seed ตาม fixtures) · ซ้ำไม่ได้ (unique index) */
 export async function approveDocument(db: Db, companyId: string, actor: Actor, id: string, opts: { docNo?: string } = {}): Promise<{ docNo: string; journalNo?: string }> {
@@ -247,8 +256,11 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
     if (deferral.seeds.length && d.currency !== 'THB') throw new LedgerError('ใบแจ้งหนี้จากสัญญาที่รับรู้รายได้ตามช่วงเวลา ยังไม่รองรับสกุลต่างประเทศ');
     // P2A FXB: เอกสารสกุลต่างประเทศ → journal บาท (เอกสารบาทไม่เปลี่ยน)
     const { lines: jl, thb } = await convertDocumentJournal(tx, d, deferral.lines);
-    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
+    // P2A สต็อก: บรรทัดสินค้า track_stock → ตัดสต็อก (+ ต้นทุนขายเป็นบาทเมื่อ perpetual) · โมดูลปิด = null (Phase 1 เดิม)
+    const stock = await saleStockTx(tx, companyId, actor.role, d, docNo);
+    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: stock ? [...jl, ...stock.lines] : jl, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
       sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}), ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
+    if (stock) await stock.link(j.id);
     await commitScheduleTx(tx, companyId, id, deferral.seeds);
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date(), ...(thb ?? {}) }).where('id', '=', id).execute();
     if (d.doc_type === 'CN') {
@@ -425,6 +437,8 @@ export async function voidDocumentTx(tx: CompanyTx, companyId: string, actor: Ac
       const r = await voidJournalTx(tx, companyId, d.journal_id, { date: p.date ?? d.issue_date, role: actor.role, reason: p.reason, ...(actor.userId ? { actorId: actor.userId } : {}) });
       reversal = r.journalNo;
     }
+    // P2A สต็อก: กลับความเคลื่อนไหวสต็อกของเอกสาร (ไม่มี = ไม่ทำอะไร)
+    await reverseStockMovesTx(tx, companyId, actor.role, id, p.date ?? d.issue_date, d.doc_no ?? d.doc_type);
     await tx.updateTable('acct.settlement').set({ voided: true }).where('payment_id', '=', id).execute();
     // ยกเลิกการจ่าย = ยกเลิก 50 ทวิ ที่ออกจากการจ่ายนั้น (ไม่เข้า ภ.ง.ด.)
     await tx.updateTable('acct.wht_certificate').set({ voided: true }).where('payment_id', '=', id).execute();

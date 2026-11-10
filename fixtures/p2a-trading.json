@@ -1,0 +1,110 @@
+{
+  "_meta": {
+    "status": "ร่าง รอ Wei ยืนยัน",
+    "source": "docs/technical-plan-P2A.md กติกาข้อ 5 · กลุ่ม INV สินค้าคงคลัง (backend) — ตัวเลขชุดทดสอบของ packages/db/test/p2a-inv.test.ts",
+    "rule": "ตัวเลขทุกตัวคำนวณจากสูตรในช่อง formula (ต้นทุนถัวเฉลี่ยเคลื่อนที่ สินค้า × คลัง · ปัด 2 ตำแหน่งที่บรรทัด · ออกหมดคลัง = มูลค่าคงเหลือทั้งหมด) · ไม่แตะ fixtures/sample-company.json",
+    "pending_auditor": ["inventory.method (ค่าตั้งต้นชั่วคราว periodic)", "inventory.costing (avco)", "inventory.writedown_nrv (false)", "ผลต่างราคาบิลซื้อกับ GR เข้าต้นทุนสินค้าทั้งจำนวน"],
+    "currency": "THB",
+    "vat_rate": 0.07,
+    "period": "2569-11",
+    "dates": "พ.ศ. (แปลงเป็น ค.ศ. ในการทดสอบ)"
+  },
+  "company": { "name_th": "บริษัท ตัวอย่างซื้อมาขายไป จำกัด (ร่าง)", "chart_template": "trading", "vat_registered": true },
+  "warehouses": [
+    { "code": "MAIN", "name": "คลังสินค้าหลัก", "is_default": true, "allow_negative": false },
+    { "code": "SHOP", "name": "คลังหน้าร้าน", "is_default": false, "allow_negative": false }
+  ],
+  "contacts": [
+    { "code": "V-001", "name": "ผู้ขาย ก (ร่าง)", "type": "vendor" },
+    { "code": "V-002", "name": "ผู้ขาย ข (ร่าง)", "type": "vendor" },
+    { "code": "C-001", "name": "ลูกค้า ก (ร่าง)", "type": "customer" },
+    { "code": "C-002", "name": "ลูกค้าเงินสด (ร่าง)", "type": "customer" }
+  ],
+  "products": [
+    { "code": "G-001", "name": "เมาส์ไร้สาย", "unit": "ชิ้น", "price": "250.00", "revenue_account": "4110100", "units": [{ "unit": "กล่อง", "factor": "10", "barcode": "8850000000028" }],
+      "barcode": "8850000000011", "reorder_point": "50", "max_qty": "300" },
+    { "code": "G-002", "name": "คีย์บอร์ด", "unit": "ชิ้น", "price": "600.00", "revenue_account": "4110100", "reorder_point": "40", "max_qty": "100" },
+    { "code": "G-003", "name": "สาย USB-C", "unit": "ชิ้น", "price": "60.00", "revenue_account": "4110100", "reorder_point": "60", "max_qty": "200" }
+  ],
+  "documents": [
+    { "key": "PO-1", "type": "PO", "date": "2569-11-02", "contact": "V-001",
+      "lines": [{ "product": "G-001", "qty": "20", "unit": "กล่อง", "unit_price": "1500.00" }, { "product": "G-002", "qty": "50", "unit_price": "400.00" }],
+      "subtotal": "50000.00", "vat": "3500.00", "grand_total": "53500.00" },
+    { "key": "GR-1", "type": "GR", "date": "2569-11-03", "ref": "PO-1", "contact": "V-001", "warehouse": "MAIN",
+      "lines": [{ "product": "G-001", "qty": "12", "unit": "กล่อง", "value": "18000.00", "formula": "120 ชิ้น × (30,000 ÷ 200)" }, { "product": "G-002", "qty": "30", "value": "12000.00", "formula": "30 × 400" }],
+      "total": "30000.00", "journal": [["Dr", "1200100", "30000.00"], ["Cr", "2130100", "30000.00"]] },
+    { "key": "AP-A", "type": "AP", "date": "2569-11-05", "contact": "V-002", "warehouse": "MAIN",
+      "lines": [{ "product": "G-003", "qty": "100", "unit_price": "35.00", "account": "5010100" }],
+      "subtotal": "3500.00", "vat": "245.00", "grand_total": "3745.00",
+      "journal": [["Dr", "1200100", "3500.00"], ["Dr", "1170100", "245.00"], ["Cr", "2110100", "3745.00"]] },
+    { "key": "IV-1", "type": "IV", "rule": "Credit[IV]", "tax_mode": "immediate", "date": "2569-11-08", "contact": "C-001", "warehouse": "MAIN",
+      "lines": [{ "product": "G-001", "qty": "50", "unit_price": "250.00", "cogs": "7500.00", "formula": "50 × 18,000/120" }, { "product": "G-003", "qty": "40", "unit_price": "60.00", "cogs": "1400.00", "formula": "40 × 3,500/100" }],
+      "subtotal": "14900.00", "vat": "1043.00", "grand_total": "15943.00", "cogs": "8900.00",
+      "journal_perpetual": [["Dr", "1130100", "15943.00"], ["Cr", "4110100", "14900.00"], ["Cr", "2150100", "1043.00"], ["Dr", "5020100", "8900.00"], ["Cr", "1200100", "8900.00"]],
+      "journal_periodic": [["Dr", "1130100", "15943.00"], ["Cr", "4110100", "14900.00"], ["Cr", "2150100", "1043.00"]] },
+    { "key": "GR-2", "type": "GR", "date": "2569-11-10", "ref": "PO-1", "contact": "V-001", "warehouse": "MAIN",
+      "lines": [{ "product": "G-001", "qty": "8", "unit": "กล่อง", "value": "12000.00", "formula": "รับครบ PO: 30,000 − 18,000" }, { "product": "G-002", "qty": "20", "value": "8000.00", "formula": "รับครบ PO: 20,000 − 12,000" }],
+      "total": "20000.00", "journal": [["Dr", "1200100", "20000.00"], ["Cr", "2130100", "20000.00"]] },
+    { "key": "AP-B", "type": "AP", "date": "2569-11-12", "contact": "V-002", "warehouse": "MAIN",
+      "lines": [{ "product": "G-001", "qty": "100", "unit_price": "162.00", "account": "5010100" }],
+      "subtotal": "16200.00", "vat": "1134.00", "grand_total": "17334.00",
+      "journal": [["Dr", "1200100", "16200.00"], ["Dr", "1170100", "1134.00"], ["Cr", "2110100", "17334.00"]] },
+    { "key": "AP-C", "type": "AP", "date": "2569-11-14", "contact": "V-001", "ref": "GR-1",
+      "lines": [{ "product": "G-001", "qty": "12", "unit": "กล่อง", "unit_price": "1500.00", "account": "5010100", "grir": "18000.00" },
+        { "product": "G-002", "qty": "30", "unit_price": "410.00", "account": "5010100", "grir": "12000.00", "price_variance": "300.00", "formula": "30 × (410 − 400)" }],
+      "subtotal": "30300.00", "vat": "2121.00", "grand_total": "32421.00",
+      "journal": [["Dr", "2130100", "30000.00"], ["Dr", "1200100", "300.00"], ["Dr", "1170100", "2121.00"], ["Cr", "2110100", "32421.00"]] },
+    { "key": "TRF-1", "type": "TRF", "date": "2569-11-15", "warehouse": "MAIN", "to_warehouse": "SHOP",
+      "lines": [{ "product": "G-001", "qty": "30", "value": "4644.00", "formula": "MAIN ก่อนโอน 250 ชิ้น 38,700.00 (18,000 − 7,500 + 12,000 + 16,200) × 30/250" }],
+      "total": "4644.00", "journal": [] },
+    { "key": "IV-2", "type": "IV", "rule": "Cash[IV]", "tax_mode": "immediate", "date": "2569-11-18", "contact": "C-002", "warehouse": "SHOP", "receive_account": "1000100",
+      "lines": [{ "product": "G-001", "qty": "10", "unit_price": "250.00", "cogs": "1548.00", "formula": "4,644 × 10/30" }],
+      "subtotal": "2500.00", "vat": "175.00", "grand_total": "2675.00", "cogs": "1548.00" },
+    { "key": "IV-3", "type": "IV", "rule": "Credit[IV]", "tax_mode": "immediate", "date": "2569-11-20", "contact": "C-001", "warehouse": "MAIN",
+      "lines": [{ "product": "G-002", "qty": "15", "unit_price": "600.00", "cogs": "6090.00", "formula": "MAIN 50 ชิ้น 20,300.00 (12,000 + 8,000 + 300) × 15/50" }],
+      "subtotal": "9000.00", "vat": "630.00", "grand_total": "9630.00", "cogs": "6090.00" },
+    { "key": "GI-1", "type": "GI", "date": "2569-11-25", "warehouse": "MAIN",
+      "lines": [{ "product": "G-003", "qty": "5", "account": "5304100", "value": "175.00", "formula": "MAIN 60 ชิ้น 2,100.00 × 5/60" }],
+      "total": "175.00", "journal_perpetual": [["Dr", "5304100", "175.00"], ["Cr", "1200100", "175.00"]] },
+    { "key": "ADJ-1", "type": "ADJ", "date": "2569-11-28", "warehouse": "MAIN",
+      "lines": [{ "product": "G-001", "counted": "221", "system": "220", "delta": "1.0000", "value": "154.80", "formula": "+1 × 34,056.00/220" },
+        { "product": "G-003", "counted": "52", "system": "55", "delta": "-3.0000", "value": "-105.00", "formula": "−3 × 1,925.00/55" }],
+      "total": "49.80",
+      "journal_perpetual": [["Dr", "1200100", "154.80"], ["Cr", "5020900", "154.80"], ["Dr", "5020900", "105.00"], ["Cr", "1200100", "105.00"]] }
+  ],
+  "expected_2569_11_30": {
+    "valuation": [
+      { "product": "G-001", "warehouse": "MAIN", "qty": "221.0000", "value": "34210.80" },
+      { "product": "G-001", "warehouse": "SHOP", "qty": "20.0000", "value": "3096.00" },
+      { "product": "G-002", "warehouse": "MAIN", "qty": "35.0000", "value": "14210.00" },
+      { "product": "G-003", "warehouse": "MAIN", "qty": "52.0000", "value": "1820.00" }
+    ],
+    "valuation_total": "53336.80",
+    "perpetual_gl": { "1200100": "53336.80", "2130100": "-20000.00", "5020100": "16538.00", "5304100": "175.00", "5020900": "-49.80" },
+    "periodic_gl_before_close": { "1200100": "70000.00", "2130100": "-20000.00" },
+    "periodic_period_end": { "cogs": "16663.20", "formula": "GL 1200100 70,000.00 − มูลค่าคงเหลือ 53,336.80", "journal": [["Dr", "5020100", "16663.20"], ["Cr", "1200100", "16663.20"]] },
+    "reorder": [
+      { "product": "G-002", "on_hand": "35.0000", "suggest": "65.0000", "formula": "100 − 35" },
+      { "product": "G-003", "on_hand": "52.0000", "suggest": "148.0000", "formula": "200 − 52" }
+    ],
+    "stock_card_G-001_MAIN": { "closing_qty": "221.0000", "closing_value": "34210.80", "rows": 6 }
+  },
+  "negative_stock": { "doc": "IV ขาย G-002 จากคลัง SHOP วันที่ 2569-11-29 จำนวน 1", "expect": "ปฏิเสธ — คลัง SHOP ไม่อนุญาตให้ติดลบ" },
+  "backdated_sale": {
+    "doc": { "key": "IV-4", "type": "IV", "rule": "Credit[IV]", "tax_mode": "immediate", "date": "2569-11-09", "contact": "C-001", "warehouse": "MAIN",
+      "lines": [{ "product": "G-001", "qty": "20", "unit_price": "250.00", "cogs": "3000.00", "formula": "MAIN ณ 9 พ.ย. 70 ชิ้น 10,500.00 × 20/70" }] },
+    "recost": [
+      { "move": "TRF-1 โอนออก/เข้า G-001", "before": "4644.00", "after": "4656.52", "formula": "(10,500 − 3,000 + 12,000 + 16,200) = 35,700.00 × 30/230" },
+      { "move": "IV-2 ต้นทุนขาย G-001", "before": "1548.00", "after": "1552.17", "formula": "4,656.52 × 10/30" },
+      { "move": "ADJ-1 G-001 +1", "before": "154.80", "after": "155.22", "formula": "31,043.48/200" }
+    ],
+    "recost_journal": [["Dr", "5020100", "4.17"], ["Cr", "1200100", "4.17"], ["Dr", "1200100", "0.42"], ["Cr", "5020900", "0.42"]],
+    "valuation_after": { "G-001 MAIN": "31198.70", "G-001 SHOP": "3104.35", "total": "50333.05" }
+  },
+  "void_after_backdate": {
+    "doc": "IV-2 (ขายสด · ต้นทุนใน JV เดิม 1,548.00 · ต้นทุนปัจจุบันหลังคำนวณย้อนหลัง 1,552.17)",
+    "reversal_value": "1552.17",
+    "void_adjust_journal": [["Dr", "1200100", "4.17"], ["Cr", "5020100", "4.17"]],
+    "valuation_after": { "G-001 SHOP": "4656.52", "total": "51885.22" }
+  }
+}

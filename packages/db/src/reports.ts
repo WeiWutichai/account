@@ -5,9 +5,11 @@ import { Money, type CompanyRole, type JournalLine, type MoneyString } from '@in
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
+import { PAID_RULE_CODES } from './sales.ts';
 import { fxbSettingsTx, revaluationInEffectTx } from './fx.ts';
 import { foreignTaxTotals, PND54_PAYABLE, PP36_INPUT, PP36_PAYABLE, pp36ClaimRows } from './foreign-tax.ts';
 import { DEFERRED_REVENUE, moduleOnTx } from './swt-hooks.ts';
+import { inventoryControlTx } from './inventory.ts';
 
 const monthRange = (ym: string) => {
   const [y, m] = ym.split('-').map(Number) as [number, number];
@@ -356,6 +358,8 @@ export async function aging(db: Db, companyId: string, asOf: string, side: 'AR' 
         sql<string>`coalesce((select sum(coalesce(s.settled_thb, s.applied + s.wht)) from acct.settlement s join acct.document p on p.id = s.payment_id and p.company_id = s.company_id
           where s.document_id = d.id and s.company_id = d.company_id and not s.voided and p.issue_date <= ${asOf}), 0)`.as('settled')])
       .where('d.doc_type', 'in', types).where('d.pay_now', '=', false).where('d.issue_date', '<=', asOf) /* EXP จ่ายทันทีไม่มีหนี้ค้าง */
+      // ขายสด/จ่ายสด (สูตร settlement = 'paid') ไม่มีลูกหนี้/เจ้าหนี้ค้าง
+      .where((eb) => eb.or([eb('d.rule_code', 'is', null), eb('d.rule_code', 'not in', [...PAID_RULE_CODES])]))
       .where((eb) => eb.or([eb('d.status', '=', 'posted'), eb.and([eb('d.status', '=', 'voided'), eb('d.voided_at', '>', new Date(`${asOf}T23:59:59+07:00`))])]))
       .execute();
     // ปรับมูลค่าสิ้นงวดที่มีผล ณ วันที่ (ลงสิ้นงวด ยังไม่กลับรายการ) — ให้ยอดรายใบตรงกับ GL · ลูกหนี้ +ปรับ = เพิ่ม · เจ้าหนี้ +ปรับ = เพิ่ม
@@ -467,6 +471,8 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       ...(await tx.selectFrom('acct.document').select('journal_id').where('doc_type', '=', 'PC').where('journal_id', 'is not', null).execute()).map((r) => r.journal_id!),
       // Phase 2A SWT: รับรู้รายได้รับล่วงหน้ารายงวด
       ...(await tx.selectFrom('acct.revenue_recognition_run').select('journal_id').execute()).map((r) => r.journal_id),
+      // P2A สต็อก: JV ปรับต้นทุนย้อนหลัง / ปรับตอนยกเลิก / ปรับสินค้าปลายงวด (periodic)
+      ...(await tx.selectFrom('acct.inventory_journal').select('journal_id').execute()).map((r) => r.journal_id),
     ]);
     const manual = lines.filter((l) => !l.source_document_id && !sysIds.has(l.journal_id));
     const sum = (rows: typeof lines, acct: (a: string) => boolean, side: 'Dr' | 'Cr') =>
@@ -481,6 +487,9 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
     // 16xxxxx = สินทรัพย์ไม่มีตัวตน (Phase 2A SWT · ซื้อซอฟต์แวร์ลงสินทรัพย์ในบิลซื้อ)
     const cost = (a: string) => a.startsWith('5') || /^15[1-4]/u.test(a) || a.startsWith('16');
     const cash = (a: string) => a.startsWith('1100') || a.startsWith('1150');
+    // P2A สต็อก (เปิดโมดูลเท่านั้น): บิลซื้อสินค้าลง Dr สินค้าคงเหลือ / ล้าง GR/IR แทนค่าใช้จ่าย
+    const inv = await inventoryControlTx(tx, companyId, to);
+    const invAccts = new Set(inv ? [...inv.accounts, '2130100'] : []);
     const manualNos = (acct: (a: string) => boolean) => [...new Set(manual.filter((l) => acct(l.account_code)).map((l) => l.journal_no))];
     const noteOf = (nos: string[], ok: boolean) => (ok || !nos.length ? {} : { note: `${nos.join(', ')} คีย์มือ ไม่มีเอกสารอ้างอิง` });
 
@@ -496,13 +505,14 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       sum(ofTypes(['CN', 'DN']), (a) => rev(a) || a === '4150100', 'Cr'), { count: n(['CN', 'DN']) }));
     {
       const c = check(1, 'doc_ap_exp', 'บิลซื้อ AP + ค่าใช้จ่าย EXP', dsum(['AP', 'EXP'], (x) => P(x.subtotal)),
-        sum(ofTypes(['AP', 'EXP']), cost, 'Dr').plus(sum(manual, (a) => a.startsWith('53') || /^15[1-4]/u.test(a), 'Dr')), { count: n(['AP', 'EXP']) });
+        sum(ofTypes(['AP', 'EXP']), (a) => cost(a) || invAccts.has(a), 'Dr').plus(sum(manual, (a) => a.startsWith('53') || /^15[1-4]/u.test(a), 'Dr')), { count: n(['AP', 'EXP']) });
       sec1.push({ ...c, ...noteOf(manualNos((a) => a.startsWith('53') || /^15[1-4]/u.test(a)), c.ok) });
     }
     sec1.push(check(1, 'doc_rv', 'รับชำระ RV', dsum(['RV'], (x) => P(x.grand_total)), sum(ofTypes(['RV']), cash, 'Dr'), { count: n(['RV']) }));
     sec1.push(check(1, 'doc_pv', 'จ่ายชำระ PV', dsum(['PV'], (x) => P(x.grand_total).neg()), sum(ofTypes(['PV']), cash, 'Dr'), { count: n(['PV']) }));
     {
-      const noJv = docs.filter((d) => !d.journal_id && !['QO', 'SO', 'PR', 'PO', 'BN', 'BNR', 'PC'].includes(d.doc_type));
+      // P2A สต็อก: โอนคลัง / เบิกใช้ / ปรับยอด แบบ periodic ไม่มี JV ตามวิธีบันทึก
+      const noJv = docs.filter((d) => !d.journal_id && !['QO', 'SO', 'PR', 'PO', 'BN', 'BNR', 'PC', 'TRF', 'GI', 'ADJ'].includes(d.doc_type));
       const manualJvs = [...new Set(manual.map((l) => l.journal_no))];
       const amt = Money.sum(manual.map((l) => P(l.debit)));
       sec1.push({ key: 'doc_orphans', section: 1, label: 'เอกสารผ่านรายการแต่ไม่มี JV / JV ไม่มีเอกสาร', byDocs: '0.00', byGl: '0.00', diff: '0.00', ok: !noJv.length && !manualJvs.length,
@@ -559,6 +569,11 @@ export async function reconChecks(db: Db, companyId: string, period: string) {
       check(3, 'cheques', 'ทะเบียนเช็ครับในมือ + นำฝาก ↔ GL 1150100 + 1150200', Money.sum(cheques.map((c) => P(c.amount))), await balance(['1150100', '1150200']),
         { count: `${cheques.length} ฉบับ` }),
     ];
+    // P2A สต็อก (เปิดโมดูลเท่านั้น · ต่อท้าย ไม่เปลี่ยน 16 จุดเดิม): มูลค่าคงเหลือ ↔ GL สินค้าคงเหลือ · periodic = ข้อมูลประกอบ (GL ปรับเมื่อปิดงวด)
+    if (inv) {
+      const c = check(3, 'inventory_control', 'มูลค่าสินค้าคงเหลือ (ถัวเฉลี่ย) ↔ GL สินค้าคงเหลือ', inv.valuation, inv.gl, { count: inv.accounts.join(', ') });
+      sec3.push(inv.method === 'perpetual' ? c : { ...c, ok: true, note: `periodic: ข้อมูลประกอบ — GL ปรับเป็นมูลค่าคงเหลือเมื่อปรับสินค้าปลายงวด (ผลต่างตอนนี้ ${c.diff})` });
+    }
     // Phase 2A SWT (เปิดโมดูลเท่านั้น · ต่อท้าย ไม่เปลี่ยนจุดตรวจเดิม): รายได้รับล่วงหน้า ↔ GL · ภ.พ.36 ↔ GL · ภ.ง.ด.54 ↔ GL
     const swt: ReconCheckRow[] = [];
     if (swtOn) {

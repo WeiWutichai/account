@@ -9,6 +9,7 @@ import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Act
 import { emitTx } from './hub.ts';
 import { convertDocumentJournal, docNumberTx, documentFx, FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, rateOnTx, settledBaseTx, type DocFxInput } from './fx.ts';
 import { foreignTaxOnPaymentTx, pnd54Item, withheldOf, type WhtItem } from './foreign-tax.ts';
+import { mergeLines, purchaseStockTx } from './inventory-core.ts';
 
 export const PURCHASE_TYPES = ['PR', 'PO', 'AP', 'CNR', 'DNR', 'EXP'] as const;
 export type PurchaseType = (typeof PURCHASE_TYPES)[number];
@@ -57,6 +58,7 @@ export interface PurchaseLineInput {
   vat?: boolean;
   accountCode?: string | null;
   whtType?: string | null;        // ประเภทเงินได้ (หักตอนจ่าย)
+  unit?: string | null;           // P2A สต็อก: หน่วยของบรรทัด (ว่าง = หน่วยนับหลัก)
 }
 export interface PurchaseDraftInput {
   docType: PurchaseType;
@@ -73,6 +75,7 @@ export interface PurchaseDraftInput {
   reference?: string | null;
   /** ม.82/3 เดือนที่ใช้ภาษีซื้อ YYYY-MM (เดือนตามบิล ถึง +6 เดือน) · ว่าง = เดือนตามบิล */
   vatClaimMonth?: string | null;
+  warehouseId?: string | null;    // P2A สต็อก: คลังที่รับสินค้าเข้า (ว่าง = คลังตั้งต้น · ใช้เมื่อเปิดโมดูลสต็อก)
   lines: PurchaseLineInput[];
   /** P2A FXB (ต้องเปิดโมดูล): สกุลเอกสาร · อัตรา (ว่าง = อัตรา ณ วันที่เอกสาร) · สาขา (ว่าง = 00000) */
   currency?: DocFxInput['currency'];
@@ -112,7 +115,7 @@ export async function savePurchaseDraft(db: Db, companyId: string, actor: Actor,
       doc_type: input.docType, issue_date: input.issueDate, due_date: input.dueDate ?? null, contact_id: input.contactId, price_incl_vat: input.priceInclVat ?? false,
       subtotal: t.subtotal, discount: t.discount, vat: t.vat, wht: '0.00', grand_total: t.grandTotal, bill_discount: input.billDiscount ?? '0.00', vendor_ref: input.vendorRef ?? null,
       ref_document_id: input.refDocumentId ?? null, pay_now: input.payNow ?? false, receive_account: input.payFrom ?? null, notes: input.notes ?? null, reference: input.reference ?? null,
-      vat_claim_month: claim, ...fxv,
+      vat_claim_month: claim, ...fxv, warehouse_id: input.warehouseId ?? null,
       rule_code: input.docType === 'AP' ? 'Credit[AP]' : input.docType === 'EXP' ? (input.payNow ? 'Cash[EXP]' : 'Credit[EXP]') : input.docType === 'CNR' ? 'CNR' : input.docType === 'DNR' ? 'DNR' : null,
       updated_at: new Date(),
     };
@@ -136,6 +139,7 @@ export async function savePurchaseDraft(db: Db, companyId: string, actor: Actor,
         company_id: companyId, document_id: docId, line_no: i + 1, line_type: l.lineType ?? 'item', product_code: l.productCode ?? null, description: l.description,
         qty: item ? l.qty! : null, unit_price: item ? l.unitPrice! : null, discount: l.discount ?? '0.00', amount: item ? t.lines[k++]!.amount : '0.00',
         vat_rate: item ? ((l.vat ?? true) ? '0.0700' : null) : null, account_code: l.accountCode ?? null, wht_type: item ? (l.whtType ?? null) : null,
+        unit: item ? l.unit ?? null : null,
       }).execute();
     }
     return docId;
@@ -218,7 +222,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
       cnrApplied = Money.parse(d.grand_total).gt(open) ? open : Money.parse(d.grand_total);
       if (Money.parse(d.grand_total).gt(open)) ruleCode = 'CNR[Credit]';
     }
-    const lines = await tx.selectFrom('acct.document_line').select(['amount', 'account_code', 'wht_type']).where('document_id', '=', id).where('line_type', '=', 'item').orderBy('line_no').execute();
+    const lines = await tx.selectFrom('acct.document_line').select(['id', 'amount', 'account_code', 'wht_type', 'product_code', 'qty', 'unit']).where('document_id', '=', id).where('line_type', '=', 'item').orderBy('line_no').execute();
     let wht = Money.zero();
     const certs: WhtItem[] = [];
     if (d.doc_type === 'EXP' && d.pay_now) {
@@ -236,11 +240,16 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     }
     const { def, versionId } = await ruleFor(tx, ruleCode);
     const paid = Money.parse(d.grand_total).minus(wht);
-    const fxl = post(def, {
+    // P2A สต็อก: บรรทัดสินค้า track_stock → Dr สินค้าคงเหลือ (หรือล้าง GR/IR เมื่ออ้างใบรับสินค้า) + รับเข้าสต็อก · โมดูลปิด = null (Phase 1 เดิม)
+    const stock = await purchaseStockTx(tx, companyId, actor.role, d, docNo, lines);
+    const fxl0 = post(def, {
       docType: d.doc_type, amounts: { grand_total: d.grand_total, vat: d.vat, wht: wht.toString(), paid: paid.toString() },
-      lines: lines.map((l) => ({ amounts: { amount: l.amount }, ...(l.account_code ? { account: l.account_code } : {}) })),
+      lines: stock?.postingLines ?? lines.map((l) => ({ amounts: { amount: l.amount }, ...(l.account_code ? { account: l.account_code } : {}) })),
       contact: { apAccount: '2110100', ...(d.contact_id ? { id: d.contact_id } : {}) }, accounts: { ...(d.receive_account ? { cash: d.receive_account } : {}) },
     }).map((l) => (l.account === '2110100' && d.contact_id ? { ...l, contactId: d.contact_id } : l));
+    // TODO(Wei): บิลซื้อสินค้า (track_stock) สกุลต่างประเทศ — ต้นทุนสต็อกต้องเป็นบาท ยังไม่รองรับ (รวม INV + FXB)
+    if (stock && d.currency !== BASE_CURRENCY) throw new LedgerError('บิลซื้อสินค้าที่ติดตามสต็อก ยังไม่รองรับสกุลต่างประเทศ — บันทึกเป็นเงินบาท');
+    const fxl = stock?.extra.length ? mergeLines([...fxl0, ...stock.extra]) : fxl0;
     // P2A FXB: เอกสารสกุลต่างประเทศ → journal บาท (เอกสารบาทไม่เปลี่ยน)
     const { lines: converted, thb } = await convertDocumentJournal(tx, d, fxl);
     // Phase 2A SWT: จ่ายทันทีให้ผู้ขายต่างประเทศ → ภ.พ.36 / ภ.ง.ด.54 (โมดูลปิด = บรรทัดเดิม)
@@ -252,6 +261,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: def.book, prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}),
       ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
     if (!thb) await ftax?.commit();
+    if (stock) await stock.link(j.id);
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, wht: wht.toString(), rule_code: ruleCode, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date(), ...(thb ?? {}) }).where('id', '=', id).execute();
     if (cnrApplied && !cnrApplied.isZero()) await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: cnrApplied.toString(), wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
     // PO ปิดอัตโนมัติเมื่อรับบิลครบ

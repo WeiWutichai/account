@@ -22,7 +22,8 @@
     "./master-import": "./src/master-import.ts",
     "./fx": "./src/fx.ts",
     "./contract": "./src/contract.ts",
-    "./foreign-tax": "./src/foreign-tax.ts"
+    "./foreign-tax": "./src/foreign-tax.ts",
+    "./inventory": "./src/inventory.ts"
   },
   "scripts": {
     "lint": "eslint src test",
