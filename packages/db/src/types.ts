@@ -74,7 +74,9 @@ export interface AcctDB {
   'acct.product': { company_id: string; code: string; name: string; kind: Generated<'service' | 'goods' | 'expense' | 'kit'>; unit: string | null;
     price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null;
     price_3: Generated<string | null>; price_4: Generated<string | null>; price_5: Generated<string | null>; vat_code: Generated<'vat7' | 'exempt' | 'zero'>; default_wht: Generated<string | null>; sku: Generated<string | null>;
-    est_cost: Generated<string | null>; vat_exempt_reason: Generated<string | null> };
+    est_cost: Generated<string | null>; vat_exempt_reason: Generated<string | null>;
+    // 0020 สินค้าคงคลัง
+    track_stock: Generated<boolean>; inventory_account: Generated<string | null>; cogs_account: Generated<string | null>; reorder_point: Generated<string | null>; max_qty: Generated<string | null>; barcode: Generated<string | null> };
   'acct.document': { company_id: string; id: Generated<string>; doc_type: string; doc_no: string | null;
     status: Generated<'draft' | 'pending_approval' | 'approved' | 'posted' | 'voided'>; issue_date: DateCol; due_date: string | null; contact_id: string | null;
     currency: Generated<string>; price_incl_vat: Generated<boolean>; subtotal: Money; discount: Money; vat: Money; wht: Money; grand_total: Money;
@@ -88,7 +90,9 @@ export interface AcctDB {
     vat_claim_month: Generated<string | null>;
     // 0019
     petty_cash_fund_id: Generated<string | null>; closed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
-    created_by_client: Generated<string | null> };
+    created_by_client: Generated<string | null>;
+    // 0020 สินค้าคงคลัง: คลังต้นทาง · คลังปลายทาง (TRF)
+    warehouse_id: Generated<string | null>; to_warehouse_id: Generated<string | null> };
   'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
     pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
   'acct.bank_account': { company_id: string; id: Generated<string>; gl_account: string; bank_name: string; branch: string | null; account_no: string; account_name: string | null;
@@ -122,7 +126,9 @@ export interface AcctDB {
   'acct.document_event': { company_id: string; id: Generated<string>; document_id: string; at: Ts; actor: string | null; event: string; detail: ColumnType<unknown, string | undefined, string> };
   'acct.doc_setting': { company_id: string; doc_type: string; prefix: string; pattern: Generated<string>; reset: Generated<'monthly' | 'yearly' | 'never'>; settings: ColumnType<Record<string, unknown>, string | undefined, string>; updated_at: Ts };
   'acct.document_line': { company_id: string; id: Generated<string>; document_id: string; line_no: number; line_type: Generated<'item' | 'heading' | 'note'>;
-    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null; wht_type: string | null; est_cost: Generated<string | null> };
+    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null; wht_type: string | null; est_cost: Generated<string | null>;
+    // 0020: หน่วยของบรรทัด · ยอดนับได้ (ADJ) · ยอดล้าง GR/IR (AP อ้าง GR)
+    unit: Generated<string | null>; counted_qty: Generated<string | null>; grir_amount: Generated<string | null> };
   'acct.number_series': { company_id: string; doc_type: string; pattern: string; prefix: string; period_key: string; next_no: Generated<number> };
   'acct.journal': { company_id: string; id: Generated<string>; journal_no: string; journal_date: DateCol; fiscal_year: number; period_no: number;
     book: Generated<string>; description: string | null; source_document_id: string | null; status: Generated<'draft' | 'posted' | 'voided'>;
@@ -138,4 +144,14 @@ export interface AcctDB {
     // 0016: ค่าตั้งต้นจาก set_config('app.audit_*') ของ withCompany (AuditContext)
     channel: Generated<'web' | 'api' | 'mcp' | 'system' | null>; ip: Generated<string | null>; api_client_id: Generated<string | null> };
   'acct.api_call': { company_id: string; id: Generated<string>; client_id: string; at: Ts; kind: 'api' | 'mcp'; tool: string; status: 'ok' | 'denied' | 'error'; document_id: string | null; detail: string | null };
+  // 0020 สินค้าคงคลัง (Phase 2A INV)
+  'acct.warehouse': { company_id: string; id: Generated<string>; code: string; name: string; branch_code: Generated<string>; allow_negative: Generated<boolean>; is_default: Generated<boolean>; active: Generated<boolean>; created_at: Ts };
+  'acct.product_unit': { company_id: string; product_code: string; unit: string; factor: string; barcode: string | null; created_at: Ts };
+  'acct.stock_move': { company_id: string; id: Generated<string>; seq: Generated<string>; move_date: DateCol; product_code: string; warehouse_id: string;
+    kind: 'receipt' | 'purchase' | 'sale' | 'issue' | 'transfer_out' | 'transfer_in' | 'adjust' | 'price_variance'; qty: string; unit_cost: Money; value: Money; cost_mode: 'fixed' | 'avg' | 'pair' | 'reverse';
+    document_id: string | null; document_line_id: string | null; journal_id: string | null; gl_account: string | null; journal_value: string | null; pair_move_id: string | null; reversal_of: string | null;
+    lot: string | null; serial: string | null; created_at: Ts };
+  'acct.stock_balance': { company_id: string; product_code: string; warehouse_id: string; qty: Money; avg_cost: Money; value: Money; updated_at: Ts };
+  'acct.inventory_journal': { company_id: string; journal_id: string; kind: 'recost' | 'void_adjust' | 'period_end'; document_id: string | null; fiscal_year: number; period_no: number;
+    detail: ColumnType<unknown, string | undefined, string>; created_at: Ts };
 }
