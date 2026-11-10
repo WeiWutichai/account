@@ -52,6 +52,7 @@ export interface PostJournalInput {
   journalNo?: string;
   reversalOf?: string;
   ruleVersionId?: string; // สูตรที่ใช้ลง (ADR-002: journal เก็บ rule_version_id)
+  branchCode?: string; // สาขาของเอกสาร (journal_line.branch_code · ว่าง = 00000)
 }
 
 export async function postJournal(db: Db, companyId: string, j: PostJournalInput): Promise<{ id: string; journalNo: string }> {
@@ -74,6 +75,8 @@ export async function postJournalTx(tx: CompanyTx, companyId: string, j: PostJou
     company_id: companyId, journal_id: row.id, line_no: i + 1, account_code: l.account, contact_id: l.contactId ?? null,
     debit: l.side === 'Dr' ? l.amount.toString() : '0.00', credit: l.side === 'Cr' ? l.amount.toString() : '0.00',
     project_code: null, memo: l.memo ?? null,
+    // 0021 FXB: ยอดสกุลเดิม (เฉพาะเอกสารสกุลต่างประเทศ) · สาขาของเอกสาร
+    ...(l.fx ? { currency: l.fx.currency, amount_fx: l.fx.amount.toString() } : {}), ...(j.branchCode ? { branch_code: j.branchCode } : {}),
   }))).execute();
   await tx.updateTable('acct.journal').set({ status: 'posted', posted_at: new Date() }).where('id', '=', row.id).execute();
   return { id: row.id, journalNo };
@@ -94,9 +97,11 @@ export async function voidJournalTx(tx: CompanyTx, companyId: string, journalId:
   const reversed: JournalLine[] = lines.map((l) => ({
     side: Money.parse(l.debit).isZero() ? 'Dr' : 'Cr', account: l.account_code,
     amount: Money.parse(Money.parse(l.debit).isZero() ? l.credit : l.debit), ...(l.contact_id ? { contactId: l.contact_id } : {}),
+    ...(l.currency && l.amount_fx ? { fx: { currency: l.currency, amount: Money.parse(l.amount_fx) } } : {}),
   }));
   const rev = await postJournalTx(tx, companyId, { date: p.date, lines: reversed, role: p.role, book: j.book as 'GJ', journalNo: `${j.journal_no}R`,
-    description: `กลับรายการ ${j.journal_no}: ${p.reason}`, reversalOf: journalId, ...(j.source_document_id ? { sourceDocumentId: j.source_document_id } : {}) });
+    description: `กลับรายการ ${j.journal_no}: ${p.reason}`, reversalOf: journalId, ...(j.source_document_id ? { sourceDocumentId: j.source_document_id } : {}),
+    ...(lines[0] && lines[0].branch_code !== '00000' ? { branchCode: lines[0].branch_code } : {}) });
   await tx.updateTable('acct.journal').set({ status: 'voided' }).where('id', '=', journalId).execute();
   await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: p.actorId ?? null, action: 'journal.void', entity: 'journal', entity_id: journalId,
     before: JSON.stringify({ status: 'posted' }), after: JSON.stringify({ status: 'voided', reversal: rev.journalNo, reason: p.reason }), prev_hash: null, hash: null }).execute();
