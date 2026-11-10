@@ -7,6 +7,7 @@ import type { CompanyTx, Db } from './index.ts';
 import { DEFAULT_RULES } from '@innovera/ledger';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber, voidJournalTx } from './ledger-service.ts';
 import { emitTx, userNames } from './hub.ts';
+import { assertCreditNoteAllowedTx, commitScheduleTx, deferRevenueTx, swtBeforeVoidTx } from './swt-hooks.ts';
 
 export const SALES_TYPES = ['QO', 'SO', 'IV', 'CN', 'DN', 'DP', 'BN', 'RV'] as const;
 export type SalesType = (typeof SALES_TYPES)[number];
@@ -127,6 +128,8 @@ export async function saveSalesDraft(db: Db, companyId: string, actor: Actor, in
     if (docId) {
       const d = await docOrThrow(tx, docId);
       if (d.status !== 'draft' && d.status !== 'pending_approval') throw new LedgerError('แก้ได้เฉพาะเอกสารร่าง — เอกสารที่ผ่านรายการแล้วแก้ได้เฉพาะข้อมูลอ้างอิง');
+      // Phase 2A SWT: ร่างจากรอบบิลของสัญญา (บรรทัดผูกสัญญา + ช่วงบริการ) แก้ที่สัญญาแล้วออกรอบบิลใหม่
+      if (d.contract_id) throw new LedgerError('ใบแจ้งหนี้ร่างจากสัญญาแก้ไม่ได้ — แก้ที่สัญญา แล้วยกเลิกร่างนี้และออกรอบบิลใหม่');
       await tx.updateTable('acct.document').set({ ...values, status: 'draft' }).where('id', '=', docId).execute();
       await tx.deleteFrom('acct.document_line').where('document_id', '=', docId).execute();
       await tx.deleteFrom('acct.settlement').where('payment_id', 'in', (input.deposits ?? []).map((x) => x.documentId).concat(['00000000-0000-0000-0000-000000000000'])).where('document_id', '=', docId).execute();
@@ -207,6 +210,7 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
       if (!d.ref_document_id) throw new LedgerError('ใบลดหนี้ต้องอ้างใบกำกับภาษี');
       const o = await outstandingTx(tx, d.ref_document_id);
       if (Money.parse(d.grand_total).gt(o.outstanding)) throw new LedgerError(`ลดหนี้เกินยอดค้างของใบอ้างอิง (${o.outstanding.toString()})`);
+      await assertCreditNoteAllowedTx(tx, d.ref_document_id);
     }
     if (d.doc_type === 'DP' && !d.receive_account) throw new LedgerError('ต้องเลือกบัญชีที่รับเงินมัดจำเข้า');
     const { def, versionId } = await ruleFor(tx, d.rule_code ?? DEFAULT_RULE[d.doc_type as SalesType] ?? '');
@@ -218,8 +222,11 @@ export async function approveDocument(db: Db, companyId: string, actor: Actor, i
       contact: { arAccount: '1130100', ...(d.contact_id ? { id: d.contact_id } : {}) },
       accounts: { ...(d.receive_account ? { cash: d.receive_account } : {}) },
     }).map((l) => (l.account === '1130100' && d.contact_id ? { ...l, contactId: d.contact_id } : l));
-    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
+    // Phase 2A SWT: บรรทัดสัญญาที่รับรู้ตามช่วงเวลา → Cr 2170100 แทนรายได้ (ไม่มีบรรทัดสัญญา = เหมือนเดิม)
+    const deferral = await deferRevenueTx(tx, id, d.doc_type, jl);
+    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: deferral.lines, role: actor.role, book: BOOK[d.doc_type] ?? 'SJ', prefix: 'JV', description: `${docNo}`,
       sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}) });
+    await commitScheduleTx(tx, companyId, id, deferral.seeds);
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date() }).where('id', '=', id).execute();
     if (d.doc_type === 'CN') {
       await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: d.grand_total, wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
@@ -336,6 +343,7 @@ export async function voidDocumentTx(tx: CompanyTx, companyId: string, actor: Ac
     const active = await tx.selectFrom('acct.settlement as s').innerJoin('acct.document as p', (j) => j.onRef('p.id', '=', 's.payment_id').onRef('p.company_id', '=', 's.company_id'))
       .select(['p.doc_no', 'p.doc_type']).where('s.document_id', '=', id).where('s.voided', '=', false).execute();
     if (active.length) throw new LedgerError(`มีเอกสารอ้างถึงใบนี้ (${active.map((a) => a.doc_no).join(', ')}) — ยกเลิกเอกสารเหล่านั้นก่อน`);
+    await swtBeforeVoidTx(tx, id);
     let reversal: string | null = null;
     if (d.journal_id) {
       const r = await voidJournalTx(tx, companyId, d.journal_id, { date: p.date ?? d.issue_date, role: actor.role, reason: p.reason, ...(actor.userId ? { actorId: actor.userId } : {}) });
