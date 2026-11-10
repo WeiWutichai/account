@@ -11,6 +11,8 @@ export interface JournalLine {
   readonly amount: Money;
   readonly contactId?: string;
   readonly memo?: string;
+  /** ยอดสกุลเดิมของบรรทัด (เอกสารสกุลต่างประเทศ · Phase 2A FXB) — amount = บาทเสมอ */
+  readonly fx?: { readonly currency: string; readonly amount: Money };
 }
 
 export class UnbalancedJournalError extends Error {
