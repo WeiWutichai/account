@@ -1,6 +1,7 @@
 // ประเภทเงินได้และอัตราหัก ณ ที่จ่าย (ประกาศอธิบดีฯ ท.ป.4/2528) — ตรวจกับ fixtures wht_rates ใน golden test
 // freelance_software_dev = รอผู้สอบบัญชี (CLAUDE.md): อัตรา/วิธีจริงอ่านจากค่าตั้งของบริษัท tax.wht.freelance_software_dev
 import type { WhtType } from './index.ts';
+import { PND54_INCOME_TYPES } from './foreign.ts';
 
 export const WHT_TYPES: Readonly<Record<string, WhtType & { label: string; section?: string }>> = {
   transport_domestic: { key: 'transport_domestic', rate: '0.01', pnd: '53', label: 'ค่าขนส่ง' },
@@ -17,6 +18,10 @@ export interface FreelanceWhtConfig { income_type: '40(2)' | '40(8)'; method: 'f
 export const FREELANCE_DEFAULT: FreelanceWhtConfig = { income_type: '40(2)', method: 'flat', rate: '0.03' };
 
 export function whtTypeFor(key: string, freelance: FreelanceWhtConfig = FREELANCE_DEFAULT): WhtType & { label: string; section?: string } {
+  // ภ.ง.ด.54 (Phase 2A SWT · โมดูล software): ไม่อยู่ใน WHT_TYPES (รายการเดิมของหน้าจอ Phase 1 ไม่เปลี่ยน) · อัตราตามประมวลเป็นค่าตั้งต้น
+  //   อัตราจริงต่อประเทศคำนวณที่ pnd54Rate (tax.pnd54.treaty_rates) · รอผู้สอบบัญชียืนยัน
+  const f = PND54_INCOME_TYPES[key];
+  if (f) return { key: f.key, rate: f.rate, pnd: '54', label: f.label, section: f.section, method: 'flat', status: 'PENDING_AUDITOR' };
   const t = WHT_TYPES[key];
   if (!t) throw new Error(`ไม่รู้จักประเภทเงินได้ ${key}`);
   if (key !== 'freelance_software_dev') return t;

@@ -6,4 +6,5 @@ export { annualDepreciation, schedule as depreciationSchedule, type AssetInput, 
 export { INCOME_SUMMARY, LEGAL_RESERVE, legalReserveAllocation, RETAINED_EARNINGS, yearEndClose, type AccountBalance } from './close.ts';
 export { canPost, type CompanyRole, type PeriodStatus } from './period.ts';
 export { BASE_CURRENCY, carryingCleared, convertJournal, isRate, revaluation, settleAtOriginalRate, toBase } from './fx.ts';
-export { docTotals,lineGross, outstanding, receiptTotals, type DocLineInput, type DocTotals, type ReceiptApplication } from './sales.ts';
+export { docTotals, lineGross, outstanding, receiptTotals, type DocLineInput, type DocTotals, type ReceiptApplication } from './sales.ts';
+export { addDays, addMonthsDate, billingPeriod, CYCLE_MONTHS, daysBetween, monthlyAmount, prorate, revenueSchedule, type BillingCycle, type ScheduleRow } from './revenue.ts';

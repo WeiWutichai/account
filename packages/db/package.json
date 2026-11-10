@@ -20,7 +20,9 @@
     "./console": "./src/console.ts",
     "./master": "./src/master.ts",
     "./master-import": "./src/master-import.ts",
-    "./fx": "./src/fx.ts"
+    "./fx": "./src/fx.ts",
+    "./contract": "./src/contract.ts",
+    "./foreign-tax": "./src/foreign-tax.ts"
   },
   "scripts": {
     "lint": "eslint src test",

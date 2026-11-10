@@ -105,11 +105,14 @@ export async function yearEnd(db: Db, companyId: string, actor: OpsActor, fiscal
 
 // ---------- ทะเบียนทรัพย์สิน + ค่าเสื่อม (ScreenAssets) ----------
 
-export interface AssetInput { code: string; name: string; assetAccount: string; accumAccount: string; expenseAccount: string; startDate: string; lifeYears: string; cost: MoneyString; salvage?: MoneyString; openingAccum?: MoneyString; openingAccumDate?: string | null; sourceDocumentId?: string | null }
+export interface AssetInput { code: string; name: string; assetAccount: string; accumAccount: string; expenseAccount: string; startDate: string; lifeYears: string; cost: MoneyString; salvage?: MoneyString; openingAccum?: MoneyString; openingAccumDate?: string | null; sourceDocumentId?: string | null;
+  /** Phase 2A SWT: สินทรัพย์ไม่มีตัวตน (contract.ts saveIntangibleAsset) · ไม่ส่ง = คงค่าเดิม (ตั้งต้น tangible) */
+  kind?: 'tangible' | 'intangible'; intangibleOrigin?: 'purchased' | 'internal_dev' | null }
 export async function saveAsset(db: Db, companyId: string, a: AssetInput) {
   if (Number(a.lifeYears) <= 0) throw new LedgerError('อายุการใช้งานต้องมากกว่า 0');
   const v = { name: a.name, asset_account: a.assetAccount, accum_account: a.accumAccount, expense_account: a.expenseAccount, start_date: a.startDate, life_years: a.lifeYears, cost: a.cost,
-    salvage: a.salvage ?? '1.00', opening_accum: a.openingAccum ?? '0.00', opening_accum_date: a.openingAccumDate ?? null, source_document_id: a.sourceDocumentId ?? null };
+    salvage: a.salvage ?? '1.00', opening_accum: a.openingAccum ?? '0.00', opening_accum_date: a.openingAccumDate ?? null, source_document_id: a.sourceDocumentId ?? null,
+    ...(a.kind ? { kind: a.kind, intangible_origin: a.intangibleOrigin ?? null } : {}) };
   await db.withCompany(companyId, (tx) => tx.insertInto('acct.fixed_asset').values({ company_id: companyId, code: a.code, ...v }).onConflict((oc) => oc.columns(['company_id', 'code']).doUpdateSet(v)).execute());
 }
 

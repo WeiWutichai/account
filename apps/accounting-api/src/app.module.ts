@@ -13,6 +13,7 @@ import { HubController } from './hub.controller.js';
 import { MasterController } from './master.controller.js';
 import { ConsoleController, readerProvider, StaffGuard, SupportAccessController } from './console.controller.js';
 import { FxController } from './fx.controller.js';
+import { ContractController } from './contract.controller.js';
 
 @Controller()
 export class HealthController {
@@ -23,5 +24,5 @@ export class HealthController {
   }
 }
 
-@Module({ controllers: [HealthController, GlController, SalesController, PurchaseController, M6Controller, ExtController, HubController, MasterController, ConsoleController, SupportAccessController, FxController], providers: [dbProvider, readerProvider, StaffGuard, ApiKeyGuard, ApiCallInterceptor, { provide: APP_GUARD, useClass: AuthGuard }, { provide: APP_INTERCEPTOR, useClass: AuditContextInterceptor }] })
+@Module({ controllers: [HealthController, GlController, SalesController, PurchaseController, M6Controller, ExtController, HubController, MasterController, ConsoleController, SupportAccessController, FxController, ContractController], providers: [dbProvider, readerProvider, StaffGuard, ApiKeyGuard, ApiCallInterceptor, { provide: APP_GUARD, useClass: AuthGuard }, { provide: APP_INTERCEPTOR, useClass: AuditContextInterceptor }] })
 export class AppModule {}

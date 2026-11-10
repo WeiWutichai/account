@@ -1,13 +1,14 @@
 // M5 ซื้อ + จ่ายเงิน (docs/technical-plan-M5.md) — PR/PO/AP/CNR/DNR/EXP · PV (สายอนุมัติ + 50 ทวิ) · รอบจ่าย · เงินสดย่อย
 // กติกา (CLAUDE.md): หัก ณ ที่จ่ายรับรู้ตอนจ่ายเงินจริง · ออก 50 ทวิ และเข้า ภ.ง.ด.3/53 เดือนที่จ่าย · ฟรีแลนซ์ = ค่าตั้งของบริษัท "รอยืนยัน"
 import { BASE_CURRENCY, carryingCleared, isRate, Money, post, settleAtOriginalRate, toBase, type JournalLine, type MoneyString } from '@innovera/ledger';
-import { bahtText, FREELANCE_DEFAULT, pndOf, whtOnPayment, whtTypeFor, type FreelanceWhtConfig } from '@innovera/tax-th';
+import { bahtText, FREELANCE_DEFAULT, isPnd54Type, pndOf, whtOnPayment, whtTypeFor, type FreelanceWhtConfig } from '@innovera/tax-th';
 import { sql } from 'kysely';
 import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, nextNumber, postJournalTx, reserveNumber } from './ledger-service.ts';
 import { docOrThrow, event, outstandingTx, prefixOf, ruleFor, totalsOf, type Actor } from './sales.ts';
 import { emitTx } from './hub.ts';
 import { convertDocumentJournal, docNumberTx, documentFx, FX_GAIN_ACCOUNT, FX_LOSS_ACCOUNT, rateOnTx, settledBaseTx, type DocFxInput } from './fx.ts';
+import { foreignTaxOnPaymentTx, pnd54Item, withheldOf, type WhtItem } from './foreign-tax.ts';
 
 export const PURCHASE_TYPES = ['PR', 'PO', 'AP', 'CNR', 'DNR', 'EXP'] as const;
 export type PurchaseType = (typeof PURCHASE_TYPES)[number];
@@ -160,9 +161,11 @@ export async function whtForBill(tx: CompanyTx, billId: string, settle: Money) {
   }
   const o = await outstandingTx(tx, billId);
   const full = o.outstanding.equals(settle);
-  const out = [];
+  const out: WhtItem[] = [];
   for (const [type, base0] of byType) {
     const base = full ? base0 : base0.ratio(settle, o.outstanding.isZero() ? Money.parse(bill.grand_total) : o.outstanding).round();
+    // Phase 2A SWT: ภ.ง.ด.54 (จ่ายต่างประเทศ · อัตราตามอนุสัญญา/ออกภาษีแทน = ค่าตั้งบริษัท)
+    if (isPnd54Type(type)) { out.push(await pnd54Item(tx, bill.contact_id, type, base)); continue; }
     const t = whtTypeFor(type, fl);
     const w = whtOnPayment(base.toString(), t); // progressive → PendingAuditorError (ห้ามตัดสินแทนผู้สอบบัญชี)
     out.push({ type, label: t.label, section: t.section ?? null, base: base.toString(), rate: t.rate, amount: w.amount, pendingAuditor: w.pendingAuditor });
@@ -217,13 +220,14 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
     }
     const lines = await tx.selectFrom('acct.document_line').select(['amount', 'account_code', 'wht_type']).where('document_id', '=', id).where('line_type', '=', 'item').orderBy('line_no').execute();
     let wht = Money.zero();
-    const certs: Awaited<ReturnType<typeof whtForBill>> = [];
+    const certs: WhtItem[] = [];
     if (d.doc_type === 'EXP' && d.pay_now) {
       // จ่ายทันที = จุดรับรู้ WHT (ตอนจ่ายจริง)
       const fl = await freelanceConfig(tx);
       const byType = new Map<string, Money>();
       for (const l of lines) if (l.wht_type) byType.set(l.wht_type, (byType.get(l.wht_type) ?? Money.zero()).plus(Money.parse(l.amount)));
       for (const [type, base] of byType) {
+        if (isPnd54Type(type)) { const w = await pnd54Item(tx, d.contact_id, type, base); certs.push(w); wht = wht.plus(withheldOf([w])); continue; }
         const t = whtTypeFor(type, fl);
         const w = whtOnPayment(base.toString(), t);
         certs.push({ type, label: t.label, section: t.section ?? null, base: base.toString(), rate: t.rate, amount: w.amount, pendingAuditor: w.pendingAuditor });
@@ -238,9 +242,16 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
       contact: { apAccount: '2110100', ...(d.contact_id ? { id: d.contact_id } : {}) }, accounts: { ...(d.receive_account ? { cash: d.receive_account } : {}) },
     }).map((l) => (l.account === '2110100' && d.contact_id ? { ...l, contactId: d.contact_id } : l));
     // P2A FXB: เอกสารสกุลต่างประเทศ → journal บาท (เอกสารบาทไม่เปลี่ยน)
-    const { lines: jl, thb } = await convertDocumentJournal(tx, d, fxl);
+    const { lines: converted, thb } = await convertDocumentJournal(tx, d, fxl);
+    // Phase 2A SWT: จ่ายทันทีให้ผู้ขายต่างประเทศ → ภ.พ.36 / ภ.ง.ด.54 (โมดูลปิด = บรรทัดเดิม)
+    const total = Money.parse(d.grand_total);
+    const ftax = d.doc_type === 'EXP' && d.pay_now ? await foreignTaxOnPaymentTx(tx, companyId, { paymentId: id, date: d.issue_date, bills: [{ billId: id, settle: total, outstandingBefore: total }], certs, lines: fxl }) : null;
+    // TODO(Wei): ภ.พ.36 / ภ.ง.ด.54 ของเอกสารสกุลต่างประเทศ ต้องใช้ยอดบาท ณ วันจ่าย — ยังไม่รองรับ (รวม FXB + SWT)
+    if (ftax && thb && JSON.stringify(ftax.lines) !== JSON.stringify(fxl)) throw new LedgerError('ภ.พ.36 / ภ.ง.ด.54 ของค่าใช้จ่ายสกุลต่างประเทศ ยังไม่รองรับ — บันทึกเป็นเงินบาท');
+    const jl = thb ? converted : (ftax?.lines ?? converted);
     const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: def.book, prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}),
       ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
+    if (!thb) await ftax?.commit();
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, wht: wht.toString(), rule_code: ruleCode, approved_by: actor.userId, approved_at: new Date(), updated_at: new Date(), ...(thb ?? {}) }).where('id', '=', id).execute();
     if (cnrApplied && !cnrApplied.isZero()) await tx.insertInto('acct.settlement').values({ company_id: companyId, payment_id: id, document_id: d.ref_document_id!, applied: cnrApplied.toString(), wht: '0.00', wht_base: null, vat_due: '0.00', voided: false }).execute();
     // PO ปิดอัตโนมัติเมื่อรับบิลครบ
@@ -255,7 +266,7 @@ export async function approvePurchase(db: Db, companyId: string, actor: Actor, i
   });
 }
 
-async function issueCertificates(tx: CompanyTx, companyId: string, paymentId: string, contactId: string, date: string, certs: Awaited<ReturnType<typeof whtForBill>>, preset?: string[]) {
+async function issueCertificates(tx: CompanyTx, companyId: string, paymentId: string, contactId: string, date: string, certs: readonly WhtItem[], preset?: string[]) {
   if (!certs.length) return [];
   const contact = await tx.selectFrom('acct.contact').select('tax_id').where('id', '=', contactId).executeTakeFirstOrThrow();
   const pnd = pndOf(contact.tax_id);
@@ -264,9 +275,11 @@ async function issueCertificates(tx: CompanyTx, companyId: string, paymentId: st
   for (const [i, c] of certs.entries()) {
     const certNo = preset?.[i] ?? (await nextNumber(tx, companyId, 'WHT', date));
     if (preset?.[i]) await reserveNumber(tx, companyId, certNo);
-    await tx.insertInto('acct.wht_certificate').values({ company_id: companyId, cert_no: certNo, payment_id: paymentId, contact_id: contactId, pnd, income_type: c.type, income_section: c.section,
-      pay_date: date, base: c.base, rate: c.rate, amount: c.amount, pending_auditor: c.pendingAuditor }).execute();
-    out.push({ certNo, pnd, ...c });
+    const form = c.pnd ?? pnd; // ภ.ง.ด.54 (จ่ายต่างประเทศ · Phase 2A SWT)
+    await tx.insertInto('acct.wht_certificate').values({ company_id: companyId, cert_no: certNo, payment_id: paymentId, contact_id: contactId, pnd: form, income_type: c.type, income_section: c.section,
+      pay_date: date, base: c.base, rate: c.rate, amount: c.amount, pending_auditor: c.pendingAuditor,
+      ...(c.pnd === '54' ? { country: c.country ?? null, treaty: c.treaty ?? false, gross_up: c.grossUp ?? false } : {}) }).execute();
+    out.push({ ...c, certNo, pnd: form });
   }
   return out;
 }
@@ -331,7 +344,7 @@ export async function createPayment(db: Db, companyId: string, actor: Actor, inp
       const settle = b.settle ? Money.of(b.settle) : o.outstanding;
       if (settle.gt(o.outstanding) || !settle.gt(Money.zero())) throw new LedgerError(`${o.doc.doc_no}: ยอดจ่ายต้องไม่เกินยอดค้าง ${o.outstanding.toString()}`);
       const w = await whtForBill(tx, b.documentId, settle);
-      const billWht = Money.sum(w.map((x) => Money.of(x.amount as MoneyString)));
+      const billWht = withheldOf(w); // ภ.ง.ด.54 ที่ผู้จ่ายออกแทน (gross-up) ไม่หักจากเงินที่จ่ายผู้ขาย
       settled = settled.plus(settle);
       wht = wht.plus(billWht);
       rows.push({ b, settle, w, billWht });
@@ -445,17 +458,24 @@ export async function approvePayment(db: Db, companyId: string, actor: Actor & {
       for (const s of fx.perBill) await tx.updateTable('acct.settlement').set({ settled_thb: s.settled.toString() }).where('id', '=', s.id).execute();
       await tx.updateTable('acct.document').set({ grand_total_thb: fx.paid.toString(), vat_thb: '0.00', base_thb: fx.paid.toString() }).where('id', '=', id).execute();
     }
-    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: jl, role: actor.role, book: 'PV', prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}),
-      ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
     // คำนวณ 50 ทวิ ก่อนตัดเจ้าหนี้ (ยอดค้างยังเป็นยอดก่อนจ่าย)
     // 50 ทวิ ต่อประเภทเงินได้ (รวมทุกบิลในใบสำคัญจ่ายนี้)
-    const certs = new Map<string, Awaited<ReturnType<typeof whtForBill>>[number]>();
+    const certs = new Map<string, WhtItem>();
+    const paidBills: { billId: string; settle: Money; outstandingBefore: Money }[] = [];
     for (const s of settlements) {
+      paidBills.push({ billId: s.document_id, settle: Money.parse(s.applied).plus(Money.parse(s.wht)), outstandingBefore: (await outstandingTx(tx, s.document_id)).outstanding });
       for (const w of await whtForBill(tx, s.document_id, Money.parse(s.applied).plus(Money.parse(s.wht)))) {
         const cur = certs.get(w.type);
         certs.set(w.type, cur ? { ...cur, base: Money.of(cur.base as MoneyString).plus(Money.of(w.base as MoneyString)).toString(), amount: Money.of(cur.amount as MoneyString).plus(Money.of(w.amount as MoneyString)).toString() } : w);
       }
     }
+    // Phase 2A SWT: ผู้ขายต่างประเทศ → ภ.พ.36 / ภ.ง.ด.54 (โมดูลปิด = บรรทัดเดิม)
+    const ftax = await foreignTaxOnPaymentTx(tx, companyId, { paymentId: id, date: d.issue_date, bills: paidBills, certs: [...certs.values()], lines: jl });
+    // TODO(Wei): ภ.พ.36 / ภ.ง.ด.54 ของใบสำคัญจ่ายสกุลต่างประเทศ ต้องใช้ยอดบาท ณ วันจ่าย — ยังไม่รองรับ (รวม FXB + SWT)
+    if (fx && JSON.stringify(ftax.lines) !== JSON.stringify(jl)) throw new LedgerError('ภ.พ.36 / ภ.ง.ด.54 ของการจ่ายสกุลต่างประเทศ ยังไม่รองรับ — จ่ายเป็นเงินบาท');
+    const j = await postJournalTx(tx, companyId, { date: d.issue_date, lines: ftax.lines, role: actor.role, book: 'PV', prefix: 'JV', description: docNo, sourceDocumentId: id, ...(versionId ? { ruleVersionId: versionId } : {}),
+      ...(d.branch_code !== '00000' ? { branchCode: d.branch_code } : {}) });
+    await ftax.commit();
     await tx.updateTable('acct.settlement').set({ voided: false }).where('payment_id', '=', id).execute();
     await tx.updateTable('acct.document').set({ status: 'posted', doc_no: docNo, journal_id: j.id, approved_by: actor.userId, approved_at: new Date(), approval_level: level, updated_at: new Date() }).where('id', '=', id).execute();
     const issued = await issueCertificates(tx, companyId, id, d.contact_id!, d.issue_date, [...certs.values()], opts.certNos);
@@ -605,6 +625,7 @@ export async function createPettyCashFund(db: Db, companyId: string, input: Pett
 
 export async function savePettyCash(db: Db, companyId: string, actor: Actor, input: PettyCashInput) {
   if (input.whtType && !input.contactId) throw new LedgerError('รายการที่หัก ณ ที่จ่ายต้องระบุผู้รับเงิน (เพื่อออก 50 ทวิ)');
+  if (isPnd54Type(input.whtType)) throw new LedgerError('ภ.ง.ด.54 (จ่ายต่างประเทศ) ใช้กับเงินสดย่อยไม่ได้ — บันทึกเป็นค่าใช้จ่าย/บิลซื้อ');
   const vat = input.vatMode === 'full_invoice' ? Money.of(input.inputVat ?? '0.00') : Money.zero();
   return db.withCompany(companyId, async (tx) => {
     const fund = input.fundId ? await fundOf(tx, input.fundId) : null;

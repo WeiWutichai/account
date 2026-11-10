@@ -72,7 +72,9 @@ export interface AcctDB {
     address: string | null; contact_person: string | null; phone: string | null; email: string | null; credit_days: number | null; credit_limit: string | null;
     roles: Generated<string[]>; entity_type: Generated<'juristic' | 'individual' | 'foreign'>; ar_account: Generated<string | null>; ap_account: Generated<string | null>;
     wht_received: Generated<string | null>; pnd_form: Generated<'3' | '53' | null>; price_level: Generated<number>; bank_account: Generated<string | null>; ship_address: Generated<string | null>; default_wht: Generated<string | null>;
-    created_by_client: Generated<string | null> };
+    created_by_client: Generated<string | null>;
+    // 0022 ภ.ง.ด.54: ประเทศของผู้รับเงิน (ISO alpha-2)
+    country: Generated<string | null> };
   'acct.product': { company_id: string; code: string; name: string; kind: Generated<'service' | 'goods' | 'expense' | 'kit'>; unit: string | null;
     price: string | null; price_2: string | null; vat: Generated<boolean>; revenue_account: string | null; expense_account: string | null;
     price_3: Generated<string | null>; price_4: Generated<string | null>; price_5: Generated<string | null>; vat_code: Generated<'vat7' | 'exempt' | 'zero'>; default_wht: Generated<string | null>; sku: Generated<string | null>;
@@ -92,9 +94,13 @@ export interface AcctDB {
     petty_cash_fund_id: Generated<string | null>; closed_at: ColumnType<Date | null, Date | string | null | undefined, Date | string | null>;
     created_by_client: Generated<string | null>;
     // 0021 FXB: ยอดเอกสาร = สกุลเอกสาร · fx_rate บาทต่อหน่วย · *_thb = ยอดบาทที่ลงบัญชี (NULL = เอกสารบาท)
-    fx_rate: Opt<string>; grand_total_thb: Opt<string>; vat_thb: Opt<string>; base_thb: Opt<string> };
-  'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53'; income_type: string; income_section: string | null;
-    pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts };
+    fx_rate: Opt<string>; grand_total_thb: Opt<string>; vat_thb: Opt<string>; base_thb: Opt<string>;
+    // 0022 ใบแจ้งหนี้จากรอบบิลของสัญญา
+    contract_id: Generated<string | null>; contract_period_start: ColumnType<string | null, string | null | undefined, string | null> };
+  'acct.wht_certificate': { company_id: string; id: Generated<string>; cert_no: string; payment_id: string; contact_id: string; pnd: '3' | '53' | '54'; income_type: string; income_section: string | null;
+    pay_date: DateCol; base: string; rate: string; amount: string; pending_auditor: Generated<boolean>; voided: Generated<boolean>; created_at: Ts;
+    // 0022 ภ.ง.ด.54
+    country: Generated<string | null>; treaty: Generated<boolean>; gross_up: Generated<boolean> };
   'acct.bank_account': { company_id: string; id: Generated<string>; gl_account: string; bank_name: string; branch: string | null; account_no: string; account_name: string | null;
     is_default_receive: Generated<boolean>; created_at: Ts };
   'acct.bank_statement_line': { company_id: string; id: Generated<string>; bank_account: string; line_date: DateCol; description: string; amount: string; balance: string | null; ref: string | null;
@@ -109,8 +115,10 @@ export interface AcctDB {
   'acct.fixed_asset': { company_id: string; id: Generated<string>; code: string; name: string; asset_account: string; accum_account: string; expense_account: string; start_date: DateCol;
     life_years: string; cost: string; salvage: Money; opening_accum: Money; opening_accum_date: DateCol | null; status: Generated<'active' | 'disposed' | 'fully_depreciated'>; disposed_on: DateCol | null;
     source_document_id: string | null; created_at: Ts;
-    sale_amount: Generated<string | null>; sale_vat: Generated<string | null>; disposal_contact_id: Generated<string | null>; disposal_ref: Generated<string | null>; disposal_journal_id: Generated<string | null> };
-  'acct.tax_filing': { company_id: string; id: Generated<string>; form: 'pp30' | 'pnd3' | 'pnd53'; month: string; seq: Generated<number>; status: Generated<'draft' | 'filed'>;
+    sale_amount: Generated<string | null>; sale_vat: Generated<string | null>; disposal_contact_id: Generated<string | null>; disposal_ref: Generated<string | null>; disposal_journal_id: Generated<string | null>;
+    // 0022 สินทรัพย์ไม่มีตัวตน
+    kind: Generated<'tangible' | 'intangible'>; intangible_origin: Generated<'purchased' | 'internal_dev' | null> };
+  'acct.tax_filing': { company_id: string; id: Generated<string>; form: 'pp30' | 'pnd3' | 'pnd53' | 'pp36' | 'pnd54'; month: string; seq: Generated<number>; status: Generated<'draft' | 'filed'>;
     filed_at: DateCol | null; filed_by: string | null; reference_no: string | null; amount: Money; output_vat: string | null; input_vat: string | null; carried_in: Money; carry_forward: Money; journal_id: string | null; created_at: Ts };
   'acct.depreciation_run': { company_id: string; fiscal_year: number; period_no: number; journal_id: string; total: string; detail: ColumnType<unknown, string, string>; created_at: Ts };
   'acct.report_format': { company_id: string; id: Generated<string>; name: string; definition: ColumnType<unknown, string, string>; updated_at: Ts };
@@ -127,7 +135,9 @@ export interface AcctDB {
   'acct.document_event': { company_id: string; id: Generated<string>; document_id: string; at: Ts; actor: string | null; event: string; detail: ColumnType<unknown, string | undefined, string> };
   'acct.doc_setting': { company_id: string; doc_type: string; prefix: string; pattern: Generated<string>; reset: Generated<'monthly' | 'yearly' | 'never'>; settings: ColumnType<Record<string, unknown>, string | undefined, string>; updated_at: Ts };
   'acct.document_line': { company_id: string; id: Generated<string>; document_id: string; line_no: number; line_type: Generated<'item' | 'heading' | 'note'>;
-    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null; wht_type: string | null; est_cost: Generated<string | null> };
+    product_code: string | null; description: string; qty: string | null; unit_price: string | null; discount: Money; amount: Money; vat_rate: string | null; account_code: string | null; wht_type: string | null; est_cost: Generated<string | null>;
+    // 0022 บรรทัดจากสัญญา + ช่วงบริการ
+    contract_line_id: Generated<string | null>; service_from: ColumnType<string | null, string | null | undefined, string | null>; service_to: ColumnType<string | null, string | null | undefined, string | null> };
   'acct.number_series': { company_id: string; doc_type: string; pattern: string; prefix: string; period_key: string; next_no: Generated<number> };
   'acct.journal': { company_id: string; id: Generated<string>; journal_no: string; journal_date: DateCol; fiscal_year: number; period_no: number;
     book: Generated<string>; description: string | null; source_document_id: string | null; status: Generated<'draft' | 'posted' | 'voided'>;
@@ -148,5 +158,19 @@ export interface AcctDB {
   'acct.branch': { company_id: string; code: string; name: string; address: string | null; tax_id: string | null; files_separately: Generated<boolean>; active: Generated<boolean>; created_at: Ts };
   'acct.fx_revaluation': { company_id: string; fiscal_year: number; period_no: number; rate_date: DateCol; journal_id: string | null; reversal_journal_id: string | null; total: Money;
     detail: ColumnType<unknown, string | undefined, string>; created_at: Ts; created_by: string | null };
+  // 0022 สัญญา/รายได้รับล่วงหน้า · ยอดใช้งาน · ภ.พ.36
+  'acct.contract': { company_id: string; id: Generated<string>; code: string; contact_id: string; start_date: DateCol; end_date: DateCol; billing_cycle: 'monthly' | 'quarterly' | 'annual';
+    auto_renew: Generated<boolean>; status: Generated<'draft' | 'active' | 'cancelled' | 'ended'>; cancelled_on: ColumnType<string | null, string | null | undefined, string | null>; notes: string | null;
+    created_by: string | null; created_at: Ts; updated_at: Ts };
+  'acct.contract_line': { company_id: string; id: Generated<string>; contract_id: string; line_no: number; kind: 'license' | 'subscription' | 'support' | 'implementation' | 'usage';
+    recognition: 'point_in_time' | 'ratably' | 'milestone'; description: string; product_code: string | null; amount: Money; unit_price: string | null; usage_unit: string | null; vat: Generated<boolean>;
+    revenue_account: string | null; start_date: ColumnType<string | null, string | null | undefined, string | null>; end_date: ColumnType<string | null, string | null | undefined, string | null>;
+    milestone_done_on: ColumnType<string | null, string | null | undefined, string | null>; created_at: Ts };
+  'acct.revenue_schedule': { company_id: string; id: Generated<string>; contract_line_id: string; document_id: string; document_line_id: string; period: string; days: number; amount: string;
+    revenue_account: string; journal_id: string | null; voided: Generated<boolean>; created_at: Ts };
+  'acct.revenue_recognition_run': { company_id: string; id: Generated<string>; fiscal_year: number; period_no: number; journal_id: string; total: string; voided_at: Ts | null; void_reason: string | null; created_at: Ts };
+  'acct.usage_record': { company_id: string; id: Generated<string>; contract_line_id: string; usage_date: DateCol; qty: string; external_source: string | null; external_ref: string | null;
+    document_id: string | null; created_by_client: string | null; created_at: Ts };
+  'acct.pp36_entry': { company_id: string; id: Generated<string>; payment_id: string; bill_id: string; contact_id: string; pay_date: DateCol; base: string; rate: string; vat: string; filing_id: string | null; created_at: Ts };
   'acct.api_call': { company_id: string; id: Generated<string>; client_id: string; at: Ts; kind: 'api' | 'mcp'; tool: string; status: 'ok' | 'denied' | 'error'; document_id: string | null; detail: string | null };
 }
