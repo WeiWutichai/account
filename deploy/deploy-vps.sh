@@ -33,7 +33,7 @@ prepare)
   remote "chmod 600 $DIR/deploy/.env && echo \"โค้ด \$(cat $DIR/DEPLOYED_COMMIT) อยู่ที่ $DIR แล้ว\" && free -h | sed -n 1,3p"
   ;;
 build)
-  remote "cd $DIR && nohup sh -c 'for a in id-api accounting-api id-web accounting-web console-web; do echo \"== \$a \$(date +%T)\"; docker build -f deploy/Dockerfile --build-arg APP=\$a -t innovera/\$a . || exit 1; done; echo BUILD-OK \$(date +%T)' > build.log 2>&1 &"
+  remote "cd $DIR && nohup sh -c 'for a in id-api accounting-api id-web accounting-web console-web; do echo \"== \$a \$(date +%T)\"; docker build -f deploy/Dockerfile --build-arg APP=\$a -t innovera/\$a . || exit 1; done; echo BUILD-OK \$(date +%T)' > build.log 2>&1 < /dev/null & disown"
   echo "เริ่ม build แล้ว (เบื้องหลังบน VPS) · ดูความคืบหน้า: ${SSH[*]} tail -f $DIR/build.log"
   ;;
 up)
