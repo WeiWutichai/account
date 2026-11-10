@@ -93,7 +93,7 @@ async function runDoc(c: string, d: FxDoc): Promise<{ id: string; journalNo: str
     const id = await savePurchaseDraft(db, c, mgr, { docType: d.type, contactId: await contact(c, d.contact!), issueDate: ce(d.date), refDocumentId: d.ref ? map[d.ref]! : null, warehouseId,
       lines: d.lines.map((l) => ({ productCode: l.product, description: l.product, qty: l.qty!, unitPrice: l.unit_price!, unit: l.unit ?? null, vat: true, accountCode: l.account ?? null })) });
     const r = await approvePurchase(db, c, mgr, id);
-    return { id, journalNo: 'journalNo' in r ? r.journalNo : null };
+    return { id, journalNo: 'journalNo' in r ? (r.journalNo ?? null) : null };
   }
   if (d.type === 'IV') {
     const id = await saveSalesDraft(db, c, mgr, { docType: 'IV', contactId: await contact(c, d.contact!), issueDate: ce(d.date), ruleCode: d.rule!, taxMode: d.tax_mode!, receiveAccount: d.receive_account ?? null, warehouseId,
