@@ -1,7 +1,7 @@
 // API ของธนาคาร + ภาษี + ปิดงวด + ทรัพย์สิน + รายงาน (M6 · docs/technical-plan-M6.md)
 import { Body, Controller, Get, Header, Inject, Param, Post, Put, Query, Req, Res, UnprocessableEntityException } from '@nestjs/common';
 import type { Db } from '@innovera/db';
-import { autoMatch, closePeriod, closeReconciliation, depreciationFor, depreciationRuns, disposeAsset, importStatement, matchManually, parseStatement, periodStatus, reconciliation, reopenPeriod, reviewAccruals, runDepreciation, saveAsset, yearEnd, type AssetInput, type DisposeInput } from '@innovera/db/close-ops';
+import { autoMatch, closePeriod, closeReconciliation, depreciationFor, depreciationRuns, disposeAsset, importStatement, matchManually, openFiscalYear, parseStatement, periodStatus, reconciliation, reopenPeriod, reviewAccruals, runDepreciation, saveAsset, yearEnd, type AssetInput, type DisposeInput } from '@innovera/db/close-ops';
 import { aging, fileTax, financialStatements, pndReport, rdPrepTxt, reconChecks, taxFilings, vatReports } from '@innovera/db/reports';
 import ExcelJS from 'exceljs';
 import type { Request, Response } from 'express';
@@ -87,6 +87,9 @@ export class M6Controller {
     await reviewAccruals(this.db, companyOf(req), actor(req), { fiscalYear: Number(year), periodNo: Number(no) });
     return { ok: true };
   }
+  /** เปิดปีบัญชี (สร้างงวด 0–13) — owner/ผู้จัดการบัญชี · idempotent */
+  @Need('period', 'post') @Post('periods/:year/open')
+  openYear(@Req() req: Request, @Param('year') year: string) { return openFiscalYear(this.db, companyOf(req), actor(req), Number(year)); }
   @Need('period', 'post') @Post('periods/:year/year-end')
   yearEnd(@Req() req: Request, @Param('year') year: string) { return yearEnd(this.db, companyOf(req), actor(req), Number(year)); }
 

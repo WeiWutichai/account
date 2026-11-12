@@ -544,6 +544,10 @@ export async function convertDocument(db: Db, companyId: string, actor: Actor, i
   const src = await getDocument(db, companyId, id);
   if (!src) throw new LedgerError('ไม่พบเอกสาร');
   if (src.doc.status !== 'approved' && src.doc.status !== 'posted') throw new LedgerError('แปลงได้เฉพาะเอกสารที่อนุมัติแล้ว');
+  // กดแปลงซ้ำ → เปิดร่างเดิมที่แปลงจากเอกสารนี้ (ไม่สร้างร่างซ้ำ — พบในการทดสอบกับนักบัญชี 11/11/2569: IV ร่าง 5 ใบจาก SO ใบเดียว)
+  const existing = await db.withCompany(companyId, (tx) => tx.selectFrom('acct.document').select('id').where('ref_document_id', '=', id).where('doc_type', '=', to).where('status', '=', 'draft')
+    .orderBy('created_at').executeTakeFirst());
+  if (existing) return existing.id;
   const newId = await saveSalesDraft(db, companyId, actor, {
     docType: to, contactId: src.doc.contact_id!, issueDate: p.issueDate ?? today(), priceInclVat: src.doc.price_incl_vat, billDiscount: src.doc.bill_discount,
     address: src.doc.address, notes: src.doc.notes, reference: src.doc.doc_no, refDocumentId: id, creditDays: src.doc.credit_days,

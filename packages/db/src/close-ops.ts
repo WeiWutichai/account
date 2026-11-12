@@ -6,6 +6,7 @@ import type { CompanyTx, Db } from './index.ts';
 import { LedgerError, postJournalTx, trialBalance } from './ledger-service.ts';
 import { emitTx } from './hub.ts';
 import { filingStatus } from './reports.ts';
+import { calendarPeriods } from './seed.ts';
 
 export interface OpsActor { userId: string | null; role: CompanyRole }
 const MANAGERS: readonly CompanyRole[] = ['owner', 'accounting_manager'];
@@ -84,6 +85,37 @@ export async function reopenPeriod(db: Db, companyId: string, actor: OpsActor, p
     await tx.updateTable('acct.period').set({ status: 'open', closed_at: null, closed_by: null }).where('fiscal_year', '=', p.fiscalYear).where('period_no', '=', p.periodNo).execute();
     await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor.userId, action: 'period.reopen', entity: 'period', entity_id: `${p.fiscalYear}-${p.periodNo}`,
       before: JSON.stringify({ status: cur.status }), after: JSON.stringify({ status: 'open', reason: p.reason }), prev_hash: null, hash: null }).execute();
+  });
+}
+
+/**
+ * เปิดปีบัญชี: สร้างงวด 0 (ยกมา) · 1–12 · 13 ของปีนั้น (idempotent — งวดที่มีอยู่แล้วไม่แตะ)
+ * เหตุ: เดิมสร้างงวดได้ครั้งเดียวตอนสร้างบริษัท (ปีที่เริ่มใช้ระบบ) → เอกสารปีอื่น "ไม่มีงวดบัญชี" (พบในการทดสอบกับนักบัญชี 11/11/2569)
+ * จำกัด ±1 ปีจากปีที่มีงวดอยู่แล้ว (ห้ามกระโดดเว้นปี) · เฉพาะบริษัทปีปฏิทิน (fiscal_year_start 01-01)
+ * TODO(Wei): ปีบัญชีไม่ตรงปีปฏิทิน · การเปิดปีก่อนปีที่เริ่มใช้ระบบทำให้งวดยอดยกมาย้ายไปปีก่อน — ให้ผู้สอบบัญชียืนยันวิธียกยอด
+ */
+export async function openFiscalYear(db: Db, companyId: string, actor: OpsActor, fiscalYear: number) {
+  if (!MANAGERS.includes(actor.role)) throw new LedgerError('เปิดปีบัญชีได้เฉพาะเจ้าของ/ผู้จัดการบัญชี');
+  if (!Number.isInteger(fiscalYear) || fiscalYear < 2500 || fiscalYear > 2700) throw new LedgerError('ปีบัญชีต้องเป็นปี พ.ศ.');
+  const company = await db.withPublic((tx) => tx.selectFrom('public.company').select('fiscal_year_start').where('id', '=', companyId).executeTakeFirstOrThrow());
+  if (company.fiscal_year_start !== '01-01') throw new LedgerError('ยังรองรับเฉพาะปีบัญชีตามปีปฏิทิน (เริ่ม 1 ม.ค.)');
+  return db.withCompany(companyId, async (tx) => {
+    const years = (await tx.selectFrom('acct.period').select('fiscal_year').distinct().execute()).map((r) => r.fiscal_year);
+    if (years.includes(fiscalYear)) {
+      const n = await tx.selectFrom('acct.period').select((eb) => eb.fn.countAll<string>().as('n')).where('fiscal_year', '=', fiscalYear).executeTakeFirstOrThrow();
+      if (Number(n.n) >= 14) return { fiscalYear, created: 0 };
+    } else if (years.length && !years.some((y) => Math.abs(y - fiscalYear) === 1)) {
+      throw new LedgerError(`เปิดได้เฉพาะปีที่ติดกับปีที่มีอยู่ (${Math.min(...years) - 1} หรือ ${Math.max(...years) + 1})`);
+    }
+    let created = 0;
+    for (const p of calendarPeriods(fiscalYear)) {
+      const r = await tx.insertInto('acct.period').values({ company_id: companyId, fiscal_year: fiscalYear, ...p, closed_at: null, closed_by: null })
+        .onConflict((oc) => oc.columns(['company_id', 'fiscal_year', 'period_no']).doNothing()).executeTakeFirst();
+      created += Number(r.numInsertedOrUpdatedRows ?? 0);
+    }
+    await tx.insertInto('acct.audit_log').values({ company_id: companyId, actor_id: actor.userId, action: 'period.open_year', entity: 'period', entity_id: String(fiscalYear),
+      before: JSON.stringify({ years }), after: JSON.stringify({ fiscalYear, created }), prev_hash: null, hash: null }).execute();
+    return { fiscalYear, created };
   });
 }
 

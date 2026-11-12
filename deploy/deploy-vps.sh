@@ -52,6 +52,12 @@ user)
   ssh -t -i "$KEY" -o IdentitiesOnly=yes -p "${VPS_PORT:-22}" "${VPS_USER}@${VPS_HOST}" \
     "cd $DIR && docker compose -f deploy/compose.prod.yaml --env-file deploy/.env run --rm -it -v $DIR/apps/id-api/src/add-user.ts:/repo/apps/id-api/src/add-user.ts:ro id-api ./node_modules/.bin/tsx src/add-user.ts --email '$2' --name '$3' --role '${4:-accounting_manager}'"
   ;;
+year)
+  [ -n "${2:-}" ] || { echo 'ใช้: bash deploy/deploy-vps.sh year <ปี พ.ศ. เช่น 2569> ["<ชื่อบริษัท>"]'; exit 1; }
+  CO=""; [ -n "${3:-}" ] && CO="--company '$3'"
+  ssh -t -i "$KEY" -o IdentitiesOnly=yes -p "${VPS_PORT:-22}" "${VPS_USER}@${VPS_HOST}" \
+    "cd $DIR && docker compose -f deploy/compose.prod.yaml --env-file deploy/.env run --rm -it -v $DIR/apps/id-api/src/open-fiscal-year.ts:/repo/apps/id-api/src/open-fiscal-year.ts:ro -v $DIR/packages/db/src/close-ops.ts:/repo/packages/db/src/close-ops.ts:ro id-api ./node_modules/.bin/tsx src/open-fiscal-year.ts --year '$2' $CO"
+  ;;
 proxy)
   ip="$VPS_HOST"
   for h in "${HOSTS[@]}"; do
